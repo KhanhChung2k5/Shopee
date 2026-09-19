@@ -1,5 +1,8 @@
 # Class Diagram — Hệ thống CRM + Bán lẻ trực tuyến (1 doanh nghiệp)
 
+> **v9**: Chốt ngành hàng kinh doanh cụ thể — công ty bán lẻ **tay cầm chơi game (controller) và đĩa game**. Thêm vào `Product`: `productType` (`game_disc`/`controller`/`accessory`), `platforms` (JSON — nền tảng tương thích: PS5, PS4, Xbox Series X, Nintendo Switch, PC...), `publisher`, `genre`, `ageRating` (PEGI/ESRB, chỉ dùng cho `game_disc`), `releaseDate`, `connectionType` (`wired`/`wireless`/`bluetooth`, chỉ dùng cho `controller`/`accessory`), `warrantyMonths` (chỉ dùng cho hàng phần cứng). Các field chỉ áp dụng cho 1 loại sản phẩm để NULL ở loại còn lại — không tách bảng con riêng cho từng `productType` vì danh mục chỉ có 2-3 loại sản phẩm, tách bảng sẽ là over-engineering.
+> **v8**: Gọn hoá schema từ 51 → 45 bảng bằng cách gộp/bỏ các bảng dư thừa hoặc không gắn với yêu cầu chấm điểm nào: gộp `UserProfile` vào `User`, bỏ `ShipmentTracking` (giữ `Shipment.status`), gộp `SupportTicket`/`TicketMessage` vào `Conversation`/`ConversationMessage` (thêm `type`/`orderId`/`status`/`priority`/`channel`), gộp `FeedbackSurvey` vào `Survey`/`SurveyResponse` (thêm `orderId`), bỏ hẳn `InteractionLog`. Các bảng audit-trail thật sự có giá trị (`OrderStatusHistory`, `InventoryMovement`) được giữ nguyên.
+> **v7**: Bổ sung `Survey`/`SurveyQuestion`/`SurveyResponse`/`SurveyAnswer` (khảo sát thật, nhiều câu hỏi) và làm rõ `User.status` hỗ trợ khóa/xóa mềm tài khoản khách hàng — đáp ứng đầy đủ các tính năng quản lý khách hàng của CRM (thêm/khóa/xóa mềm khách hàng, tạo-gửi-thống kê khảo sát), vốn là core feature cho cả 2 mục đích dùng chung nền tảng này.
 > **v6**: Chuyển từ mô hình **marketplace đa gian hàng** (nhiều Shop độc lập, mỗi Shop tự đăng ký/được duyệt, tự có ví/hoa hồng) sang mô hình **1 doanh nghiệp bán lẻ duy nhất** — toàn bộ Product/Warehouse/Order thuộc thẳng về công ty, không còn khái niệm "Shop" là một bên thứ ba. Nhân sự nội bộ (bán hàng, kho, admin, CSKH) được gom vào 1 entity `Employee`. Lý do đổi: dùng chung nền tảng này cho một đồ án khác yêu cầu hệ thống thông tin cho **một** doanh nghiệp thương mại, không phải sàn TMĐT nhiều người bán.
 > Diagram được chia theo 5 domain để dễ đọc: (A) Identity & Company, (B) Catalog & Inventory, (C) Order & Transaction, (D) Marketing & Loyalty, (E) CRM & Customer Care.
 
@@ -13,7 +16,6 @@
 classDiagram
     %% ===== A. Identity & Company =====
     class User
-    class UserProfile
     class Address
     class Role
     class Employee
@@ -40,7 +42,6 @@ classDiagram
     class ShippingProvider
     class Shipment
     class ShipmentItem
-    class ShipmentTracking
     class RefundReturn
 
     %% ===== D. Marketing & Loyalty =====
@@ -59,17 +60,16 @@ classDiagram
     class SegmentMember
     class Campaign
     class CampaignTarget
-    class SupportTicket
-    class TicketMessage
     class AgentAssignment
     class Conversation
     class ConversationMessage
-    class InteractionLog
-    class FeedbackSurvey
     class Notification
+    class Survey
+    class SurveyQuestion
+    class SurveyResponse
+    class SurveyAnswer
 
     %% --- A: Identity & Company ---
-    User --> UserProfile
     User --> Address
     Role --> User
     User --> Employee
@@ -102,7 +102,6 @@ classDiagram
     Warehouse --> Shipment
     Shipment --> ShipmentItem
     OrderItem --> ShipmentItem
-    Shipment --> ShipmentTracking
     OrderItem --> RefundReturn
     RefundReturn --> WalletTransaction
     User --> Wallet
@@ -127,17 +126,20 @@ classDiagram
     CustomerSegment --> SegmentMember
     CustomerSegment --> CampaignTarget
     Campaign --> CampaignTarget
-    User --> SupportTicket
-    Order --> SupportTicket
-    SupportTicket --> TicketMessage
     Employee --> AgentAssignment
-    SupportTicket --> AgentAssignment
+    Conversation --> AgentAssignment
     User --> Conversation
+    Order --> Conversation
     Conversation --> ConversationMessage
-    User --> InteractionLog
-    Order --> FeedbackSurvey
+    Order --> SurveyResponse
     User --> Notification
     Campaign --> Notification
+    Employee --> Survey
+    Survey --> SurveyQuestion
+    Survey --> SurveyResponse
+    User --> SurveyResponse
+    SurveyResponse --> SurveyAnswer
+    SurveyQuestion --> SurveyAnswer
 ```
 
 **Cách đọc nhanh:**
@@ -152,6 +154,8 @@ classDiagram
 ## A. Identity & Company
 
 > Thay đổi so với v5: bỏ hẳn `Shop`, `ShopVerification`, `ShopStaff` — không còn khái niệm đăng ký/duyệt một "bên bán" độc lập. Nhân sự nội bộ (bán hàng, kho, quản trị, CSKH) gom vào 1 entity `Employee` gắn với `User`, phân biệt nhau qua `department`.
+>
+> **v7**: làm rõ ngữ nghĩa `User.status` để đáp ứng yêu cầu "quản lý khách hàng" của CRM — nhận 1 trong các giá trị `active` / `locked` (admin khóa tài khoản, đăng nhập bị chặn) / `deleted` (**xóa mềm** — admin "xóa" khách hàng nhưng bản ghi và toàn bộ lịch sử đơn hàng/giao dịch liên quan vẫn giữ nguyên trong DB, chỉ ẩn khỏi danh sách khách hàng và chặn đăng nhập). Thêm method `lock()`/`unlock()`/`softDelete()` trên `User`.
 
 ```mermaid
 classDiagram
@@ -161,20 +165,19 @@ classDiagram
         +String phone
         +String email
         +String passwordHash
+        +String fullName
+        +String avatarUrl
+        +String gender
+        +Date dob
         +String status
         +DateTime createdAt
         +DateTime lastLoginAt
         +register()
         +login()
         +updateProfile()
-    }
-
-    class UserProfile {
-        +UUID userId
-        +String fullName
-        +String avatarUrl
-        +String gender
-        +Date dob
+        +lock()
+        +unlock()
+        +softDelete()
     }
 
     class Address {
@@ -199,7 +202,6 @@ classDiagram
         +DateTime hiredAt
     }
 
-    User "1" --> "1" UserProfile : has
     User "1" --> "*" Address : owns
     Role "1" --> "*" User : has
     User "1" --> "0..1" Employee : works_as
@@ -235,6 +237,14 @@ classDiagram
         +String name
         +Text description
         +String status
+        +String productType
+        +JSON platforms
+        +String publisher
+        +String genre
+        +String ageRating
+        +Date releaseDate
+        +String connectionType
+        +Int warrantyMonths
         +publish()
     }
 
@@ -357,6 +367,7 @@ classDiagram
         +UUID id
         +UUID orderId
         +UUID walletId
+        +UUID walletTransactionId
         +String purpose
         +String method
         +Decimal amount
@@ -400,13 +411,6 @@ classDiagram
         +Int quantity
     }
 
-    class ShipmentTracking {
-        +UUID id
-        +UUID shipmentId
-        +String statusText
-        +DateTime occurredAt
-    }
-
     class RefundReturn {
         +UUID id
         +UUID orderItemId
@@ -433,7 +437,6 @@ classDiagram
     Warehouse "1" --> "*" Shipment : ships_from
     Shipment "1" --> "*" ShipmentItem : packs
     OrderItem "1" --> "*" ShipmentItem : shipped_as
-    Shipment "1" --> "*" ShipmentTracking : logs
     OrderItem "1" --> "*" RefundReturn : may_have
     RefundReturn "1" --> "0..1" WalletTransaction : refunded_to_buyer
     User "1" --> "1" Wallet : has
@@ -529,6 +532,8 @@ classDiagram
 ## E. CRM & Customer Care
 
 > Thay đổi so với v5: bỏ entity `Agent` riêng — nhân viên CSKH giờ là `Employee` với `department = "cs"` (tránh trùng lặp với entity mới ở domain A). `Conversation` bỏ `shopId` vì khách chỉ chat với duy nhất 1 doanh nghiệp, không cần phân biệt "chat với shop nào".
+>
+> **v7**: thêm `Survey`/`SurveyQuestion`/`SurveyResponse`/`SurveyAnswer` — khảo sát thật có nhiều câu hỏi tùy chỉnh do `Employee` tạo, gửi tới khách hàng (qua `Campaign`/`Notification` đã có sẵn, `Notification.referenceType = "survey"`), khách trả lời từng câu. Khác với `FeedbackSurvey` (chỉ 1 điểm NPS gắn cứng theo 1 `Order` cụ thể) — `Survey` là công cụ khảo sát chung (vd: thăm dò trước khi ra mắt sản phẩm mới), không gắn với đơn hàng nào, cả hai cùng tồn tại vì phục vụ mục đích khác nhau.
 
 ```mermaid
 classDiagram
@@ -566,29 +571,9 @@ classDiagram
         +UUID segmentId
     }
 
-    class SupportTicket {
-        +UUID id
-        +UUID userId
-        +UUID orderId
-        +String channel
-        +String status
-        +String priority
-        +DateTime createdAt
-        +close()
-        +escalate()
-    }
-
-    class TicketMessage {
-        +UUID id
-        +UUID ticketId
-        +UUID senderId
-        +Text content
-        +DateTime sentAt
-    }
-
     class AgentAssignment {
         +UUID id
-        +UUID ticketId
+        +UUID conversationId
         +UUID employeeId
         +Boolean isCurrent
         +DateTime assignedAt
@@ -597,7 +582,14 @@ classDiagram
     class Conversation {
         +UUID id
         +UUID userId
+        +UUID orderId
+        +String type
+        +String channel
+        +String status
+        +String priority
         +DateTime lastMessageAt
+        +close()
+        +escalate()
     }
 
     class ConversationMessage {
@@ -606,21 +598,6 @@ classDiagram
         +UUID senderId
         +Text content
         +DateTime sentAt
-    }
-
-    class InteractionLog {
-        +UUID id
-        +UUID userId
-        +String type
-        +JSON metadata
-        +DateTime occurredAt
-    }
-
-    class FeedbackSurvey {
-        +UUID id
-        +UUID orderId
-        +Int npsScore
-        +Text comment
     }
 
     class Notification {
@@ -634,22 +611,58 @@ classDiagram
         +DateTime sentAt
     }
 
+    class Survey {
+        +UUID id
+        +UUID createdByEmployeeId
+        +String title
+        +Text description
+        +String status
+        +DateTime createdAt
+        +close()
+    }
+
+    class SurveyQuestion {
+        +UUID id
+        +UUID surveyId
+        +Text questionText
+        +String answerType
+        +Int sortOrder
+    }
+
+    class SurveyResponse {
+        +UUID id
+        +UUID surveyId
+        +UUID userId
+        +UUID orderId
+        +DateTime submittedAt
+    }
+
+    class SurveyAnswer {
+        +UUID id
+        +UUID responseId
+        +UUID questionId
+        +Text answerText
+    }
+
     User "1" --> "1" CustomerProfileCRM : enriched_by
     CustomerProfileCRM "1" --> "*" SegmentMember : belongs_to
     CustomerSegment "1" --> "*" SegmentMember : groups
     CustomerSegment "1" --> "*" CampaignTarget : used_by
     Campaign "1" --> "*" CampaignTarget : targets
-    User "1" --> "*" SupportTicket : opens
-    Order "0..1" --> "*" SupportTicket : relates_to
-    SupportTicket "1" --> "*" TicketMessage : contains
     Employee "1" --> "*" AgentAssignment : handles
-    SupportTicket "1" --> "*" AgentAssignment : assigned_history
+    Conversation "1" --> "*" AgentAssignment : assigned_history
     User "1" --> "*" Conversation : chats
+    Order "0..1" --> "*" Conversation : relates_to
     Conversation "1" --> "*" ConversationMessage : contains
-    User "1" --> "*" InteractionLog : generates
-    Order "1" --> "0..1" FeedbackSurvey : triggers
+    Order "0..1" --> "*" SurveyResponse : triggers_nps
     User "1" --> "*" Notification : receives
     Campaign "1" --> "*" Notification : sends_via_reference
+    Employee "1" --> "*" Survey : creates
+    Survey "1" --> "*" SurveyQuestion : has
+    Survey "1" --> "*" SurveyResponse : collects
+    User "1" --> "*" SurveyResponse : submits
+    SurveyResponse "1" --> "*" SurveyAnswer : contains
+    SurveyQuestion "1" --> "*" SurveyAnswer : answered_by
 ```
 
 ---
@@ -664,6 +677,39 @@ classDiagram
 - **`ReviewReply.shopId` → `employeeId`**: nhân viên CSKH (một `Employee`) là người trả lời đánh giá, không phải "shop" trả lời.
 - **Bỏ entity `Agent` riêng, dùng `Employee` (department = "cs")**: tránh trùng lặp giữa "nhân viên nội bộ nói chung" và "nhân viên CSKH" — cả hai giờ là cùng 1 khái niệm `Employee`, chỉ khác `department`.
 - **`Conversation` bỏ `shopId`**: khách chỉ chat với duy nhất 1 doanh nghiệp nên không cần định danh "chat với shop nào".
+
+## Ghi chú thay đổi (v6 → v7, bổ sung tính năng CRM còn thiếu)
+
+Lý do: rà soát lại yêu cầu môn Hệ thống thông tin doanh nghiệp (mục CRM) phát hiện các tính năng quản lý khách hàng cốt lõi của CRM chưa được mô hình hoá đầy đủ — đây cũng là tính năng lõi cần cho chính đồ án CNPM (domain E vốn đã đặt tên "CRM & Customer Care" từ đầu), không phải chỉ để đáp ứng riêng môn HTTTDN.
+
+- **Thêm `Survey`, `SurveyQuestion`, `SurveyResponse`, `SurveyAnswer`**: khảo sát thật có nhiều câu hỏi tùy chỉnh, do `Employee` tạo, gửi tới khách hàng (tái dùng `Campaign`/`Notification` đã có — `Notification.referenceType = "survey"` — không cần thêm quan hệ mới giữa `Campaign` và `Survey`), khách trả lời từng câu qua `SurveyAnswer`. Đáp ứng đúng yêu cầu "tạo bảng khảo sát, gửi đến khách hàng, thống kê kết quả" — điều mà `FeedbackSurvey` (chỉ 1 điểm NPS gắn cứng theo `Order`) không làm được.
+- **Làm rõ `User.status`** (`active`/`locked`/`deleted`) + thêm method `lock()`/`unlock()`/`softDelete()`: đáp ứng "khóa tài khoản khách hàng" và "xóa khách hàng" — chọn **xóa mềm** (đổi `status` sang `deleted`, giữ nguyên toàn bộ bản ghi + lịch sử đơn hàng/giao dịch liên quan trong DB) thay vì xóa cứng, đúng thực hành chuẩn (xóa cứng sẽ phá vỡ tính toàn vẹn tham chiếu của `Order`/`Payment`/`Review`... đã trỏ tới `userId` đó).
+- **Không thêm entity mới cho "báo cáo tỷ lệ độ tuổi, sở thích khách hàng"**: đây là báo cáo tổng hợp (aggregate), tính trực tiếp từ dữ liệu đã có sẵn — độ tuổi từ `UserProfile.dob`, sở thích/ngành hàng ưa chuộng suy ra từ lịch sử `Order`→`OrderItem`→`Product`→`Category`. Không cần lưu thêm trường "sở thích" riêng vì dữ liệu hành vi mua hàng đã đủ để tính.
+- **Không thêm API "admin thêm khách hàng mới" như một entity/quan hệ mới**: tái dùng thẳng `User` (domain A) — chỉ là một cách tạo `User` khác (do admin tạo thay vì khách tự đăng ký), không đổi cấu trúc dữ liệu.
+
+## Ghi chú thay đổi (v8 → v9, chốt ngành hàng: tay cầm chơi game & đĩa game)
+
+Lý do: chốt lại đây là hệ thống cho một công ty bán lẻ cụ thể — chuyên **tay cầm chơi game (controller)** và **đĩa game**, không phải bán lẻ đa ngành hàng chung chung. Thêm field đặc thù ngành vào `Product` thay vì tách bảng con `GameDisc`/`Controller` riêng, vì:
+- Danh mục chỉ có 2-3 `productType` (`game_disc`, `controller`, `accessory`), số field đặc thù mỗi loại ít (4-5 field) — tách bảng riêng sẽ phải JOIN thêm ở mọi truy vấn catalog mà không có lợi ích rõ ràng.
+- Các field không dùng đến ở `productType` khác chỉ đơn giản để `NULL`.
+
+Field mới trên `Product`:
+- **`productType`** (`game_disc`/`controller`/`accessory`): phân biệt loại sản phẩm để biết field nào áp dụng.
+- **`platforms`** (JSON, mảng chuỗi — vd `["PS5","PS4"]`): nền tảng tương thích. Dùng JSON thay vì bảng M-N riêng vì đây là thuộc tính hiển thị/lọc, không cần truy vấn quan hệ phức tạp; dùng chung được cho cả đĩa game (thường 1 platform) và tay cầm (thường nhiều platform).
+- **`publisher`**, **`genre`**, **`ageRating`** (PEGI/ESRB): chỉ áp dụng cho `game_disc` — thông tin bắt buộc phải hiển thị khi bán đĩa game.
+- **`releaseDate`**: ngày phát hành, áp dụng cho cả 2 loại (game mới ra mắt / tay cầm đời mới).
+- **`connectionType`** (`wired`/`wireless`/`bluetooth`): chỉ áp dụng cho `controller`/`accessory`.
+- **`warrantyMonths`**: số tháng bảo hành, chỉ áp dụng cho hàng phần cứng (`controller`/`accessory`) — đĩa game không có khái niệm bảo hành.
+
+## Ghi chú thay đổi (v7 → v8, gọn hoá schema 51 → 45 bảng)
+
+Lý do: rà soát lại toàn bộ 51 bảng sau khi viết migration thật, phát hiện một số bảng dư thừa (tách 1-1 không cần thiết, hoặc trùng chức năng với bảng khác) hoặc không gắn với bất kỳ yêu cầu chấm điểm nào của cả 2 môn. Giữ nguyên các bảng audit-trail thật sự có giá trị (`OrderStatusHistory`, `InventoryMovement`) vì có gắn với yêu cầu cụ thể (lịch sử trạng thái đơn hàng, biến động tồn kho).
+
+- **Gộp `UserProfile` vào `User`**: `fullName`, `avatarUrl`, `gender`, `dob` chuyển thẳng thành field của `User`. Đây là quan hệ 1-1 bắt buộc (mọi `User` đều có đúng 1 profile) nên tách bảng riêng chỉ tạo thêm 1 JOIN không cần thiết mà không có lợi ích gì (không có trường hợp nào cần `UserProfile` tồn tại độc lập với `User`).
+- **Bỏ `ShipmentTracking`**: chỉ giữ `Shipment.status` (đủ để biết trạng thái hiện tại). Lịch sử chi tiết từng mốc vận chuyển (`picked_up`, `in_transit`, `delivered`...) không gắn với yêu cầu chấm điểm nào — khác với `OrderStatusHistory` (giữ lại) vốn cần để hiển thị lịch sử đơn hàng cho khách.
+- **Gộp `SupportTicket` + `TicketMessage` vào `Conversation` + `ConversationMessage`**: thêm `type` (`'ticket'`/`'chat'`), `orderId`, `status`, `priority`, `channel` vào `Conversation`; `AgentAssignment.ticketId` đổi thành `AgentAssignment.conversationId`. Hai cặp bảng này vốn cùng là "hội thoại giữa khách và nhân viên", chỉ khác ngữ cảnh (ticket hỗ trợ có `status`/`priority`, chat thường thì không) — dùng 1 field `type` để phân biệt thay vì 2 bộ bảng song song giống hệt nhau về cấu trúc.
+- **Gộp `FeedbackSurvey` vào `Survey`/`SurveyResponse`**: thêm `orderId` (nullable) vào `SurveyResponse`. `FeedbackSurvey` chỉ là "khảo sát 1 câu hỏi (điểm NPS) gắn với 1 Order" — một trường hợp đặc biệt của `Survey` chung, không cần bảng riêng.
+- **Bỏ hẳn `InteractionLog`**: log hành vi chung chung (`type`, `metadata` JSON) không gắn với bất kỳ yêu cầu báo cáo/chấm điểm nào ở cả 2 môn — khác `OrderStatusHistory`/`InventoryMovement` vốn phục vụ tính năng cụ thể (tracking đơn hàng, quản lý kho).
 
 ## Ghi chú thay đổi (v1 → v2, sau review)
 
