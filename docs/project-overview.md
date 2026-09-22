@@ -13,7 +13,7 @@ Thành phần chính:
 - **Web app** (React) — khách hàng mua sắm, trang quản trị (Admin) riêng biệt.
 - **Mobile app** (Flutter) — khách hàng mua sắm trên di động.
 - **Backend API** (Spring Boot) — xử lý nghiệp vụ, kết nối CSDL.
-- **CSDL** (PostgreSQL, 45 bảng, 5 domain nghiệp vụ).
+- **CSDL** (PostgreSQL, 41 bảng, 5 domain nghiệp vụ).
 
 ## 2. Sơ đồ chức năng hệ thống
 
@@ -155,9 +155,9 @@ graph TD
 
     D1[(User / Employee / Role)]
     D2[(Product / ProductVariant<br/>/ InventoryStock)]
-    D3[(Order / Payment /<br/>Shipment)]
-    D4[(Voucher / FlashSale /<br/>LoyaltyPoint)]
-    D5[(CustomerProfileCRM /<br/>Survey / Conversation)]
+    D3[(Order / Payment)]
+    D4[(Voucher / PromotionProductDetail)]
+    D5[(User CRM fields /<br/>Survey / Conversation)]
 
     KH -- "Thông tin đăng ký" --> P1
     P1 <--> D1
@@ -173,6 +173,9 @@ graph TD
     P3 -- "Yêu cầu kiểm tra tồn kho" --> P2
     P2 -- "Tồn kho khả dụng / báo hết hàng" --> P3
     P3 -- "Xác nhận đơn" --> KH
+    KH -- "Yêu cầu đổi trả" --> P3
+    NV -- "Duyệt/từ chối đổi trả, hoàn tiền" --> P3
+    P3 -- "Kết quả đổi trả, hoàn tiền" --> KH
 
     NV -- "Tạo voucher/flash sale" --> P4
     P4 <--> D4
@@ -262,7 +265,7 @@ sequenceDiagram
         BE-->>FE: Xác nhận đơn hàng
 
         NVK->>BE: Xác nhận đóng gói
-        BE->>DB: Tạo Shipment, cập nhật OrderStatusHistory (shipping)
+        BE->>DB: Cập nhật Order (shipmentStatus, trackingNo), OrderStatusHistory (shipping)
         Note over NVK,DB: Đơn vị vận chuyển cập nhật tracking (xem sơ đồ ngữ cảnh)
         BE->>DB: Cập nhật OrderStatusHistory (delivered)
 
@@ -297,7 +300,7 @@ sequenceDiagram
     alt Duyệt yêu cầu
         NVCS->>BE: Duyệt (approved)
         BE->>DB: Cập nhật RefundReturn (status=approved)
-        BE->>DB: Tạo WalletTransaction hoàn tiền, cộng số dư Wallet
+        BE->>DB: Tạo WalletTransaction hoàn tiền, cộng User.walletBalance
         BE->>DB: Cập nhật RefundReturn (status=refunded)
         BE->>KH: Notification hoàn tiền thành công
     else Từ chối
@@ -375,7 +378,7 @@ graph LR
     WEB["Web App<br/>(React + Vite)"]
     APP["Mobile App<br/>(Flutter)"]
     API["Backend API<br/>(Spring Boot + JPA)"]
-    DB[("PostgreSQL<br/>45 bảng / 5 domain")]
+    DB[("PostgreSQL<br/>41 bảng / 5 domain")]
 
     WEB -->|REST API| API
     APP -->|REST API| API
@@ -391,12 +394,13 @@ graph LR
 
 | Phần | Trạng thái |
 |---|---|
-| Class diagram + migration CSDL (45 bảng) | ✅ Hoàn thành, đã verify chạy thật |
-| Web — giao diện khách hàng (trang chủ, danh mục, tìm kiếm, giỏ hàng, đăng nhập) | ✅ Hoàn thành (dữ liệu mẫu, chưa nối API thật) |
+| Class diagram + migration CSDL (41 bảng) | ✅ Hoàn thành, đã verify chạy thật |
+| Web — giao diện khách hàng (trang chủ, danh mục, tìm kiếm, chi tiết sản phẩm, giỏ hàng, đăng nhập) | ✅ Hoàn thành (dữ liệu mẫu, chưa nối API thật) |
 | Web — giao diện Admin (sản phẩm, kho, đơn hàng, marketing, khách hàng, báo cáo, nhân viên) | ✅ Hoàn thành (dữ liệu mẫu, chưa nối API thật) |
 | Mobile app — các màn hình chính | ✅ Hoàn thành (dữ liệu mẫu) |
 | Backend API thật (Entity/Repository/Controller) | ❌ Chưa làm — mới có bộ khung project + `/health` |
 | Kết nối Web/Mobile ↔ Backend thật | ❌ Chưa làm |
 | Test tự động (unit/e2e) cho backend | ❌ Chưa làm |
+| Trang Checkout thật (chọn địa chỉ, phương thức thanh toán) | ⚠️ Chưa có — nút "Tiến hành thanh toán" ở Giỏ hàng hiện là placeholder, chưa dẫn tới luồng thật |
 
 **Việc cần bàn để chốt phương án**: thứ tự triển khai backend thật theo domain nào trước (đề xuất ban đầu: A→B→C→D→E theo đúng thứ tự phụ thuộc), có giữ nguyên phân công theo 5 domain hay không, và mốc thời gian cho từng domain.
