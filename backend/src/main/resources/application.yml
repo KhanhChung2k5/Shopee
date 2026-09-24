@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: backend
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5434}/${DB_NAME:chotomua}
+    username: ${DB_USER:chotomua}
+    password: ${DB_PASSWORD:chotomua}
+  jpa:
+    hibernate:
+      # Flyway owns the schema (db/migration/*.sql); Hibernate only checks
+      # that @Entity classes match it, never auto-generates/alters tables.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
