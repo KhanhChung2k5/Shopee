@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -35,6 +36,10 @@ public class Employee {
 
     @Column(length = 100)
     private String position;
+
+    // Lương căn bản, chưa gồm thưởng/khấu trừ
+    @Column(name = "base_salary", precision = 12, scale = 2)
+    private BigDecimal baseSalary;
 
     @Column(name = "hired_at")
     private OffsetDateTime hiredAt;
@@ -69,6 +74,14 @@ public class Employee {
 
     public void setPosition(String position) {
         this.position = position;
+    }
+
+    public BigDecimal getBaseSalary() {
+        return baseSalary;
+    }
+
+    public void setBaseSalary(BigDecimal baseSalary) {
+        this.baseSalary = baseSalary;
     }
 
     public OffsetDateTime getHiredAt() {

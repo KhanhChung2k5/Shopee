@@ -1,8 +1,8 @@
 -- =====================================================================
 -- V1__init_schema.sql
--- Khởi tạo toàn bộ 41 bảng cho hệ thống CRM + Bán lẻ trực tuyến
+-- Khởi tạo toàn bộ 39 bảng cho hệ thống CRM + Bán lẻ trực tuyến
 -- (Chợ Tốt Mua — chuyên tay cầm chơi game & đĩa game) — dịch trực tiếp từ
--- crm-ecommerce-class-diagram.md (v17).
+-- crm-ecommerce-class-diagram.md (v18).
 -- Bảng theo đúng thứ tự phụ thuộc khoá ngoại (dependency order) để chạy
 -- được ngay từ CSDL rỗng bằng Flyway.
 -- =====================================================================
@@ -13,14 +13,9 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto; -- cho gen_random_uuid()
 -- DOMAIN A — Identity & Company
 -- =====================================================================
 
-CREATE TABLE roles (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        VARCHAR(50) NOT NULL UNIQUE
-);
-
 CREATE TABLE users (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    role_id             UUID NOT NULL REFERENCES roles(id),
+    role                VARCHAR(20) NOT NULL DEFAULT 'buyer', -- buyer | admin; gộp từ bảng roles (v18) — chỉ 2 giá trị cố định, không có thuộc tính nào khác ngoài tên
     phone               VARCHAR(20) UNIQUE,
     email               VARCHAR(255) UNIQUE,
     password_hash       VARCHAR(255) NOT NULL,
@@ -39,7 +34,6 @@ CREATE TABLE users (
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_login_at       TIMESTAMPTZ
 );
-CREATE INDEX idx_users_role_id ON users(role_id);
 
 CREATE TABLE addresses (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -56,6 +50,7 @@ CREATE TABLE employees (
     user_id     UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     department  VARCHAR(20) NOT NULL, -- sales | warehouse | admin | cs
     position    VARCHAR(100),
+    base_salary DECIMAL(12,2), -- lương căn bản, chưa gồm thưởng/khấu trừ
     hired_at    TIMESTAMPTZ
 );
 
@@ -146,20 +141,18 @@ CREATE INDEX idx_goods_receipt_items_receipt_id ON goods_receipt_items(receipt_i
 -- DOMAIN C — Cart -> Order -> Payment -> Shipping
 -- =====================================================================
 
-CREATE TABLE carts (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+-- carts (v1-v17) đã gộp thẳng vào cart_items.user_id ở v18 — bảng chỉ có id/user_id/updated_at,
+-- không có ý nghĩa nghiệp vụ độc lập nào ngoài làm trung gian nối cart_items với users.
 
 CREATE TABLE cart_items (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    cart_id     UUID NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
+    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     variant_id  UUID NOT NULL REFERENCES product_variants(id),
     quantity    INTEGER NOT NULL DEFAULT 1,
-    is_selected BOOLEAN NOT NULL DEFAULT true
+    is_selected BOOLEAN NOT NULL DEFAULT true,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_cart_items_cart_id ON cart_items(cart_id);
+CREATE INDEX idx_cart_items_user_id ON cart_items(user_id);
 
 CREATE TABLE orders (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),

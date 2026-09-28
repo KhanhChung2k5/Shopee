@@ -2,12 +2,9 @@ package com.chotomua.backend.modules.identity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -22,9 +19,9 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "role_id", nullable = false)
-    private Role role;
+    // buyer | admin; gộp từ bảng roles (v18) — chỉ 2 giá trị cố định, không có thuộc tính nào khác
+    @Column(nullable = false, length = 20)
+    private String role = "buyer";
 
     @Column(unique = true, length = 20)
     private String phone;
@@ -83,7 +80,7 @@ public class User {
     protected User() {
     }
 
-    public User(Role role, String passwordHash) {
+    public User(String role, String passwordHash) {
         this.role = role;
         this.passwordHash = passwordHash;
     }
@@ -92,11 +89,11 @@ public class User {
         return id;
     }
 
-    public Role getRole() {
+    public String getRole() {
         return role;
     }
 
-    public void setRole(Role role) {
+    public void setRole(String role) {
         this.role = role;
     }
 

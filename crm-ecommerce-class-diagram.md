@@ -1,5 +1,7 @@
 # Class Diagram — Hệ thống CRM + Bán lẻ trực tuyến (1 doanh nghiệp)
 
+> **v18**: 41 → 39 bảng. Gộp `Role` vào `User.role` (string, `buyer`/`admin` — bảng chỉ có 2 giá trị cố định, không có thuộc tính nào khác, cùng nguyên tắc đã gộp `Brand`/`ShippingProvider` ở v16). Gộp `Cart` thẳng vào `CartItem.userId` (bảng `Cart` chỉ có `id`/`userId`/`updatedAt`, không mang ý nghĩa nghiệp vụ độc lập ngoài làm trung gian 1-1 nối `CartItem` với `User` — loại bỏ giúp bớt 1 JOIN ở thao tác phổ biến nhất hệ thống là đọc/ghi giỏ hàng).
+>
 > **v17**: 37 → 41 bảng. Khôi phục lại `Survey`/`SurveyQuestion`/`SurveyResponse`/`SurveyAnswer` đã bỏ ở v15 — xác nhận tính năng khảo sát gắn với logic nghiệp vụ CRM của môn Hệ thống thông tin doanh nghiệp, không phải chỉ phục vụ riêng đồ án CNPM nên vẫn cần giữ. Cấu trúc khôi phục nguyên trạng như trước khi bỏ (không đổi field). `Notification.referenceType` thêm lại giá trị `survey`. Xem "Ghi chú thay đổi (v16 → v17)" cuối file.
 
 > **v16**: 41 → 37 bảng. Gộp `Brand` vào `Product.brandName` (string, không tách danh mục thương hiệu). Gộp `ShippingProvider` vào `Order.shippingProviderName` (string, không tách danh mục đơn vị vận chuyển). Gộp `FlashSale`/`FlashSaleItem` vào `PromotionProductDetail` (thêm `flashPrice`/`limitQty`/`soldQty` — trùng chức năng với giảm giá theo sản phẩm đã có, `PromotionProgram.startAt`/`endAt` đóng luôn vai trò khung giờ flash sale); đổi `PromotionProductDetail.productId` → `variantId` để giữ được độ chi tiết theo từng SKU mà `FlashSaleItem` từng có. Giữ nguyên `Warehouse` (đa kho), `Campaign`/`CustomerSegment`, và 2 bảng audit `PromotionProductApplication`/`PromotionInvoiceApplication`, `AgentAssignment` — theo xác nhận vẫn cần. Xem "Ghi chú thay đổi (v15 → v16)" cuối file.
@@ -29,7 +31,6 @@ classDiagram
     %% ===== A. Identity & Company =====
     class User
     class Address
-    class Role
     class Employee
 
     %% ===== B. Catalog & Inventory =====
@@ -43,7 +44,6 @@ classDiagram
     class GoodsReceiptItem
 
     %% ===== C. Cart -> Order -> Payment -> Shipping =====
-    class Cart
     class CartItem
     class Order
     class OrderItem
@@ -96,8 +96,7 @@ classDiagram
     ProductVariant --> GoodsReceiptItem
 
     %% --- C: Cart/Order/Payment/Shipping ---
-    User --> Cart
-    Cart --> CartItem
+    User --> CartItem
     ProductVariant --> CartItem
     User --> Order
     Address --> Order
@@ -162,9 +161,9 @@ classDiagram
 
 ## 0.1 Sơ đồ tổng quát rút gọn (dùng để demo)
 
-> Bản rút gọn từ 41 bảng xuống **13 bảng chính** — đủ thể hiện trọn luồng đăng ký/đăng nhập → duyệt sản phẩm → giỏ hàng → đặt hàng/thanh toán/giao hàng → đánh giá → voucher → CRM cơ bản, dùng khi thuyết trình/demo thay vì đi sâu 41 bảng đầy đủ. Thiết kế **thật** (41 bảng) vẫn giữ nguyên ở các sơ đồ A→E bên dưới — bản này không thay thế, chỉ để trình bày nhanh.
+> Bản rút gọn từ 39 bảng xuống **12 bảng chính** — đủ thể hiện trọn luồng đăng ký/đăng nhập → duyệt sản phẩm → giỏ hàng → đặt hàng/thanh toán/giao hàng → đánh giá → voucher → CRM cơ bản, dùng khi thuyết trình/demo thay vì đi sâu 39 bảng đầy đủ. Thiết kế **thật** (39 bảng) vẫn giữ nguyên ở các sơ đồ A→E bên dưới — bản này không thay thế, chỉ để trình bày nhanh.
 >
-> Các bảng đã gộp/bỏ so với bản đầy đủ: `Role` → gộp thành field `User.role`; `Address` → gộp thành field `Order.shippingAddress`; `Brand` → gộp thành field `Product.brandName`; `Warehouse`/`InventoryStock`/`InventoryMovement` → gộp thành `ProductVariant.stockQty`; `OrderStatusHistory`, `ShippingProvider`, `WalletTransaction`, `VoucherUsage`, `LoyaltyTransaction`, `RefundReturn`, `FlashSale`/`FlashSaleItem`, `CustomerSegment`/`SegmentMember`/`Campaign`/`CampaignTarget`/`Notification`, `Survey`/`SurveyQuestion`/`SurveyResponse`/`SurveyAnswer`, `AgentAssignment`, `ConversationMessage` — đều bỏ khỏi bản demo vì là bảng phụ/audit-trail/tính năng nâng cao không cần trình bày lúc demo. (`Wallet`, `LoyaltyPoint`, `CustomerProfileCRM`, `ProductImage`, `ReviewReply`, `Shipment`/`ShipmentItem` đã gộp thẳng vào bảng cha ngay ở bản thiết kế thật từ v13, nên demo cũng thừa hưởng luôn — không cần gộp riêng nữa.)
+> Các bảng đã gộp/bỏ so với bản đầy đủ: `Role` → gộp thành field `User.role` (đã gộp thật từ v18, không chỉ riêng bản demo); `Address` → gộp thành field `Order.shippingAddress`; `Brand` → gộp thành field `Product.brandName`; `Warehouse`/`InventoryStock`/`InventoryMovement` → gộp thành `ProductVariant.stockQty`; `OrderStatusHistory`, `ShippingProvider`, `WalletTransaction`, `VoucherUsage`, `LoyaltyTransaction`, `RefundReturn`, `FlashSale`/`FlashSaleItem`, `CustomerSegment`/`SegmentMember`/`Campaign`/`CampaignTarget`/`Notification`, `Survey`/`SurveyQuestion`/`SurveyResponse`/`SurveyAnswer`, `AgentAssignment`, `ConversationMessage` — đều bỏ khỏi bản demo vì là bảng phụ/audit-trail/tính năng nâng cao không cần trình bày lúc demo. (`Wallet`, `LoyaltyPoint`, `CustomerProfileCRM`, `ProductImage`, `ReviewReply`, `Shipment`/`ShipmentItem`, `Cart` đã gộp thẳng vào bảng cha ngay ở bản thiết kế thật (từ v13, `Cart` ở v18), nên demo cũng thừa hưởng luôn — không cần gộp riêng nữa.)
 
 ```mermaid
 classDiagram
@@ -186,6 +185,7 @@ classDiagram
         +UUID userId
         +String department
         +String position
+        +Decimal baseSalary
     }
 
     %% ===== Catalog =====
@@ -212,13 +212,9 @@ classDiagram
     }
 
     %% ===== Order flow =====
-    class Cart {
-        +UUID id
-        +UUID userId
-    }
     class CartItem {
         +UUID id
-        +UUID cartId
+        +UUID userId
         +UUID variantId
         +Int quantity
     }
@@ -276,8 +272,7 @@ classDiagram
     User "1" --> "0..1" Employee
     Category "1" --> "*" Product
     Product "1" --> "*" ProductVariant
-    User "1" --> "1" Cart
-    Cart "1" --> "*" CartItem
+    User "1" --> "*" CartItem
     ProductVariant "1" --> "*" CartItem
     User "1" --> "*" Order
     Voucher "0..1" --> "*" Order : applied_to
@@ -299,12 +294,14 @@ classDiagram
 > **v10**: làm rõ theo yêu cầu giảng viên — `Employee` **liên kết (association)** với `User`, **không kế thừa/specialization**. Cụ thể: `Employee` có khoá chính `id` **độc lập** (không dùng chung khoá chính với `User` như mô hình specialization/Class Table Inheritance), chỉ giữ cột khoá ngoại `userId` trỏ tới `User` — đúng bản chất "1 tài khoản `User` có thể (không bắt buộc) đứng tên 1 hồ sơ nhân viên", không phải "`Employee` là 1 dạng con của `User`". Khách hàng thì ngược lại **không tách bảng riêng** — dữ liệu khách hàng nằm thẳng trên `User` (không có bảng `Customer`), nên không phát sinh khái niệm kế thừa nào ở đây để so sánh.
 >
 > **v13**: `User` gộp thêm field từ 3 bảng 1-1 bắt buộc trước đây tách riêng — `walletBalance` (từ `Wallet`), `loyaltyBalance`/`loyaltyTier` (từ `LoyaltyPoint`), `ltv`/`totalOrders`/`lastPurchaseAt`/`rfmSegment` (từ `CustomerProfileCRM`, domain E). Cả 3 bảng cũ đều dùng `userId` làm khoá chính hoặc khoá duy nhất — nghĩa là **mỗi `User` có đúng 1 dòng tương ứng, không có ngoại lệ**, nên tách bảng riêng chỉ tạo thêm JOIN không cần thiết mà không đổi được ngữ nghĩa (giống lý do đã gộp `UserProfile` vào `User` ở v8).
+>
+> **v18**: Gộp `Role` vào `User.role` (string, giá trị `buyer`/`admin`) — bảng `Role` chỉ có 2 giá trị cố định, không có thuộc tính nào khác ngoài `name`, tách bảng chỉ tốn thêm 1 JOIN ở mọi truy vấn liên quan tới `User` mà không mang lại lợi ích chuẩn hoá nào (không có khả năng thêm role tuỳ ý qua UI, giá trị cố định theo nghiệp vụ). Cùng nguyên tắc với việc đã gộp `Brand`/`ShippingProvider` thành field string ở v16.
 
 ```mermaid
 classDiagram
     class User {
         +UUID id
-        +UUID roleId
+        +String role
         +String phone
         +String email
         +String passwordHash
@@ -339,21 +336,16 @@ classDiagram
         +Boolean isDefault
     }
 
-    class Role {
-        +UUID id
-        +String name
-    }
-
     class Employee {
         +UUID id
         +UUID userId
         +String department
         +String position
+        +Decimal baseSalary
         +DateTime hiredAt
     }
 
     User "1" --> "*" Address : owns
-    Role "1" --> "*" User : has
     User "1" --> "0..1" Employee : works_as
 ```
 
@@ -491,21 +483,18 @@ classDiagram
 > **v14**: Rà soát field phát hiện 3 khoảng trống: (1) `Order` thêm `shippingAddressSnapshot` — trước đây chỉ giữ `addressId` (tham chiếu), nếu khách sửa `Address` sau khi đặt hàng thì lịch sử đơn cũ bị đổi theo hồi tố; nay snapshot nội dung địa chỉ tại thời điểm đặt hàng, cùng nguyên tắc đã áp dụng cho `OrderItem.productNameSnapshot`. (2) `WalletTransaction` thêm `orderId` — trước đây chỉ `Payment.walletTransactionId` truy vết được chiều nạp ví, không có cách nào biết 1 dòng `WalletTransaction` (type=payment) dùng để trả cho đơn nào khi khách thanh toán bằng số dư ví. (3) `RefundReturn` thêm `employeeId` — trước đây không ghi nhận nhân viên nào đã duyệt/từ chối yêu cầu đổi trả, dù sequence diagram (mục 8, `project-overview.md`) đã mô tả rõ bước này do nhân viên CSKH xử lý.
 >
 > **v16**: Gộp `ShippingProvider` vào `Order.shippingProviderName` (string) — không tách danh mục đơn vị vận chuyển riêng, tương tự cách đã gộp `Brand`.
+>
+> **v18**: Gộp `Cart` thẳng vào `CartItem.userId` — bảng `Cart` chỉ có `id`/`userId`/`updatedAt`, không có thuộc tính nghiệp vụ nào khác, chỉ đóng vai trò trung gian bắt buộc "1 user có đúng 1 giỏ hàng" (unique 1-1). Loại bỏ bảng trung gian này giúp `CartItem` trỏ thẳng `userId`, bớt 1 JOIN ở mọi thao tác đọc/ghi giỏ hàng — thao tác phổ biến nhất trong toàn hệ thống. `updatedAt` chuyển xuống từng `CartItem` (theo dõi item nào vừa đổi số lượng gần nhất, chi tiết hơn bản cũ theo dõi cả giỏ).
 
 ```mermaid
 classDiagram
-    class Cart {
-        +UUID id
-        +UUID userId
-        +DateTime updatedAt
-    }
-
     class CartItem {
         +UUID id
-        +UUID cartId
+        +UUID userId
         +UUID variantId
         +Int quantity
         +Boolean isSelected
+        +DateTime updatedAt
     }
 
     class Order {
@@ -582,8 +571,7 @@ classDiagram
         +DateTime requestedAt
     }
 
-    User "1" --> "1" Cart : owns
-    Cart "1" --> "*" CartItem : contains
+    User "1" --> "*" CartItem : owns
     ProductVariant "1" --> "*" CartItem : referenced_by
     User "1" --> "*" Order : places
     Employee "0..1" --> "*" Order : issues
@@ -856,6 +844,18 @@ classDiagram
     SurveyResponse "1" --> "*" SurveyAnswer : contains
     SurveyQuestion "1" --> "*" SurveyAnswer : answered_by
 ```
+
+---
+
+## Ghi chú thay đổi (v17 → v18, gộp Role và Cart)
+
+Lý do: rà soát lại toàn bộ 41 bảng theo yêu cầu tối ưu số lượng truy vấn (giảm JOIN), tìm thêm các bảng "mỏng" (ít field, không có hành vi/nghiệp vụ riêng) tương tự `Brand`/`ShippingProvider` đã gộp ở v16.
+
+- **Gộp `Role` vào `User.role`** (string, giá trị `buyer`/`admin`): bảng cũ chỉ có `name`, không có thuộc tính nào khác — giống hệt lý do đã gộp `Brand`. Đánh đổi: mất khả năng thêm role mới qua UI mà không sửa code/enum (chấp nhận được vì hệ thống chỉ có đúng 2 loại tài khoản cố định theo nghiệp vụ, không có nhu cầu tạo role tuỳ ý).
+- **Gộp `Cart` thẳng vào `CartItem.userId`**: bảng `Cart` chỉ có `id`/`userId` (unique 1-1)/`updatedAt`, không có ý nghĩa nghiệp vụ độc lập nào ngoài làm trung gian bắt buộc nối `CartItem` với `User`. `CartItem` trỏ thẳng `userId`, `updatedAt` chuyển xuống từng dòng `CartItem` (theo dõi item nào vừa đổi gần nhất — chi tiết hơn bản cũ). Đây là thao tác đọc/ghi phổ biến nhất toàn hệ thống (mọi lần thêm/sửa giỏ hàng), bớt 1 JOIN có tác động thực tế tới hiệu năng.
+- **Không gộp `Employee`** dù cũng liên kết 1-1 với `User`: khác `Role`/`Cart`, `Employee` có nhiều field đặc thù (`department`, `position`, `baseSalary`, `hiredAt`) chỉ áp dụng cho ~5% số dòng `User` (nhân viên nội bộ) — gộp thẳng vào `User` sẽ để trống (NULL) hầu hết các dòng khách hàng, ngược lại với nguyên tắc "chỉ gộp bảng 1-1 *bắt buộc* mọi dòng đều có" đã áp dụng nhất quán từ v13. Cũng đúng theo yêu cầu giảng viên: `Employee` liên kết chứ không kế thừa/gộp vào `User`.
+- **Không gộp `PromotionProductApplication`/`PromotionInvoiceApplication`**: dù có thể nghĩ "1 order/order_item chỉ nhận 1 khuyến mãi", thiết kế hiện tại **cố ý** cho phép `OrderItem`/`Order` nhận **nhiều** áp dụng khuyến mãi cùng lúc (quan hệ `"1" --> "*"`, ví dụ 2 chương trình khuyến mãi khác nhau cùng áp dụng lên 1 sản phẩm) — gộp thẳng vào `OrderItem`/`Order` sẽ làm mất khả năng này, đổi bản chất nghiệp vụ chứ không đơn thuần tối ưu truy vấn.
+- **Số bảng: 41 → 39** (-`Role`, -`Cart`).
 
 ---
 
