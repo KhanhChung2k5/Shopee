@@ -19,7 +19,9 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // buyer | admin; gộp từ bảng roles (v18) — chỉ 2 giá trị cố định, không có thuộc tính nào khác
+    // buyer | staff; gộp từ bảng roles (v18) — chỉ 2 giá trị cố định, không có thuộc tính nào khác.
+    // Đặt tên "staff" (không phải "admin") để tránh trùng nghĩa với Employee.department="admin"
+    // (bộ phận quản trị hệ thống, chỉ 1 trong 4 bộ phận).
     @Column(nullable = false, length = 20)
     private String role = "buyer";
 

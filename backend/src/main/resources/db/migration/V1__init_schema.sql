@@ -15,7 +15,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto; -- cho gen_random_uuid()
 
 CREATE TABLE users (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    role                VARCHAR(20) NOT NULL DEFAULT 'buyer', -- buyer | admin; gộp từ bảng roles (v18) — chỉ 2 giá trị cố định, không có thuộc tính nào khác ngoài tên
+    role                VARCHAR(20) NOT NULL DEFAULT 'buyer', -- buyer | staff; gộp từ bảng roles (v18) — chỉ 2 giá trị cố định, không có thuộc tính nào khác ngoài tên. Đặt tên 'staff' (không phải 'admin') để tránh trùng nghĩa với employees.department='admin' (bộ phận quản trị hệ thống, chỉ 1 trong 4 bộ phận)
     phone               VARCHAR(20) UNIQUE,
     email               VARCHAR(255) UNIQUE,
     password_hash       VARCHAR(255) NOT NULL,
