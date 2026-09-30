@@ -1,5 +1,7 @@
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
 import './admin.css'
+import { useAuth } from '../state/AuthContext'
+import { canAccessSection, type Department } from './access'
 
 interface NavItem {
   to: string
@@ -13,9 +15,10 @@ interface NavGroup {
   items: NavItem[]
 }
 
-// Grouped by class-diagram domain (A–E) rather than flat, so that once
-// role-guards exist (Employee.department: sales/warehouse/admin/cs), each
-// group can be shown/hidden per role without restructuring the sidebar.
+// Grouped by class-diagram domain (A–E). Each item's `to` is looked up in
+// admin/access.ts to decide whether the current user's department sees it —
+// grouping stays flat here so that config file remains the only place access
+// rules actually live.
 const NAV_GROUPS: NavGroup[] = [
   {
     items: [
@@ -67,9 +70,23 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/nhan-vien': 'Nhân viên',
 }
 
+const DEPARTMENT_LABEL: Record<Department, string> = {
+  sales: 'Bán hàng',
+  warehouse: 'Kho vận',
+  admin: 'Quản trị viên',
+  cs: 'Chăm sóc khách hàng',
+}
+
 export default function AdminLayout() {
   const location = useLocation()
+  const { user } = useAuth()
+  const department = (user?.department ?? null) as Department | null
   const pageTitle = PAGE_TITLES[location.pathname] ?? 'Quản trị'
+
+  const visibleGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => canAccessSection(item.to, department)),
+  })).filter((group) => group.items.length > 0)
 
   return (
     <div className="admin-shell">
@@ -79,7 +96,7 @@ export default function AdminLayout() {
           <span>Trang quản trị</span>
         </div>
         <nav className="admin-nav" aria-label="Điều hướng quản trị">
-          {NAV_GROUPS.map((group, gi) => (
+          {visibleGroups.map((group, gi) => (
             <div className="admin-nav__group" key={group.title ?? `g${gi}`}>
               {group.title && <div className="admin-nav__group-title">{group.title}</div>}
               {group.items.map((item) => (
@@ -96,10 +113,12 @@ export default function AdminLayout() {
           ))}
         </nav>
         <div className="admin-sidebar__user">
-          <div className="admin-sidebar__avatar" aria-hidden="true">A</div>
+          <div className="admin-sidebar__avatar" aria-hidden="true">
+            {(user?.fullName ?? '?').charAt(0).toUpperCase()}
+          </div>
           <div>
-            <div className="admin-sidebar__user-name">Admin</div>
-            <div className="admin-sidebar__user-role">Quản trị viên</div>
+            <div className="admin-sidebar__user-name">{user?.fullName ?? 'Chưa đăng nhập'}</div>
+            <div className="admin-sidebar__user-role">{department ? DEPARTMENT_LABEL[department] : '—'}</div>
           </div>
         </div>
         <div className="admin-sidebar__back">

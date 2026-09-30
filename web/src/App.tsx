@@ -19,6 +19,10 @@ import AdminOrdersPage from './admin/pages/AdminOrdersPage'
 import AdminMarketingPage from './admin/pages/AdminMarketingPage'
 import AdminEmployeesPage from './admin/pages/AdminEmployeesPage'
 import { CartProvider } from './state/CartContext'
+import { AuthProvider } from './state/AuthContext'
+import ProfilePage from './pages/ProfilePage'
+import RequireStaff from './components/RequireStaff'
+import RequireDepartment from './components/RequireDepartment'
 
 function CustomerShell() {
   return (
@@ -34,6 +38,7 @@ function CustomerShell() {
           <Route path="/danh-muc/:slug" element={<CategoryPage />} />
           <Route path="/tim-kiem" element={<SearchPage />} />
           <Route path="/dang-nhap" element={<LoginPage />} />
+          <Route path="/ho-so" element={<ProfilePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
@@ -44,21 +49,36 @@ function CustomerShell() {
 
 function App() {
   return (
-    <Routes>
-      {/* Admin area: deliberately separate layout (no customer Header/Footer),
-          per the HTTTDN requirement for a distinct Admin interface. */}
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<AdminDashboardPage />} />
-        <Route path="san-pham" element={<AdminProductsPage />} />
-        <Route path="kho" element={<AdminInventoryPage />} />
-        <Route path="don-hang" element={<AdminOrdersPage />} />
-        <Route path="marketing" element={<AdminMarketingPage />} />
-        <Route path="khach-hang" element={<AdminCustomersPage />} />
-        <Route path="bao-cao" element={<AdminDemographicsPage />} />
-        <Route path="nhan-vien" element={<AdminEmployeesPage />} />
-      </Route>
-      <Route path="/*" element={<CustomerShell />} />
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        {/* Admin area: deliberately separate layout (no customer Header/Footer),
+            per the HTTTDN requirement for a distinct Admin interface. Gated by
+            RequireStaff — only role=staff accounts get past this, regardless
+            of which URL is typed directly into the browser. */}
+        <Route
+          path="/admin"
+          element={
+            <RequireStaff>
+              <AdminLayout />
+            </RequireStaff>
+          }
+        >
+          {/* Each page is wrapped in RequireDepartment, which reads the allowed
+              departments for its own path from admin/access.ts — the same map
+              the sidebar uses. Adding a new admin page: add the route here AND
+              one line in access.ts, nothing else. */}
+          <Route index element={<RequireDepartment><AdminDashboardPage /></RequireDepartment>} />
+          <Route path="san-pham" element={<RequireDepartment><AdminProductsPage /></RequireDepartment>} />
+          <Route path="kho" element={<RequireDepartment><AdminInventoryPage /></RequireDepartment>} />
+          <Route path="don-hang" element={<RequireDepartment><AdminOrdersPage /></RequireDepartment>} />
+          <Route path="marketing" element={<RequireDepartment><AdminMarketingPage /></RequireDepartment>} />
+          <Route path="khach-hang" element={<RequireDepartment><AdminCustomersPage /></RequireDepartment>} />
+          <Route path="bao-cao" element={<RequireDepartment><AdminDemographicsPage /></RequireDepartment>} />
+          <Route path="nhan-vien" element={<RequireDepartment><AdminEmployeesPage /></RequireDepartment>} />
+        </Route>
+        <Route path="/*" element={<CustomerShell />} />
+      </Routes>
+    </AuthProvider>
   )
 }
 

@@ -7,15 +7,20 @@ import java.util.UUID;
 public record EmployeeResponse(
         UUID id,
         UUID userId,
+        String email,
+        String fullName,
         String department,
         String position,
         BigDecimal baseSalary,
         OffsetDateTime hiredAt
 ) {
     public static EmployeeResponse from(com.chotomua.backend.modules.identity.Employee employee) {
+        var user = employee.getUser();
         return new EmployeeResponse(
                 employee.getId(),
-                employee.getUser().getId(),
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
                 employee.getDepartment(),
                 employee.getPosition(),
                 employee.getBaseSalary(),

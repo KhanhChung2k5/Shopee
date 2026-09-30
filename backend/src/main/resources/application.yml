@@ -2,10 +2,19 @@ server:
   port: 8080
 
 spring:
+  # Tự nạp backend/.env (KEY=VALUE, cùng cú pháp file .properties) làm biến cấu hình
+  # — không cần export tay hay cài thêm thư viện nào. "optional:" nghĩa là bỏ qua êm
+  # nếu file không tồn tại (VD: máy CI không có .env). File phải nằm ở thư mục chạy
+  # lệnh (backend/), vì đường dẫn "file:.env" được tính tương đối theo working dir.
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: backend
   datasource:
-    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5434}/${DB_NAME:chotomua}
+    # DB_SSLMODE mặc định "prefer" (không ép SSL) để Postgres local trong Docker
+    # (không bật SSL) vẫn kết nối được. Khi trỏ sang Neon (bắt buộc SSL), set
+    # DB_SSLMODE=require qua biến môi trường — không cần sửa file này.
+    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5434}/${DB_NAME:chotomua}?sslmode=${DB_SSLMODE:prefer}
     username: ${DB_USER:chotomua}
     password: ${DB_PASSWORD:chotomua}
   jpa:

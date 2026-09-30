@@ -45,7 +45,7 @@ public class AuthService {
         user = userRepository.save(user);
 
         String token = jwtService.generateToken(user.getId(), user.getRole(), null);
-        return new AuthResponse(token, user.getId(), user.getRole(), user.getFullName());
+        return new AuthResponse(token, user.getId(), user.getRole(), user.getFullName(), null);
     }
 
     @Transactional(readOnly = true)
@@ -66,6 +66,6 @@ public class AuthService {
                 .orElse(null);
 
         String token = jwtService.generateToken(user.getId(), user.getRole(), department);
-        return new AuthResponse(token, user.getId(), user.getRole(), user.getFullName());
+        return new AuthResponse(token, user.getId(), user.getRole(), user.getFullName(), department);
     }
 }

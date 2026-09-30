@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
+import { API_BASE } from '../lib/api'
 
 type Status = 'checking' | 'up' | 'down'
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
 
 export default function ApiStatus() {
   const [status, setStatus] = useState<Status>('checking')

@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart } from '../state/CartContext'
 import { useTheme } from '../state/useTheme'
+import { useAuth } from '../state/AuthContext'
 
 export default function Header() {
   const { totalQuantity } = useCart()
+  const { isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const { theme, toggle } = useTheme()
@@ -93,9 +95,9 @@ export default function Header() {
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h2l1.6 10.6a2 2 0 0 0 2 1.7h7.6a2 2 0 0 0 2-1.6L20.5 9H7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /><circle cx="10" cy="21" r="1.4" fill="currentColor" /><circle cx="17.5" cy="21" r="1.4" fill="currentColor" /></svg>
               {totalQuantity > 0 && <span className="icon-button__badge">{totalQuantity}</span>}
             </Link>
-            <Link className="account-link" to="/dang-nhap">
+            <Link className="account-link" to={isAuthenticated ? '/ho-so' : '/dang-nhap'}>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8.5" r="3.4" stroke="currentColor" strokeWidth="1.7" /><path d="M5 20c1.1-3.4 4-5.2 7-5.2s5.9 1.8 7 5.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
-              <span>Đăng nhập</span>
+              <span>{isAuthenticated ? user?.fullName ?? 'Tài khoản' : 'Đăng nhập'}</span>
             </Link>
           </div>
         </div>
