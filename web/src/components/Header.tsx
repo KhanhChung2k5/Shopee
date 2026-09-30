@@ -68,9 +68,9 @@ export default function Header() {
             </button>
             <div className="search__hints">
               <span>Gợi ý:</span>
-              <button type="button" onClick={() => goSearch('PS5')}>Tay cầm PS5</button>
-              <button type="button" onClick={() => goSearch('Nintendo Switch')}>Đĩa game Nintendo Switch</button>
-              <button type="button" onClick={() => goSearch('tai nghe')}>Tai nghe gaming</button>
+              <button type="button" onClick={() => goSearch('DualSense')}>Tay cầm DualSense</button>
+              <button type="button" onClick={() => goSearch('Horizon')}>Đĩa game Horizon</button>
+              <button type="button" onClick={() => goSearch('Ốp bọc')}>Ốp bọc PS5</button>
             </div>
           </form>
 

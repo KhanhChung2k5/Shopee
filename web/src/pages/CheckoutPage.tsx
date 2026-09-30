@@ -102,7 +102,7 @@ export default function CheckoutPage() {
             {lines.map((l) => (
               <div className="checkout-line" key={l.productId}>
                 <div className="checkout-line__media">
-                  <ProductThumb seed={l.product.thumbSeed} productType={l.product.productType} />
+                  <ProductThumb seed={l.product.thumbSeed} productType={l.product.productType} imageUrl={l.product.imageUrl} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p className="checkout-line__name">{l.product.name}</p>

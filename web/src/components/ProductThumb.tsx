@@ -16,10 +16,22 @@ const ICON_PATHS: Record<ProductType, string> = {
   accessory: 'M17 55v-4a33 33 0 0 1 66 0v4M17 55v21a8 8 0 0 0 8 8h4V54h-8a4 4 0 0 0-4 4ZM83 55v21a8 8 0 0 1-8 8h-4V54h8a4 4 0 0 1 4 4Z',
 }
 
-export default function ProductThumb({ seed, productType = 'accessory' }: { seed: number; productType?: ProductType }) {
+export default function ProductThumb({
+  seed,
+  productType = 'accessory',
+  imageUrl,
+}: {
+  seed: number
+  productType?: ProductType
+  imageUrl?: string
+}) {
   const gradientId = useId()
   const [from, to] = GRADIENTS[productType]
   const angle = 45 + (seed % 4) * 22
+
+  if (imageUrl) {
+    return <img src={imageUrl} alt="" className="product-thumb__image" loading="lazy" />
+  }
 
   return (
     <svg viewBox="0 0 100 100" role="img" aria-label="Ảnh sản phẩm minh hoạ">

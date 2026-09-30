@@ -26,10 +26,11 @@ export default function ProductDetailPage() {
     <div className="container">
       <div className="product-detail">
         <div className="product-detail__media">
-          <ProductThumb seed={product.thumbSeed} productType={product.productType} />
+          <ProductThumb seed={product.thumbSeed} productType={product.productType} imageUrl={product.imageUrl} />
         </div>
         <div>
           <h1 className="product-detail__title">{product.name}</h1>
+          {product.description && <p className="product-detail__description">{product.description}</p>}
           <div className="product-detail__price-row">
             <span className="product-detail__badge">-{pct}%</span>
             <span className="product-detail__price">{formatVnd(product.price)}</span>

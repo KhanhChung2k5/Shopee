@@ -25,15 +25,15 @@ export default function ProductCard({ product }: { product: Product }) {
     <li className="product-card">
       <Link to={`/san-pham/${product.id}`}>
         <div className="product-card__media">
-          <span className="product-card__badge">-{pct}%</span>
+          {pct > 0 && <span className="product-card__badge">-{pct}%</span>}
           {platform && <span className="product-card__platform">{platform}</span>}
-          <ProductThumb seed={product.thumbSeed} productType={product.productType} />
+          <ProductThumb seed={product.thumbSeed} productType={product.productType} imageUrl={product.imageUrl} />
         </div>
         <div className="product-card__body">
           <p className="product-card__name">{product.name}</p>
           <div className="product-card__price-row">
             <span className="product-card__price">{formatVnd(product.price)}</span>
-            <span className="product-card__compare">{formatVnd(product.comparePrice)}</span>
+            {pct > 0 && <span className="product-card__compare">{formatVnd(product.comparePrice)}</span>}
             {product.productType === 'game_disc' && product.ageRating && (
               <span className={`age-badge ${AGE_RATING_CLASS[product.ageRating] ?? ''}`}>{product.ageRating}</span>
             )}

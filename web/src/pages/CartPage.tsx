@@ -29,7 +29,7 @@ export default function CartPage() {
           {lines.map((l) => (
             <div className="cart-item" key={l.productId}>
               <div className="cart-item__media">
-                <ProductThumb seed={l.product.thumbSeed} productType={l.product.productType} />
+                <ProductThumb seed={l.product.thumbSeed} productType={l.product.productType} imageUrl={l.product.imageUrl} />
               </div>
               <div className="cart-item__body">
                 <p className="cart-item__name">{l.product.name}</p>
