@@ -102,3 +102,8 @@ P4 gom:
 - Buyer `POST /vouchers/quote` with `{ code, subtotal }` returns discount and payable amount.
 - It checks program time window, voucher expiry, loyalty tier and caps discount at subtotal.
 - `subtotal` is client supplied, so this endpoint is preview only. P3 checkout must call the same service with a server calculated subtotal before recording voucher usage.
+
+## Implemented loyalty read contract
+
+- Buyer `GET /loyalty` returns current points, tier and own transaction history.
+- Buyer profile includes a loyalty tab. Earning/spending points and tier recalculation must be triggered by P3 order lifecycle when it exists.

@@ -45,6 +45,7 @@ public class SecurityConfig {
                 .requestMatchers("/employees/**").hasAuthority("DEPT_ADMIN")
                 .requestMatchers("/wallet", "/wallet/**").hasAuthority("ROLE_BUYER")
                 .requestMatchers("/vouchers/quote").hasAuthority("ROLE_BUYER")
+                .requestMatchers("/loyalty", "/loyalty/**").hasAuthority("ROLE_BUYER")
                 .requestMatchers("/marketing", "/marketing/**").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
                 .anyRequest().authenticated()
             )

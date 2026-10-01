@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../state/AuthContext'
 import { apiFetch, ApiError } from '../lib/api'
 import WalletPanel from './WalletPanel'
+import LoyaltyPanel from './LoyaltyPanel'
 
 interface UserProfile {
   id: string
@@ -36,7 +37,7 @@ export default function ProfilePage() {
 }
 
 function ProfilePageContent({ token, logout, isBuyer }: { token: string; logout: () => void; isBuyer: boolean }) {
-  const [tab, setTab] = useState<'profile' | 'addresses' | 'wallet'>('profile')
+  const [tab, setTab] = useState<'profile' | 'addresses' | 'wallet' | 'loyalty'>('profile')
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileForm, setProfileForm] = useState({ fullName: '', gender: '', dob: '' })
@@ -151,13 +152,22 @@ function ProfilePageContent({ token, logout, isBuyer }: { token: string; logout:
             Địa chỉ giao hàng
           </button>
           {isBuyer && (
-            <button
-              type="button"
-              className={tab === 'wallet' ? 'button button--primary' : 'button button--outline'}
-              onClick={() => setTab('wallet')}
-            >
-              Ví của tôi
-            </button>
+            <>
+              <button
+                type="button"
+                className={tab === 'wallet' ? 'button button--primary' : 'button button--outline'}
+                onClick={() => setTab('wallet')}
+              >
+                Ví của tôi
+              </button>
+              <button
+                type="button"
+                className={tab === 'loyalty' ? 'button button--primary' : 'button button--outline'}
+                onClick={() => setTab('loyalty')}
+              >
+                Điểm thành viên
+              </button>
+            </>
           )}
         </div>
         <button type="button" className="button button--outline" onClick={logout}>
@@ -313,6 +323,7 @@ function ProfilePageContent({ token, logout, isBuyer }: { token: string; logout:
       )}
 
       {tab === 'wallet' && isBuyer && <WalletPanel token={token} />}
+      {tab === 'loyalty' && isBuyer && <LoyaltyPanel token={token} />}
     </div>
   )
 }
