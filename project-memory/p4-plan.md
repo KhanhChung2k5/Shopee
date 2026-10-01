@@ -42,8 +42,8 @@ P4 gom:
 ## Dependencies
 
 - P1 da du cho auth/user context.
-- P2/P3 can cho luong that lien quan `product_variants`, `orders`, `order_items`.
-- Neu P2/P3 chua xong, P4 nen uu tien phan it phu thuoc: wallet topup va marketing CRUD.
+- P2 khong chan P4 CRUD SKU/Flash Sale: P4 kiem tra `product_variants.id` bang SQL, nhung can SKU co that trong database de test mua hang.
+- P3 can cho checkout/payment tru vi, ap voucher/flash sale vao Order, refund, review va cong diem khi delivered.
 
 ## Decisions confirmed with the owner (2026-10-01)
 
@@ -108,3 +108,9 @@ P4 gom:
 
 - Buyer `GET /loyalty` returns current points, tier and own transaction history.
 - Buyer profile includes a loyalty tab. Earning/spending points and tier recalculation must be triggered by P3 order lifecycle when it exists.
+
+## Independent follow-up (2026-10-01)
+
+- Mapped `RefundReturn`, `VoucherUsage`, `Review`, `PromotionProductApplication` and `PromotionInvoiceApplication` to the existing V1 tables. They store Order/OrderItem UUIDs without depending on P3 Java entities. Business operations still require P3 ownership, totals and order lifecycle.
+- Buyer `GET /vouchers` lists only vouchers whose program is active, whose own expiry has not passed and whose loyalty tier matches the buyer. It returns program name and effective end time. `POST /vouchers/quote` shares the same eligibility rules.
+- Home voucher row loads this API for a signed-in buyer and offers copy-code. It no longer shows sample vouchers or a fake saved state. Applying a code during real checkout still requires P3.

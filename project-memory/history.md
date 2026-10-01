@@ -17,6 +17,9 @@
 - Committed voucher quote checkpoint (`41debb3`). Checked `origin/test` again; still at `42de30d` with no P2/P3 backend. Added read-only buyer loyalty API and profile tab, pending P3 order lifecycle for point awards.
 - Committed loyalty checkpoint (`f1fe6c3`). Started an isolated local PostgreSQL 14 cluster; full Maven test suite passed with Flyway migration and Hibernate schema validation. HTTP smoke passed for wallet, Sales/Admin marketing access, buyer voucher quote, invoice/flash-sale creation and cross-role 403 responses. The test cluster and its data were stopped and removed afterward.
 - Added idempotent wallet top-up request UUID. Full Maven suite and web build passed again. HTTP retry with same UUID returned the original payment and one DB row; mismatched amount returned 400.
+- Live Jira audit marked 11 independently completed P4 tickets Done; checkout/order-dependent tickets remain open. P2 is not needed for P4 SKU CRUD because existing code validates variant IDs against `product_variants` directly.
+- Added JPA mappings for refund, review, voucher usage and promotion application audit tables (`fa631ee`). Maven tests passed against local PostgreSQL/Flyway.
+- Added buyer voucher discovery API and replaced the home page's sample voucher cards with API data and copy-code action. Voucher eligibility is shared with quote. Applying a voucher to a real order still waits for P3 checkout.
 
 ## Notes
 

@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -30,6 +31,12 @@ public class VoucherUsage {
     private OffsetDateTime usedAt = OffsetDateTime.now();
 
     protected VoucherUsage() {
+    }
+
+    public VoucherUsage(UUID voucherId, UUID userId, UUID orderId) {
+        this.voucherId = Objects.requireNonNull(voucherId);
+        this.userId = Objects.requireNonNull(userId);
+        this.orderId = Objects.requireNonNull(orderId);
     }
 
     public UUID getId() { return id; }

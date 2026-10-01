@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -39,6 +40,16 @@ public class Review {
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
     protected Review() {
+    }
+
+    public Review(UUID userId, UUID orderItemId, int rating, String comment) {
+        if (rating < 1 || rating > 5) {
+            throw new IllegalArgumentException("Điểm đánh giá phải từ 1 đến 5");
+        }
+        this.userId = Objects.requireNonNull(userId);
+        this.orderItemId = Objects.requireNonNull(orderItemId);
+        this.rating = rating;
+        this.comment = comment;
     }
 
     public UUID getId() { return id; }

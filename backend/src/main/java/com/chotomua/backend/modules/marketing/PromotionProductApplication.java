@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -31,6 +32,12 @@ public class PromotionProductApplication {
     private OffsetDateTime appliedAt = OffsetDateTime.now();
 
     protected PromotionProductApplication() {
+    }
+
+    public PromotionProductApplication(UUID orderItemId, UUID promotionProductDetailId, BigDecimal discountAmount) {
+        this.orderItemId = Objects.requireNonNull(orderItemId);
+        this.promotionProductDetailId = Objects.requireNonNull(promotionProductDetailId);
+        this.discountAmount = Objects.requireNonNull(discountAmount);
     }
 
     public UUID getId() { return id; }

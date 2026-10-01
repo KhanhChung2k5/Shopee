@@ -43,13 +43,10 @@ public class VoucherQuoteService {
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy tài khoản"));
 
         OffsetDateTime now = OffsetDateTime.now();
-        if (now.isBefore(program.getStartAt()) || !now.isBefore(program.getEndAt())
-                || (voucher.getExpiresAt() != null && !now.isBefore(voucher.getExpiresAt()))) {
+        if (!VoucherEligibility.isActive(voucher, program, now)) {
             throw new IllegalArgumentException("Voucher chưa có hiệu lực hoặc đã hết hạn");
         }
-        String requiredTier = program.getTargetLoyaltyTier();
-        if (requiredTier != null && (user.getLoyaltyTier() == null
-                || !requiredTier.equalsIgnoreCase(user.getLoyaltyTier()))) {
+        if (!VoucherEligibility.allowsTier(program, user.getLoyaltyTier())) {
             throw new IllegalArgumentException("Voucher không áp dụng cho hạng thành viên này");
         }
 

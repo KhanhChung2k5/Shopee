@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -40,6 +41,11 @@ public class RefundReturn {
     private OffsetDateTime requestedAt = OffsetDateTime.now();
 
     protected RefundReturn() {
+    }
+
+    public RefundReturn(UUID orderItemId, String reason) {
+        this.orderItemId = Objects.requireNonNull(orderItemId);
+        this.reason = reason;
     }
 
     public UUID getId() { return id; }
