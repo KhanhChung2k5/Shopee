@@ -19,6 +19,23 @@ export interface Voucher {
   expiresAt: string | null
 }
 
+export interface ProductDiscount {
+  id: string
+  promotionProgramId: string
+  variantId: string
+  discountPercent: number | null
+  flashPrice: number | null
+  limitQty: number | null
+  soldQty: number
+}
+
+export interface InvoiceDiscount {
+  id: string
+  promotionProgramId: string
+  discountAmount: number | null
+  discountPercent: number | null
+}
+
 export const money = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 2 })
 export const dateTime = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
 

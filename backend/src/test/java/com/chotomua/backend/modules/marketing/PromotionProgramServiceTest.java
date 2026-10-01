@@ -19,12 +19,14 @@ class PromotionProgramServiceTest {
 
     private final PromotionProgramRepository programs = mock(PromotionProgramRepository.class);
     private final VoucherRepository vouchers = mock(VoucherRepository.class);
+    private final PromotionProductDetailRepository productDetails = mock(PromotionProductDetailRepository.class);
+    private final PromotionInvoiceDetailRepository invoiceDetails = mock(PromotionInvoiceDetailRepository.class);
     private PromotionProgramService service;
     private final OffsetDateTime start = OffsetDateTime.parse("2026-10-01T10:00:00+07:00");
 
     @BeforeEach
     void setUp() {
-        service = new PromotionProgramService(programs, vouchers);
+        service = new PromotionProgramService(programs, vouchers, productDetails, invoiceDetails);
     }
 
     @Test

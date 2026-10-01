@@ -3,21 +3,27 @@ import { useAuth } from '../../state/AuthContext'
 import { apiFetch } from '../../lib/api'
 import ProgramManager from '../marketing/ProgramManager'
 import VoucherManager from '../marketing/VoucherManager'
-import type { PromotionProgram, Voucher } from '../marketing/types'
+import ProductDiscountManager from '../marketing/ProductDiscountManager'
+import InvoiceDiscountManager from '../marketing/InvoiceDiscountManager'
+import type { PromotionProgram, Voucher, ProductDiscount, InvoiceDiscount } from '../marketing/types'
 import { errorMessage } from '../marketing/types'
 
 async function fetchMarketingData(token: string) {
-  const [programs, vouchers] = await Promise.all([
+  const [programs, vouchers, productDiscounts, invoiceDiscounts] = await Promise.all([
     apiFetch<PromotionProgram[]>('/marketing/programs', {}, token),
     apiFetch<Voucher[]>('/marketing/vouchers', {}, token),
+    apiFetch<ProductDiscount[]>('/marketing/product-discounts', {}, token),
+    apiFetch<InvoiceDiscount[]>('/marketing/invoice-discounts', {}, token),
   ])
-  return { programs, vouchers }
+  return { programs, vouchers, productDiscounts, invoiceDiscounts }
 }
 
 export default function AdminMarketingPage() {
   const { token } = useAuth()
   const [programs, setPrograms] = useState<PromotionProgram[]>([])
   const [vouchers, setVouchers] = useState<Voucher[]>([])
+  const [productDiscounts, setProductDiscounts] = useState<ProductDiscount[]>([])
+  const [invoiceDiscounts, setInvoiceDiscounts] = useState<InvoiceDiscount[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -26,6 +32,8 @@ export default function AdminMarketingPage() {
     const data = await fetchMarketingData(token)
     setPrograms(data.programs)
     setVouchers(data.vouchers)
+    setProductDiscounts(data.productDiscounts)
+    setInvoiceDiscounts(data.invoiceDiscounts)
     setError(null)
   }, [token])
 
@@ -37,6 +45,8 @@ export default function AdminMarketingPage() {
         if (!active) return
         setPrograms(data.programs)
         setVouchers(data.vouchers)
+        setProductDiscounts(data.productDiscounts)
+        setInvoiceDiscounts(data.invoiceDiscounts)
       })
       .catch((cause) => {
         if (active) setError(errorMessage(cause, 'Không tải được dữ liệu marketing'))
@@ -56,6 +66,8 @@ export default function AdminMarketingPage() {
         <>
           <ProgramManager token={token} programs={programs} onChanged={refresh} />
           <VoucherManager token={token} programs={programs} vouchers={vouchers} onChanged={refresh} />
+          <ProductDiscountManager token={token} programs={programs} discounts={productDiscounts} onChanged={refresh} />
+          <InvoiceDiscountManager token={token} programs={programs} discounts={invoiceDiscounts} onChanged={refresh} />
         </>
       )}
     </div>

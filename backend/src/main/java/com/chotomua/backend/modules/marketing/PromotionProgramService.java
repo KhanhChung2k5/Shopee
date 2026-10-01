@@ -14,10 +14,16 @@ public class PromotionProgramService {
 
     private final PromotionProgramRepository programs;
     private final VoucherRepository vouchers;
+    private final PromotionProductDetailRepository productDetails;
+    private final PromotionInvoiceDetailRepository invoiceDetails;
 
-    public PromotionProgramService(PromotionProgramRepository programs, VoucherRepository vouchers) {
+    public PromotionProgramService(PromotionProgramRepository programs, VoucherRepository vouchers,
+                                   PromotionProductDetailRepository productDetails,
+                                   PromotionInvoiceDetailRepository invoiceDetails) {
         this.programs = programs;
         this.vouchers = vouchers;
+        this.productDetails = productDetails;
+        this.invoiceDetails = invoiceDetails;
     }
 
     @Transactional(readOnly = true)
@@ -51,8 +57,9 @@ public class PromotionProgramService {
     @Transactional
     public void delete(UUID id) {
         PromotionProgram program = requireProgram(id);
-        if (vouchers.existsByPromotionProgramId(id)) {
-            throw new IllegalArgumentException("Xóa voucher của chương trình trước khi xóa chương trình");
+        if (vouchers.existsByPromotionProgramId(id) || productDetails.existsByPromotionProgramId(id)
+                || invoiceDetails.existsByPromotionProgramId(id)) {
+            throw new IllegalArgumentException("Xóa các voucher và ưu đãi thuộc chương trình trước khi xóa chương trình");
         }
         programs.delete(program);
     }

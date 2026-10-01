@@ -87,3 +87,12 @@ P4 gom:
 - Codes are normalized to uppercase and checked for duplicates. Program end must follow start; voucher values and expiry are validated.
 - Admin Marketing page consumes these APIs. Program and voucher management no longer uses sample data.
 - Product and invoice discount details, customer voucher discovery and checkout application are separate follow-up work.
+
+## Implemented discount detail contract
+
+- Sales/admin CRUD `GET/POST /marketing/product-discounts`, `PUT/DELETE /marketing/product-discounts/{id}`.
+- Sales/admin CRUD `GET/POST /marketing/invoice-discounts`, `PUT/DELETE /marketing/invoice-discounts/{id}`.
+- Product detail uses either `discountPercent` or `flashPrice` plus `limitQty`; invoice detail uses either `discountAmount` or `discountPercent`.
+- SKU detail requires an existing `product_variants.id`. Until P2 exposes variant search, admin enters that UUID manually.
+- Deleting a program requires first removing its vouchers and discount details. A flash sale detail with `soldQty > 0` cannot be edited or deleted.
+- Checkout calculation and sold quantity updates still need P3 integration.
