@@ -40,7 +40,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/health", "/auth/register", "/auth/login").permitAll()
+                .requestMatchers("/health", "/auth/register", "/auth/login", "/flash-sales").permitAll()
                 // Only staff in the "admin" department may create internal employee accounts.
                 .requestMatchers("/employees/**").hasAuthority("DEPT_ADMIN")
                 .requestMatchers("/wallet", "/wallet/**").hasAuthority("ROLE_BUYER")

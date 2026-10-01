@@ -20,6 +20,7 @@
 - Live Jira audit marked 11 independently completed P4 tickets Done; checkout/order-dependent tickets remain open. P2 is not needed for P4 SKU CRUD because existing code validates variant IDs against `product_variants` directly.
 - Added JPA mappings for refund, review, voucher usage and promotion application audit tables (`fa631ee`). Maven tests passed against local PostgreSQL/Flyway.
 - Added buyer voucher discovery API and replaced the home page's sample voucher cards with API data and copy-code action. Voucher eligibility is shared with quote. Applying a voucher to a real order still waits for P3 checkout.
+- Added public/buyer Flash Sale listing from existing product/variant tables and replaced the home mock cards with live promotion details. Added integration test for time window, quota and member tier. P2 backend API is not required to display it, but actual catalog rows must exist; purchase remains a P3 dependency.
 
 ## Notes
 

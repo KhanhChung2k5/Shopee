@@ -39,7 +39,7 @@ public class PromotionDetailService {
     @Transactional
     public ProductDiscountResponse createProductDiscount(ProductDiscountRequest request) {
         validateProductDiscount(request);
-        ensureProgramAndVariantExist(request.promotionProgramId(), request.variantId());
+        ensureProgramAndVariantExist(request);
         ensureProductDiscountUnique(request, null);
         return ProductDiscountResponse.from(productDetails.save(new PromotionProductDetail(request)));
     }
@@ -51,7 +51,7 @@ public class PromotionDetailService {
             throw new IllegalArgumentException("Ưu đãi đã có lượt bán; không thể sửa");
         }
         validateProductDiscount(request);
-        ensureProgramAndVariantExist(request.promotionProgramId(), request.variantId());
+        ensureProgramAndVariantExist(request);
         ensureProductDiscountUnique(request, id);
         detail.update(request);
         return ProductDiscountResponse.from(detail);
@@ -93,13 +93,16 @@ public class PromotionDetailService {
         invoiceDetails.delete(requireInvoiceDiscount(id));
     }
 
-    private void ensureProgramAndVariantExist(UUID programId, UUID variantId) {
-        ensureProgramExists(programId);
-        Number count = (Number) entityManager.createNativeQuery("select count(*) from product_variants where id = :id")
-                .setParameter("id", variantId)
-                .getSingleResult();
-        if (count.longValue() == 0) {
+    private void ensureProgramAndVariantExist(ProductDiscountRequest request) {
+        ensureProgramExists(request.promotionProgramId());
+        List<?> prices = entityManager.createNativeQuery("select price from product_variants where id = :id")
+                .setParameter("id", request.variantId())
+                .getResultList();
+        if (prices.isEmpty()) {
             throw new NoSuchElementException("Không tìm thấy biến thể sản phẩm");
+        }
+        if (request.flashPrice() != null && request.flashPrice().compareTo((BigDecimal) prices.getFirst()) >= 0) {
+            throw new IllegalArgumentException("Giá Flash Sale phải thấp hơn giá SKU hiện tại");
         }
     }
 

@@ -13,6 +13,7 @@ import com.chotomua.backend.modules.marketing.dto.ProductDiscountRequest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,9 +37,9 @@ class PromotionDetailServiceTest {
     void createFlashSale_checksVariantAndStartsWithZeroSold() {
         Query query = mock(Query.class);
         when(programs.existsById(programId)).thenReturn(true);
-        when(entityManager.createNativeQuery("select count(*) from product_variants where id = :id")).thenReturn(query);
+        when(entityManager.createNativeQuery("select price from product_variants where id = :id")).thenReturn(query);
         when(query.setParameter("id", variantId)).thenReturn(query);
-        when(query.getSingleResult()).thenReturn(1L);
+        when(query.getResultList()).thenReturn(List.of(new BigDecimal("150000.00")));
         when(products.save(any(PromotionProductDetail.class))).thenAnswer(call -> call.getArgument(0));
 
         var result = service.createProductDiscount(new ProductDiscountRequest(
@@ -47,6 +48,21 @@ class PromotionDetailServiceTest {
         assertThat(result.flashPrice()).isEqualByComparingTo("99000.00");
         assertThat(result.limitQty()).isEqualTo(10);
         assertThat(result.soldQty()).isZero();
+    }
+
+    @Test
+    void createFlashSale_rejectsPriceThatIsNotARealDiscount() {
+        Query query = mock(Query.class);
+        when(programs.existsById(programId)).thenReturn(true);
+        when(entityManager.createNativeQuery("select price from product_variants where id = :id")).thenReturn(query);
+        when(query.setParameter("id", variantId)).thenReturn(query);
+        when(query.getResultList()).thenReturn(List.of(new BigDecimal("100000.00")));
+
+        assertThatThrownBy(() -> service.createProductDiscount(new ProductDiscountRequest(
+                programId, variantId, null, new BigDecimal("100000.00"), 10)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("thấp hơn");
+        verify(products, never()).save(any());
     }
 
     @Test
