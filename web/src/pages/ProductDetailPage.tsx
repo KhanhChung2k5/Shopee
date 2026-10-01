@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { findProduct, discountPercent, formatVnd, CONNECTION_LABELS } from '../data/sampleProducts'
 import ProductThumb from '../components/ProductThumb'
@@ -10,6 +10,12 @@ export default function ProductDetailPage() {
   const { addItem } = useCart()
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
+  const [activeImg, setActiveImg] = useState(0)
+
+  // Reset to the cover photo whenever the visited product changes.
+  useEffect(() => {
+    setActiveImg(0)
+  }, [id])
 
   if (!product) {
     return (
@@ -21,12 +27,33 @@ export default function ProductDetailPage() {
   }
 
   const pct = discountPercent(product.price, product.comparePrice)
+  const gallery = product.imageUrls?.length ? product.imageUrls : product.imageUrl ? [product.imageUrl] : []
+  const currentImage = gallery[activeImg] ?? product.imageUrl
 
   return (
     <div className="container">
       <div className="product-detail">
-        <div className="product-detail__media">
-          <ProductThumb seed={product.thumbSeed} productType={product.productType} imageUrl={product.imageUrl} />
+        <div>
+          <div className="product-detail__media">
+            <ProductThumb seed={product.thumbSeed} productType={product.productType} imageUrl={currentImage} />
+          </div>
+          {gallery.length > 1 && (
+            <div className="product-detail__gallery" role="list" aria-label="Ảnh sản phẩm khác">
+              {gallery.map((url, i) => (
+                <button
+                  key={url}
+                  type="button"
+                  role="listitem"
+                  className={`product-detail__gallery-item${i === activeImg ? ' product-detail__gallery-item--active' : ''}`}
+                  onClick={() => setActiveImg(i)}
+                  aria-label={`Xem ảnh ${i + 1}`}
+                  aria-current={i === activeImg}
+                >
+                  <img src={url} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div>
           <h1 className="product-detail__title">{product.name}</h1>

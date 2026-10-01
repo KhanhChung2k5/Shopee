@@ -354,6 +354,10 @@ button { font: inherit; cursor: pointer; }
 .product-detail { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); padding-block: var(--space-5); }
 .product-detail__media { aspect-ratio: 1/1; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-card); }
 .product-detail__media svg { width: 100%; height: 100%; }
+.product-detail__gallery { display: flex; gap: var(--space-2); margin-top: var(--space-3); flex-wrap: wrap; }
+.product-detail__gallery-item { width: 64px; height: 64px; padding: 0; border: 2px solid transparent; border-radius: var(--radius-sm); overflow: hidden; background: #fff; cursor: pointer; box-shadow: var(--shadow-card); }
+.product-detail__gallery-item img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.product-detail__gallery-item--active { border-color: var(--color-primary-dark); }
 .product-detail__title { font-size: 22px; margin: 0 0 var(--space-3); }
 .product-detail__description { font-size: 13.5px; color: var(--color-muted-foreground); line-height: 1.6; margin: 0 0 var(--space-3); }
 .product-detail__price-row { display: flex; align-items: baseline; gap: var(--space-3); margin-bottom: var(--space-3); }
