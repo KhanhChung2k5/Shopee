@@ -79,3 +79,11 @@ P4 gom:
 - `POST /wallet/topups` accepts `{ amount }` and returns payment id/status, ledger entry, new balance, and `simulated: true`.
 - Top-up uses a simulated `bank_transfer` payment with status `paid`; no real transfer is involved.
 - The authenticated buyer id comes from JWT. A database row lock serializes top-ups to the same wallet; the payment, ledger and balance update commit together.
+
+## Implemented marketing contract
+
+- Sales/admin CRUD `GET/POST /marketing/programs`, `PUT/DELETE /marketing/programs/{id}`.
+- Sales/admin CRUD `GET/POST /marketing/vouchers`, `PUT/DELETE /marketing/vouchers/{id}`.
+- Codes are normalized to uppercase and checked for duplicates. Program end must follow start; voucher values and expiry are validated.
+- Admin Marketing page consumes these APIs. Program and voucher management no longer uses sample data.
+- Product and invoice discount details, customer voucher discovery and checkout application are separate follow-up work.

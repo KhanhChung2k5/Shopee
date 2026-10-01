@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -24,6 +26,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(java.util.NoSuchElementException.class)
     public ResponseEntity<Map<String, Object>> handleNotFound(java.util.NoSuchElementException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body(HttpStatus.NOT_FOUND, ex.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .orElse("Dữ liệu không hợp lệ");
+        return ResponseEntity.badRequest().body(body(HttpStatus.BAD_REQUEST, message));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataConflict(DataIntegrityViolationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(body(HttpStatus.CONFLICT, "Dữ liệu đã tồn tại hoặc đang được sử dụng"));
     }
 
     private Map<String, Object> body(HttpStatus status, String message) {
