@@ -15,7 +15,7 @@
 - Committed program/voucher checkpoint (`7a639fa`). Added SKU/flash sale and invoice discount CRUD with admin forms and validation. P2 variant search and P3 checkout integration remain external dependencies.
 - Committed discount-detail checkpoint (`55efafe`). Added buyer voucher quote preview with eligibility and capped discount; targeted unit tests pass.
 - Committed voucher quote checkpoint (`41debb3`). Checked `origin/test` again; still at `42de30d` with no P2/P3 backend. Added read-only buyer loyalty API and profile tab, pending P3 order lifecycle for point awards.
-- Committed loyalty checkpoint (`f1fe6c3`). Started an isolated local PostgreSQL 14 cluster; full Maven test suite passed with Flyway migration and Hibernate schema validation. HTTP smoke passed for wallet, Sales/Admin marketing access, buyer voucher quote, invoice/flash-sale creation and cross-role 403 responses.
+- Committed loyalty checkpoint (`f1fe6c3`). Started an isolated local PostgreSQL 14 cluster; full Maven test suite passed with Flyway migration and Hibernate schema validation. HTTP smoke passed for wallet, Sales/Admin marketing access, buyer voucher quote, invoice/flash-sale creation and cross-role 403 responses. The test cluster and its data were stopped and removed afterward.
 - Added idempotent wallet top-up request UUID. Full Maven suite and web build passed again. HTTP retry with same UUID returned the original payment and one DB row; mismatched amount returned 400.
 
 ## Notes
