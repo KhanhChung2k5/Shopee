@@ -2,8 +2,6 @@ package com.chotomua.backend.modules.order;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
@@ -15,7 +13,6 @@ import java.util.UUID;
 public class Payment {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "order_id")
@@ -45,8 +42,9 @@ public class Payment {
     protected Payment() {
     }
 
-    public static Payment simulatedWalletTopUp(UUID userId, UUID walletTransactionId, BigDecimal amount) {
+    public static Payment simulatedWalletTopUp(UUID requestId, UUID userId, UUID walletTransactionId, BigDecimal amount) {
         Payment payment = new Payment();
+        payment.id = requestId;
         payment.userId = userId;
         payment.walletTransactionId = walletTransactionId;
         payment.purpose = "wallet_topup";
@@ -63,6 +61,10 @@ public class Payment {
 
     public UUID getWalletTransactionId() {
         return walletTransactionId;
+    }
+
+    public UUID getUserId() {
+        return userId;
     }
 
     public String getPurpose() {

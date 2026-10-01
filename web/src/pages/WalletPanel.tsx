@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { apiFetch, ApiError } from '../lib/api'
 
 interface WalletBalance {
@@ -38,6 +38,7 @@ export default function WalletPanel({ token }: { token: string }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const pendingRequestId = useRef<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -72,11 +73,13 @@ export default function WalletPanel({ token }: { token: string }) {
 
     setSubmitting(true)
     try {
+      pendingRequestId.current ??= crypto.randomUUID()
       const result = await apiFetch<WalletTopUpResult>(
         '/wallet/topups',
-        { method: 'POST', body: JSON.stringify({ amount: value }) },
+        { method: 'POST', body: JSON.stringify({ requestId: pendingRequestId.current, amount: value }) },
         token,
       )
+      pendingRequestId.current = null
       setBalance(result.balance)
       setTransactions((current) => [result.transaction, ...current])
       setAmount('')
@@ -107,7 +110,10 @@ export default function WalletPanel({ token }: { token: string }) {
               step="0.01"
               required
               value={amount}
-              onChange={(event) => setAmount(event.target.value)}
+              onChange={(event) => {
+                pendingRequestId.current = null
+                setAmount(event.target.value)
+              }}
               style={{ paddingInline: 16, position: 'static' }}
             />
           </label>

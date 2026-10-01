@@ -53,13 +53,25 @@ public class WalletService {
 
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy tài khoản"));
+        Payment existing = paymentRepository.findById(request.requestId()).orElse(null);
+        if (existing != null) {
+            if (!"wallet_topup".equals(existing.getPurpose()) || !userId.equals(existing.getUserId())
+                    || existing.getAmount().compareTo(amount) != 0) {
+                throw new IllegalArgumentException("Mã yêu cầu nạp ví đã được sử dụng");
+            }
+            WalletTransaction previous = transactionRepository.findById(existing.getWalletTransactionId())
+                    .orElseThrow(() -> new IllegalStateException("Payment không có giao dịch ví tương ứng"));
+            return new WalletTopUpResponse(existing.getId(), existing.getStatus(),
+                    WalletTransactionResponse.from(previous), user.getWalletBalance(), true);
+        }
         BigDecimal newBalance = user.getWalletBalance().add(amount);
         if (newBalance.compareTo(MAX_BALANCE) > 0) {
             throw new IllegalArgumentException("Số dư ví sẽ vượt giới hạn cho phép");
         }
 
         WalletTransaction transaction = transactionRepository.save(WalletTransaction.topUp(userId, amount));
-        Payment payment = paymentRepository.save(Payment.simulatedWalletTopUp(userId, transaction.getId(), amount));
+        Payment payment = paymentRepository.save(Payment.simulatedWalletTopUp(
+                request.requestId(), userId, transaction.getId(), amount));
         user.setWalletBalance(newBalance);
 
         return new WalletTopUpResponse(payment.getId(), payment.getStatus(),

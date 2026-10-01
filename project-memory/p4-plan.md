@@ -76,9 +76,10 @@ P4 gom:
 
 - `GET /wallet` returns `{ balance }` for the authenticated buyer.
 - `GET /wallet/transactions` returns the buyer's ledger entries newest first.
-- `POST /wallet/topups` accepts `{ amount }` and returns payment id/status, ledger entry, new balance, and `simulated: true`.
+- `POST /wallet/topups` accepts `{ requestId: UUID, amount }` and returns payment id/status, ledger entry, new balance, and `simulated: true`.
 - Top-up uses a simulated `bank_transfer` payment with status `paid`; no real transfer is involved.
 - The authenticated buyer id comes from JWT. A database row lock serializes top-ups to the same wallet; the payment, ledger and balance update commit together.
+- `requestId` is the payment UUID. Repeating the same request id and amount returns the original transaction without adding balance again; reusing it for a different amount or user is rejected.
 
 ## Implemented marketing contract
 

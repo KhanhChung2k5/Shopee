@@ -27,5 +27,5 @@
 
 - Khong sua tiep `V1__init_schema.sql` neu khong bat buoc. Neu can doi DB sau khi da co baseline, tao migration moi `V2__...sql`, `V3__...sql`.
 - Backend module Phase 2-5 chua co day du. P4 co the code truoc cac phan doc lap, nhung luong checkout/refund that se phu thuoc P2/P3.
-- May hien tai khong co Docker. Spring integration test can PostgreSQL se khong chay duoc neu khong co DB.
-- Frontend build can Node >= 20.19; moi truong da thay Node 20.9 nen co the fail do runtime, khong nhat thiet do code.
+- May hien tai khong co Docker, nhung co PostgreSQL 14/Homebrew; co the tao cluster tam trong `/tmp` de chay full Maven tests/Flyway/JPA validation.
+- Frontend build can Node >= 20.19. Trong `web/`, shell mac dinh dung Node 20.9; chay bang Node 24.18 tai `/Users/nguyenquochuy/.nvm/versions/node/v24.18.0/bin` khi build/lint.

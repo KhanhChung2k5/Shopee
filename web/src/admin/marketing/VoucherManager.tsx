@@ -86,14 +86,43 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
       <h2 style={{ marginTop: 0 }}>Voucher ({vouchers.length})</h2>
       {programs.length === 0 && <p>Tạo chương trình trước khi thêm voucher.</p>}
       <form onSubmit={save} className="marketing-form">
-        <label>Chương trình<select className="search__input" required value={form.promotionProgramId} onChange={(event) => setForm({ ...form, promotionProgramId: event.target.value })}><option value="">Chọn chương trình</option>{programs.map((program) => <option key={program.id} value={program.id}>{program.code} · {program.name}</option>)}</select></label>
-        <label>Mã voucher<input className="search__input" required maxLength={50} pattern="[A-Za-z0-9_-]+" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} /></label>
-        <label>Kiểu giảm<select className="search__input" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as Voucher['type'] })}><option value="percentage">Phần trăm</option><option value="fixed_amount">Số tiền</option></select></label>
-        <label>Giá trị<input className="search__input" type="number" required min="0.01" max={form.type === 'percentage' ? '100' : '9999999999.99'} step="0.01" value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} /></label>
-        <label>Hết hạn (tùy chọn)<input className="search__input" type="datetime-local" value={form.expiresAt} onChange={(event) => setForm({ ...form, expiresAt: event.target.value })} /></label>
+        <label>
+          Chương trình
+          <select className="search__input" required value={form.promotionProgramId}
+            onChange={(event) => setForm({ ...form, promotionProgramId: event.target.value })}>
+            <option value="">Chọn chương trình</option>
+            {programs.map((program) => <option key={program.id} value={program.id}>{program.code} · {program.name}</option>)}
+          </select>
+        </label>
+        <label>
+          Mã voucher
+          <input className="search__input" required maxLength={50} pattern="[A-Za-z0-9_-]+"
+            value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} />
+        </label>
+        <label>
+          Kiểu giảm
+          <select className="search__input" value={form.type}
+            onChange={(event) => setForm({ ...form, type: event.target.value as Voucher['type'] })}>
+            <option value="percentage">Phần trăm</option>
+            <option value="fixed_amount">Số tiền</option>
+          </select>
+        </label>
+        <label>
+          Giá trị
+          <input className="search__input" type="number" required min="0.01" step="0.01"
+            max={form.type === 'percentage' ? '100' : '9999999999.99'}
+            value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} />
+        </label>
+        <label>
+          Hết hạn (tùy chọn)
+          <input className="search__input" type="datetime-local"
+            value={form.expiresAt} onChange={(event) => setForm({ ...form, expiresAt: event.target.value })} />
+        </label>
         {error && <p role="alert" className="marketing-form__message">{error}</p>}
         <div className="marketing-form__actions">
-          <button className="button button--primary" type="submit" disabled={busy || programs.length === 0}>{busy ? 'Đang lưu...' : editingId ? 'Lưu voucher' : 'Thêm voucher'}</button>
+          <button className="button button--primary" type="submit" disabled={busy || programs.length === 0}>
+            {busy ? 'Đang lưu...' : editingId ? 'Lưu voucher' : 'Thêm voucher'}
+          </button>
           {editingId && <button className="button button--outline" type="button" onClick={reset}>Huỷ sửa</button>}
         </div>
       </form>
@@ -108,7 +137,12 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
                 <td>{programs.find((program) => program.id === voucher.promotionProgramId)?.name ?? '—'}</td>
                 <td>{voucher.type === 'percentage' ? `${voucher.value}%` : money.format(voucher.value)}</td>
                 <td>{voucher.expiresAt ? dateTime.format(new Date(voucher.expiresAt)) : 'Theo chương trình'}</td>
-                <td><div className="marketing-actions"><button className="button button--outline" type="button" onClick={() => edit(voucher)}>Sửa</button><button className="button button--outline" type="button" onClick={() => remove(voucher)}>Xóa</button></div></td>
+                <td>
+                  <div className="marketing-actions">
+                    <button className="button button--outline" type="button" onClick={() => edit(voucher)}>Sửa</button>
+                    <button className="button button--outline" type="button" onClick={() => remove(voucher)}>Xóa</button>
+                  </div>
+                </td>
               </tr>
             ))}
             {vouchers.length === 0 && <tr><td colSpan={5}>Chưa có voucher nào.</td></tr>}
