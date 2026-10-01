@@ -43,6 +43,7 @@ public class SecurityConfig {
                 .requestMatchers("/health", "/auth/register", "/auth/login").permitAll()
                 // Only staff in the "admin" department may create internal employee accounts.
                 .requestMatchers("/employees/**").hasAuthority("DEPT_ADMIN")
+                .requestMatchers("/wallet", "/wallet/**").hasAuthority("ROLE_BUYER")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

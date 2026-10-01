@@ -71,3 +71,11 @@ P4 gom:
   - `GET /refund-returns`
   - `PATCH /refund-returns/{id}/approve`
   - `PATCH /refund-returns/{id}/reject`
+
+## Implemented wallet contract
+
+- `GET /wallet` returns `{ balance }` for the authenticated buyer.
+- `GET /wallet/transactions` returns the buyer's ledger entries newest first.
+- `POST /wallet/topups` accepts `{ amount }` and returns payment id/status, ledger entry, new balance, and `simulated: true`.
+- Top-up uses a simulated `bank_transfer` payment with status `paid`; no real transfer is involved.
+- The authenticated buyer id comes from JWT. A database row lock serializes top-ups to the same wallet; the payment, ledger and balance update commit together.
