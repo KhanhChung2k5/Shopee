@@ -13,6 +13,7 @@
 - Committed project memory (`afe6dd0`). Implemented wallet API and buyer profile wallet view; targeted backend tests, web build and lint pass (lint has pre-existing warnings). Database integration remains to be verified with PostgreSQL.
 - Committed wallet checkpoint (`01d68b7`). Added program/voucher CRUD backend and admin UI; targeted tests and web build/lint pass. Database integration still requires PostgreSQL.
 - Committed program/voucher checkpoint (`7a639fa`). Added SKU/flash sale and invoice discount CRUD with admin forms and validation. P2 variant search and P3 checkout integration remain external dependencies.
+- Committed discount-detail checkpoint (`55efafe`). Added buyer voucher quote preview with eligibility and capped discount; targeted unit tests pass.
 
 ## Notes
 

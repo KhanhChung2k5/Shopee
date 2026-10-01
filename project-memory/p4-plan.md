@@ -96,3 +96,9 @@ P4 gom:
 - SKU detail requires an existing `product_variants.id`. Until P2 exposes variant search, admin enters that UUID manually.
 - Deleting a program requires first removing its vouchers and discount details. A flash sale detail with `soldQty > 0` cannot be edited or deleted.
 - Checkout calculation and sold quantity updates still need P3 integration.
+
+## Implemented voucher quote contract
+
+- Buyer `POST /vouchers/quote` with `{ code, subtotal }` returns discount and payable amount.
+- It checks program time window, voucher expiry, loyalty tier and caps discount at subtotal.
+- `subtotal` is client supplied, so this endpoint is preview only. P3 checkout must call the same service with a server calculated subtotal before recording voucher usage.
