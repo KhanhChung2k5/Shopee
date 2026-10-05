@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: backend
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
   datasource:
     url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5434}/${DB_NAME:chotomua}
     username: ${DB_USER:chotomua}
