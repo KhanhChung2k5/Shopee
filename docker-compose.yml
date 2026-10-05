@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: chototmua-postgres
+    environment:
+      POSTGRES_DB: chototmua
+      POSTGRES_USER: chototmua
+      POSTGRES_PASSWORD: chototmua
+    ports:
+      - "5432:5432"
+    volumes:
+      - chototmua-pg:/var/lib/postgresql/data
+
+volumes:
+  chototmua-pg:

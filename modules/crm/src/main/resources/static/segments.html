@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="/theme.js?v=1"></script>
+  <title>Chợ Tốt Mua — Phân khúc khách</title>
+  <meta name="application-name" content="crm-segment-demo">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Fira+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/demo.css?v=48">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="/index.html">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/>
+          </svg>
+        </span>
+        <span class="brand-copy">
+          <strong>Chợ Tốt Mua</strong>
+          <small>CRM Demo</small>
+        </span>
+      </a>
+
+      <p class="nav-label">Chung</p>
+      <nav class="nav" aria-label="Điều hướng chính">
+        <a class="nav-item" href="/home.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20H4z"/></svg>
+          Trang chủ
+        </a>
+        <a class="nav-item" href="/index.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Khách hàng
+        </a>
+        <a class="nav-item" href="/conversations.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Hội thoại
+        </a>
+        <a class="nav-item" href="/profiles.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4z"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
+          Hồ sơ CRM
+        </a>
+        <a class="nav-item" href="/campaigns.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H5.17L4 17.17V4z"/><path d="M8 10h8M8 14h5"/></svg>
+          Chiến dịch
+        </a>
+        <a class="nav-item" href="/surveys.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+          Khảo sát
+        </a>
+        <a class="nav-item" href="/inbox.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H5.17L4 17.17V4z"/><path d="M4 4l8 6 8-6"/></svg>
+          Hộp thư khách
+        </a>
+        <a class="nav-item is-active" href="/segments.html" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></svg>
+          Phân khúc
+        </a>
+        <a class="nav-item" href="/reports.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16M8 17V9m4 8V7m4 10v-6"/></svg>
+          Báo cáo
+        </a>
+      </nav>
+
+      <p class="nav-label">Hệ thống</p>
+      <nav class="nav nav-sub" aria-label="Hệ thống">
+        <a class="nav-item" href="/settings.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Cài đặt
+        </a>
+        <span class="nav-item is-disabled">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Vai trò &amp; quyền
+        </span>
+      </nav>
+
+      <span class="nav-item is-disabled faq">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 4.4 2.7c-.8.4-1.5 1-1.5 1.9V14"/><circle cx="12" cy="17" r=".6"/></svg>
+        FAQ
+      </span>
+
+      <section class="sidebar-panel">
+        <h2>Đăng nhập giả lập</h2>
+        <p class="hint">Admin, CRM Manager và CSKH tạo được. NV Kinh doanh nhận 403.</p>
+        <div class="roles" id="roles"></div>
+        <details class="checklist" open>
+          <summary>Checklist T4</summary>
+          <ol>
+            <li>Tạo phân khúc « 18–24 »</li>
+            <li>Thấy thành viên Trần Thị Bình</li>
+            <li>Khách khóa / đã xóa không vào</li>
+            <li>Preset RFM hoặc danh mục</li>
+          </ol>
+        </details>
+      </section>
+    </aside>
+
+    <div class="shell">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" type="button" id="menu-toggle" aria-label="Mở menu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <p class="page-kicker">Đầu vào campaign in-app — không phải voucher</p>
+        <p id="banner" class="attention" hidden role="status" aria-live="polite"></p>
+        <button class="icon-btn" type="button" id="reload" aria-label="Tải lại phân khúc">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        </button>
+        <div class="who-chip">
+          <span class="who-avatar" aria-hidden="true">?</span>
+          <p id="who">Chưa chọn tài khoản</p>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <div class="page-head">
+          <h1>Phân khúc khách</h1>
+        </div>
+        <p id="meta" class="meta">Chọn tài khoản, rồi tạo preset tuổi 18–24 để xem thành viên.</p>
+        <div class="segment-layout">
+          <section class="report-card">
+            <h2>Tạo preset</h2>
+            <p class="hint">Tuổi, RFM từ hồ sơ CRM (nếu đã tính lại) hoặc danh mục trên đơn. Khách khóa và đã xóa không vào.</p>
+            <form id="segment-form" class="form form-stack">
+              <label>
+                Tên phân khúc
+                <input id="name" name="name" required value="18–24" maxlength="80">
+              </label>
+              <div id="preset-field" class="multi-select">
+                <span class="choice-title">Preset</span>
+                <button type="button" class="multi-select-toggle" aria-expanded="false">Tuổi</button>
+                <div class="multi-select-panel" hidden>
+                  <label><input type="checkbox" data-category-all><span>Chọn tất cả</span></label>
+                  <label><input type="checkbox" name="presetValue" value="age" checked><span>Tuổi</span></label>
+                  <label><input type="checkbox" name="presetValue" value="rfm"><span>RFM</span></label>
+                  <label><input type="checkbox" name="presetValue" value="category"><span>Danh mục đã mua</span></label>
+                </div>
+              </div>
+              <div id="age-field" class="multi-select">
+                <span class="choice-title">Nhóm tuổi</span>
+                <button type="button" class="multi-select-toggle" aria-expanded="false">18–24</button>
+                <div class="multi-select-panel" hidden>
+                  <label><input type="checkbox" data-category-all><span>Chọn tất cả</span></label>
+                  <label><input type="checkbox" name="bucket" value="UNDER_18"><span>Dưới 18</span></label>
+                  <label><input type="checkbox" name="bucket" value="18–24" checked><span>18–24</span></label>
+                  <label><input type="checkbox" name="bucket" value="25–34"><span>25–34</span></label>
+                  <label><input type="checkbox" name="bucket" value="35–44"><span>35–44</span></label>
+                  <label><input type="checkbox" name="bucket" value="45+"><span>45+</span></label>
+                  <label><input type="checkbox" name="bucket" value="UNKNOWN"><span>Không rõ</span></label>
+                </div>
+              </div>
+              <div id="rfm-field" class="multi-select" hidden>
+                <span class="choice-title">Nhãn RFM</span>
+                <button type="button" class="multi-select-toggle" aria-expanded="false">Chọn nhãn</button>
+                <div class="multi-select-panel" hidden>
+                  <label><input type="checkbox" data-category-all><span>Chọn tất cả</span></label>
+                  <label><input type="checkbox" name="rfm" value="champions"><span>Champions</span></label>
+                  <label><input type="checkbox" name="rfm" value="loyal"><span>Loyal</span></label>
+                  <label><input type="checkbox" name="rfm" value="potential"><span>Potential</span></label>
+                  <label><input type="checkbox" name="rfm" value="at_risk"><span>At Risk</span></label>
+                  <label><input type="checkbox" name="rfm" value="lost"><span>Lost</span></label>
+                  <label><input type="checkbox" name="rfm" value="other"><span>Other</span></label>
+                </div>
+              </div>
+              <div id="category-field" class="multi-select" hidden>
+                <span class="choice-title">Tên danh mục</span>
+                <button type="button" class="multi-select-toggle" aria-expanded="false">Tay cầm</button>
+                <div class="multi-select-panel" hidden>
+                  <label><input type="checkbox" data-category-all><span>Chọn tất cả</span></label>
+                  <label><input type="checkbox" name="categoryName" value="Tay cầm" checked><span>Tay cầm</span></label>
+                  <label><input type="checkbox" name="categoryName" value="Đĩa game"><span>Đĩa game</span></label>
+                  <label><input type="checkbox" name="categoryName" value="Phụ kiện"><span>Phụ kiện</span></label>
+                  <label><input type="checkbox" name="categoryName" value="Tai nghe"><span>Tai nghe</span></label>
+                  <label><input type="checkbox" name="categoryName" value="Máy chơi game"><span>Máy chơi game</span></label>
+                  <label><input type="checkbox" name="categoryName" value="Bàn phím"><span>Bàn phím</span></label>
+                </div>
+              </div>
+              <div class="form-actions">
+                <button class="btn-primary" type="submit">Lưu phân khúc</button>
+              </div>
+            </form>
+          </section>
+          <div class="segment-board">
+            <div class="segment-toolbar">
+              <h2>Phân khúc đã lưu</h2>
+              <div class="view-switch" role="radiogroup" aria-label="Chuyển cách xem phân khúc">
+                <button type="button" class="view-switch-btn" role="radio" data-view="grid" aria-checked="false" tabindex="-1">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/></svg>
+                  Lưới
+                </button>
+                <button type="button" class="view-switch-btn is-active" role="radio" data-view="list" aria-checked="true" tabindex="0">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>
+                  Danh sách
+                </button>
+              </div>
+            </div>
+            <div id="rows" class="segment-list is-list"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <div id="detail-modal" class="modal" hidden>
+    <div class="modal-scrim" data-close-detail></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <div class="modal-head">
+        <h2 id="detail-title">Chi tiết phân khúc</h2>
+        <button type="button" class="icon-btn" data-close-detail aria-label="Đóng">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <p id="detail-meta" class="hint"></p>
+      <ul id="detail-members" class="member-list"></ul>
+      <div id="member-pager" class="member-pager" hidden>
+        <button id="member-prev" class="btn-ghost" type="button">Trước</button>
+        <span id="member-page-label"></span>
+        <button id="member-next" class="btn-ghost" type="button">Sau</button>
+      </div>
+      <p id="detail-locked" class="hint" hidden>Phân khúc mặc định theo nhãn RFM. Không sửa và không xóa.</p>
+      <form id="detail-form" class="form form-stack">
+        <label>
+          Tên phân khúc
+          <input id="detail-name" required maxlength="80">
+        </label>
+        <div id="detail-preset-field" class="multi-select">
+          <span class="choice-title">Preset</span>
+          <button type="button" class="multi-select-toggle" aria-expanded="false">Tuổi</button>
+          <div class="multi-select-panel" hidden>
+            <label><input type="checkbox" data-category-all><span>Chọn tất cả</span></label>
+            <label><input type="checkbox" name="presetValue" value="age" checked><span>Tuổi</span></label>
+            <label><input type="checkbox" name="presetValue" value="rfm"><span>RFM</span></label>
+            <label><input type="checkbox" name="presetValue" value="category"><span>Danh mục đã mua</span></label>
+          </div>
+        </div>
+        <div id="detail-age-field" class="multi-select">
+          <span class="choice-title">Nhóm tuổi</span>
+          <button type="button" class="multi-select-toggle" aria-expanded="false">Chọn nhóm tuổi</button>
+          <div class="multi-select-panel" hidden>
+            <label><input type="checkbox" data-category-all><span>Chọn tất cả</span></label>
+            <label><input type="checkbox" name="bucket" value="UNDER_18"><span>Dưới 18</span></label>
+            <label><input type="checkbox" name="bucket" value="18–24"><span>18–24</span></label>
+            <label><input type="checkbox" name="bucket" value="25–34"><span>25–34</span></label>
+            <label><input type="checkbox" name="bucket" value="35–44"><span>35–44</span></label>
+            <label><input type="checkbox" name="bucket" value="45+"><span>45+</span></label>
+            <label><input type="checkbox" name="bucket" value="UNKNOWN"><span>Không rõ</span></label>
+          </div>
+        </div>
+        <div id="detail-rfm-field" class="multi-select" hidden>
+          <span class="choice-title">Nhãn RFM</span>
+          <button type="button" class="multi-select-toggle" aria-expanded="false">Chọn nhãn</button>
+          <div class="multi-select-panel" hidden>
+            <label><input type="checkbox" data-category-all><span>Chọn tất cả</span></label>
+            <label><input type="checkbox" name="rfm" value="champions"><span>Champions</span></label>
+            <label><input type="checkbox" name="rfm" value="loyal"><span>Loyal</span></label>
+            <label><input type="checkbox" name="rfm" value="potential"><span>Potential</span></label>
+            <label><input type="checkbox" name="rfm" value="at_risk"><span>At Risk</span></label>
+            <label><input type="checkbox" name="rfm" value="lost"><span>Lost</span></label>
+            <label><input type="checkbox" name="rfm" value="other"><span>Other</span></label>
+          </div>
+        </div>
+        <div id="detail-category-field" class="multi-select" hidden>
+          <span class="choice-title">Tên danh mục</span>
+          <button type="button" class="multi-select-toggle" aria-expanded="false">Chọn danh mục</button>
+          <div class="multi-select-panel" hidden>
+            <label><input type="checkbox" data-category-all><span>Chọn tất cả</span></label>
+            <label><input type="checkbox" name="categoryName" value="Tay cầm"><span>Tay cầm</span></label>
+            <label><input type="checkbox" name="categoryName" value="Đĩa game"><span>Đĩa game</span></label>
+            <label><input type="checkbox" name="categoryName" value="Phụ kiện"><span>Phụ kiện</span></label>
+            <label><input type="checkbox" name="categoryName" value="Tai nghe"><span>Tai nghe</span></label>
+            <label><input type="checkbox" name="categoryName" value="Máy chơi game"><span>Máy chơi game</span></label>
+            <label><input type="checkbox" name="categoryName" value="Bàn phím"><span>Bàn phím</span></label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" type="submit">Lưu chỉnh sửa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div id="confirm-modal" class="modal" hidden>
+    <div class="modal-scrim" data-close-confirm></div>
+    <div class="modal-card is-narrow" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+      <div class="modal-head">
+        <h2 id="confirm-title">Xóa phân khúc?</h2>
+        <button type="button" class="icon-btn" data-close-confirm aria-label="Đóng">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <p class="hint" id="confirm-text"></p>
+      <div class="form-actions">
+        <button type="button" class="btn-ghost" data-close-confirm>Hủy</button>
+        <button type="button" class="btn-danger" id="confirm-delete">Xóa</button>
+      </div>
+    </div>
+  </div>
+  <script src="/segments.js?v=18"></script>
+  <script src="/shell-nav.js?v=2"></script>
+</body>
+</html>

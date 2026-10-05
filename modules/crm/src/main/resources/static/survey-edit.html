@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="/theme.js?v=1"></script>
+  <title>Chợ Tốt Mua — Soạn khảo sát</title>
+  <meta name="application-name" content="crm-survey-demo">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Fira+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/demo.css?v=48">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="/index.html">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/>
+          </svg>
+        </span>
+        <span class="brand-copy">
+          <strong>Chợ Tốt Mua</strong>
+          <small>CRM Demo</small>
+        </span>
+      </a>
+
+      <p class="nav-label">Chung</p>
+      <nav class="nav" aria-label="Điều hướng chính">
+        <a class="nav-item" href="/home.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20H4z"/></svg>
+          Trang chủ
+        </a>
+        <a class="nav-item" href="/index.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Khách hàng
+        </a>
+        <a class="nav-item" href="/conversations.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Hội thoại
+        </a>
+        <a class="nav-item" href="/profiles.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4z"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
+          Hồ sơ CRM
+        </a>
+        <a class="nav-item" href="/campaigns.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H5.17L4 17.17V4z"/><path d="M8 10h8M8 14h5"/></svg>
+          Chiến dịch
+        </a>
+        <a class="nav-item is-active" href="/surveys.html" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+          Khảo sát
+        </a>
+        <a class="nav-item" href="/inbox.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H5.17L4 17.17V4z"/><path d="M4 4l8 6 8-6"/></svg>
+          Hộp thư khách
+        </a>
+        <a class="nav-item" href="/segments.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></svg>
+          Phân khúc
+        </a>
+        <a class="nav-item" href="/reports.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16M8 17V9m4 8V7m4 10v-6"/></svg>
+          Báo cáo
+        </a>
+      </nav>
+
+      <p class="nav-label">Hệ thống</p>
+      <nav class="nav nav-sub" aria-label="Hệ thống">
+        <a class="nav-item" href="/settings.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Cài đặt
+        </a>
+        <span class="nav-item is-disabled">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Vai trò &amp; quyền
+        </span>
+      </nav>
+
+      <span class="nav-item is-disabled faq">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 4.4 2.7c-.8.4-1.5 1-1.5 1.9V14"/><circle cx="12" cy="17" r=".6"/></svg>
+        FAQ
+      </span>
+
+      <section class="sidebar-panel">
+        <h2>Đăng nhập giả lập</h2>
+        <p class="hint">Admin, CRM Manager và CSKH tạo được. NV Kinh doanh nhận 403.</p>
+        <div class="roles" id="roles"></div>
+        <details class="checklist" open>
+          <summary>Checklist T6</summary>
+          <ol>
+            <li>Tạo khảo sát bản nháp</li>
+            <li>Thêm câu tự luận</li>
+            <li>Thêm câu trắc nghiệm với hai lựa chọn</li>
+            <li>Phiếu đã gửi không sửa được</li>
+          </ol>
+        </details>
+      </section>
+    </aside>
+
+    <div class="shell">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" type="button" id="menu-toggle" aria-label="Mở menu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <p class="page-kicker">Soạn phiếu — quay lại danh sách bất cứ lúc nào.</p>
+        <p id="banner" class="attention" hidden role="status" aria-live="polite"></p>
+        <button class="icon-btn" type="button" id="reload" aria-label="Tải lại khảo sát">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        </button>
+        <div class="who-chip">
+          <span class="who-avatar" aria-hidden="true">?</span>
+          <p id="who">Chưa chọn tài khoản</p>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <div class="page-head">
+          <a class="btn-ghost" href="/surveys.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+            Quay lại
+          </a>
+          <h1>Soạn khảo sát</h1>
+        </div>
+        <p id="meta" class="meta">Soạn phiếu, xem trước như khách, rồi gửi qua chiến dịch.</p>
+        <label class="survey-picker">
+          Phiếu đang sửa
+          <select id="survey-picker"></select>
+        </label>
+        <div class="survey-builder">
+          <section class="survey-section">
+            <div class="survey-section-head">
+              <h2>1. Thông tin cơ bản</h2>
+            </div>
+            <div class="survey-fields">
+              <label>
+                Tên khảo sát
+                <input id="title" maxlength="255" placeholder="Tên khảo sát">
+              </label>
+              <label>
+                Mô tả mục đích khảo sát
+                <textarea id="description" rows="3" placeholder="Mô tả mục đích khảo sát"></textarea>
+              </label>
+              <p class="hint">Chọn đối tượng. Phiếu vào thẳng hòm thư của khách đang hoạt động, không qua chiến dịch.</p>
+              <div class="multi-select" id="segment-multi" data-empty="Chọn đối tượng">
+                <button type="button" class="multi-select-toggle" aria-expanded="false">Chọn đối tượng</button>
+                <div class="multi-select-panel" hidden>
+                  <label><input type="checkbox" data-select-all><span>Chọn tất cả</span></label>
+                  <div id="segment-options"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="survey-section">
+            <div class="survey-section-head">
+              <h2>2. Danh sách câu hỏi</h2>
+              <p class="survey-drag-hint">Kéo để sắp xếp</p>
+            </div>
+            <div id="question-list"></div>
+            <button class="survey-add" type="button" id="add-question">+ Thêm câu hỏi</button>
+          </section>
+
+          <section class="survey-section">
+            <div class="survey-section-head">
+              <h2>3. Xem trước (giao diện khách hàng thấy)</h2>
+            </div>
+            <div id="preview" class="survey-preview-card"></div>
+          </section>
+
+          <div class="survey-footer">
+            <button class="btn-ghost" type="button" id="save-draft">Lưu</button>
+            <button class="btn-ghost" type="button" id="archive-survey"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"/><path d="M3 4h18v4H3z"/><path d="M10 12h4"/></svg>Lưu trữ</button>
+            <button class="btn-ghost" type="button" id="preview-full"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>Xem trước đầy đủ</button>
+            <button class="btn-primary" type="button" id="send-inbox"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>Gửi vào hòm thư</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="preview-modal" class="modal" hidden>
+    <div class="modal-scrim" data-close-preview></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="preview-title">
+      <div class="modal-head">
+        <h2 id="preview-title">Xem trước đầy đủ</h2>
+        <button type="button" class="icon-btn" data-close-preview aria-label="Đóng">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div id="preview-full-body" class="survey-preview-card"></div>
+    </div>
+  </div>
+  <script src="/surveys.js?v=10"></script>
+  <script src="/shell-nav.js?v=2"></script>
+</body>
+</html>

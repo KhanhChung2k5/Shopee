@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:chototmua}?sslmode=${DB_SSLMODE:prefer}&prepareThreshold=0
+    username: ${DB_USER:chototmua}
+    password: ${DB_PASSWORD:chototmua}
+    hikari:
+      maximum-pool-size: 5
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: false
+    ignore-migration-patterns: "*:checksum"

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="/theme.js?v=1"></script>
+  <title>Chợ Tốt Mua — Hội thoại CSKH</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Fira+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/demo.css?v=51">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="/index.html">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/></svg>
+        </span>
+        <span class="brand-copy"><strong>Chợ Tốt Mua</strong><small>CRM Demo</small></span>
+      </a>
+      <p class="nav-label">Chung</p>
+      <nav class="nav" aria-label="Điều hướng chính">
+        <a class="nav-item" href="/home.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20H4z"/></svg>
+          Trang chủ
+        </a>
+        <a class="nav-item" href="/index.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          Khách hàng
+        </a>
+        <a class="nav-item is-active" href="/conversations.html" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Hội thoại
+        </a>
+        <a class="nav-item" href="/profiles.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4z"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
+          Hồ sơ CRM
+        </a>
+        <a class="nav-item" href="/campaigns.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H5.17L4 17.17V4z"/></svg>
+          Chiến dịch
+        </a>
+        <a class="nav-item" href="/surveys.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+          Khảo sát
+        </a>
+        <a class="nav-item" href="/inbox.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H5.17L4 17.17V4z"/><path d="M4 4l8 6 8-6"/></svg>
+          Hộp thư khách
+        </a>
+        <a class="nav-item" href="/customer-chat.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.1-4.8A8.5 8.5 0 1 1 21 11.5z"/></svg>
+          Widget khách
+        </a>
+        <a class="nav-item" href="/segments.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></svg>
+          Phân khúc
+        </a>
+        <a class="nav-item" href="/reports.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16M8 17V9m4 8V7m4 10v-6"/></svg>
+          Báo cáo
+        </a>
+      </nav>
+      <p class="nav-label">Hệ thống</p>
+      <nav class="nav nav-sub" aria-label="Hệ thống">
+        <a class="nav-item" href="/settings.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Cài đặt
+        </a>
+      </nav>
+      <section class="sidebar-panel">
+        <h2>Ca trực</h2>
+        <p class="hint">Mở trang này là agent đang trực tuyến. Khách thấy live chat. Bấm rời ca để khách về chế độ ticket.</p>
+        <div class="roles" id="roles"></div>
+      </section>
+    </aside>
+
+    <div class="shell">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" type="button" id="menu-toggle" aria-label="Mở menu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <p id="banner" class="attention" hidden role="status"></p>
+        <button class="btn-ghost" type="button" id="leave-shift">Rời ca</button>
+        <div class="who-chip">
+          <span class="who-avatar" aria-hidden="true">?</span>
+          <p id="who">Chưa chọn tài khoản</p>
+        </div>
+      </header>
+      <main class="workspace desk-workspace">
+        <div class="desk-toolbar">
+          <div id="entity-switch" class="survey-switch"></div>
+        </div>
+        <div class="desk">
+          <section class="desk-col" aria-label="Hàng đợi">
+            <div class="desk-head">
+              <h2>Hàng đợi</h2>
+              <p class="desk-sub">Sắp xếp theo mức khẩn cấp / SLA</p>
+            </div>
+            <div class="filters" id="filters" role="tablist">
+              <button class="filter-chip is-on" type="button" data-filter="all">Tất cả</button>
+              <button class="filter-chip" type="button" data-filter="mine">Của tôi</button>
+              <button class="filter-chip" type="button" data-filter="open">Mở</button>
+              <button class="filter-chip" type="button" data-filter="high">Ưu tiên cao</button>
+            </div>
+            <ul class="queue" id="queue"></ul>
+          </section>
+          <section class="desk-col" aria-label="Hội thoại">
+            <div id="thread-pane" class="thread-pane is-empty">Chọn một ticket trong hàng đợi.</div>
+          </section>
+          <aside class="desk-col profile" id="profile" aria-label="Hồ sơ khách hàng">
+            <h2>Hồ sơ khách</h2>
+            <p class="hint">Chọn hội thoại để xem hạng, chi nhánh và các ticket trước.</p>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="escalate-modal" class="modal" hidden>
+    <div class="modal-scrim" data-close></div>
+    <div class="modal-card narrow" role="dialog" aria-modal="true" aria-labelledby="escalate-title">
+      <h2 id="escalate-title">Chuyển người xử lý</h2>
+      <p class="hint">Lượt cũ được giữ trong lịch sử. Chỉ nhân viên mới đang phụ trách.</p>
+      <label>Nhân viên
+        <select id="escalate-target" class="profile-select"></select>
+      </label>
+      <div class="thread-actions">
+        <button class="btn-primary" type="button" id="escalate-confirm">Chuyển</button>
+        <button class="btn-ghost" type="button" data-close>Hủy</button>
+      </div>
+    </div>
+  </div>
+  <script src="/entity-switch.js?v=2"></script>
+  <script src="/conversations.js?v=6"></script>
+  <script src="/shell-nav.js?v=2"></script>
+</body>
+</html>

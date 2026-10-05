@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="/theme.js?v=1"></script>
+  <title>Chợ Tốt Mua — Hồ sơ CRM</title>
+  <meta name="application-name" content="crm-profile-demo">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Fira+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/demo.css?v=51">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="/index.html">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/>
+          </svg>
+        </span>
+        <span class="brand-copy">
+          <strong>Chợ Tốt Mua</strong>
+          <small>CRM Demo</small>
+        </span>
+      </a>
+
+      <p class="nav-label">Chung</p>
+      <nav class="nav" aria-label="Điều hướng chính">
+        <a class="nav-item" href="/home.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20H4z"/></svg>
+          Trang chủ
+        </a>
+        <a class="nav-item" href="/index.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Khách hàng
+        </a>
+        <a class="nav-item" href="/conversations.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Hội thoại
+        </a>
+        <a class="nav-item is-active" href="/profiles.html" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4z"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
+          Hồ sơ CRM
+        </a>
+        <a class="nav-item" href="/campaigns.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H5.17L4 17.17V4z"/><path d="M8 10h8M8 14h5"/></svg>
+          Chiến dịch
+        </a>
+        <a class="nav-item" href="/surveys.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+          Khảo sát
+        </a>
+        <a class="nav-item" href="/inbox.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H5.17L4 17.17V4z"/><path d="M4 4l8 6 8-6"/></svg>
+          Hộp thư khách
+        </a>
+        <a class="nav-item" href="/segments.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></svg>
+          Phân khúc
+        </a>
+        <a class="nav-item" href="/reports.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16M8 17V9m4 8V7m4 10v-6"/></svg>
+          Báo cáo
+        </a>
+      </nav>
+
+      <p class="nav-label">Hệ thống</p>
+      <nav class="nav nav-sub" aria-label="Hệ thống">
+        <a class="nav-item" href="/settings.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Cài đặt
+        </a>
+        <span class="nav-item is-disabled">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Vai trò &amp; quyền
+        </span>
+      </nav>
+
+      <span class="nav-item is-disabled faq">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 4.4 2.7c-.8.4-1.5 1-1.5 1.9V14"/><circle cx="12" cy="17" r=".6"/></svg>
+        FAQ
+      </span>
+
+      <section class="sidebar-panel">
+        <h2>Đăng nhập giả lập</h2>
+        <p class="hint">Admin, CRM Manager và CSKH tính lại được. NV Kinh doanh nhận 403.</p>
+        <div class="roles" id="roles"></div>
+        <details class="checklist" open>
+          <summary>Checklist T9</summary>
+          <ol>
+            <li>Tính lại Nguyễn Văn An</li>
+            <li>LTV = AOV năm lịch × số đơn năm lịch × năm giữa lần giao đầu và cuối</li>
+            <li>Võ Văn Phong đã xóa vẫn còn hồ sơ</li>
+            <li>NV Kinh doanh bị 403</li>
+          </ol>
+        </details>
+      </section>
+    </aside>
+
+    <div class="shell">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" type="button" id="menu-toggle" aria-label="Mở menu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <p class="page-kicker">LTV năm lịch × lifespan — RFM từ đơn delivered</p>
+        <p id="banner" class="attention" hidden role="status" aria-live="polite"></p>
+        <button class="icon-btn" type="button" id="reload" aria-label="Tải lại hồ sơ">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        </button>
+        <div class="who-chip">
+          <span class="who-avatar" aria-hidden="true">?</span>
+          <p id="who">Chưa chọn tài khoản</p>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <div class="page-head">
+          <h1>Hồ sơ CRM</h1>
+        </div>
+        <div id="entity-switch" class="survey-switch"></div>
+        <p id="meta" class="meta profile-meta">Chọn tài khoản, rồi tính lại hồ sơ từ đơn đã giao.</p>
+        <section class="kpi-row" id="profile-kpis" aria-label="Số lượng hồ sơ theo năm nhãn RFM">
+          <button type="button" class="kpi-card" data-rfm="champions" aria-pressed="false">
+            <span class="kpi-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M8.5 13.5 7 21l5-2.5L17 21l-1.5-7.5"/></svg>
+            </span>
+            <span class="kpi-copy">
+              <span>Champions</span>
+              <strong id="rfm-count-champions">0</strong>
+            </span>
+          </button>
+          <button type="button" class="kpi-card is-loyal" data-rfm="loyal" aria-pressed="false">
+            <span class="kpi-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 4.6-7 9-7 9z"/></svg>
+            </span>
+            <span class="kpi-copy">
+              <span>Loyal</span>
+              <strong id="rfm-count-loyal">0</strong>
+            </span>
+          </button>
+          <button type="button" class="kpi-card is-ok" data-rfm="potential" aria-pressed="false">
+            <span class="kpi-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 16l6-6 4 4 6-7"/><path d="M14 7h6v6"/></svg>
+            </span>
+            <span class="kpi-copy">
+              <span>Potential</span>
+              <strong id="rfm-count-potential">0</strong>
+            </span>
+          </button>
+          <button type="button" class="kpi-card is-warn" data-rfm="at_risk" aria-pressed="false">
+            <span class="kpi-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 9v5M12 17h.01"/></svg>
+            </span>
+            <span class="kpi-copy">
+              <span>At Risk</span>
+              <strong id="rfm-count-at_risk">0</strong>
+            </span>
+          </button>
+          <button type="button" class="kpi-card is-bad" data-rfm="lost" aria-pressed="false">
+            <span class="kpi-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M3 19a6 6 0 0 1 9-5"/><path d="m16 14 5 5M21 14l-5 5"/></svg>
+            </span>
+            <span class="kpi-copy">
+              <span>Lost</span>
+              <strong id="rfm-count-lost">0</strong>
+            </span>
+          </button>
+        </section>
+        <div class="profile-toolbar">
+          <div class="profile-filters">
+            <fieldset class="choice-group" aria-label="Nhãn RFM">
+              <span class="choice-title">Nhãn RFM</span>
+              <label><input type="checkbox" name="rfm" value="champions" checked><span>Champions</span></label>
+              <label><input type="checkbox" name="rfm" value="loyal" checked><span>Loyal</span></label>
+              <label><input type="checkbox" name="rfm" value="potential" checked><span>Potential</span></label>
+              <label><input type="checkbox" name="rfm" value="at_risk" checked><span>At Risk</span></label>
+              <label><input type="checkbox" name="rfm" value="lost" checked><span>Lost</span></label>
+              <label><input type="checkbox" name="rfm" value="other" checked><span>Other</span></label>
+            </fieldset>
+            <label class="sort-field">
+              Sắp xếp LTV
+              <select id="ltv-sort">
+                <option value="desc" selected>Cao → thấp</option>
+                <option value="asc">Thấp → cao</option>
+                <option value="none">Thứ tự danh sách</option>
+              </select>
+            </label>
+            <fieldset class="choice-group" aria-label="Trạng thái khách">
+              <span class="choice-title">Trạng thái khách</span>
+              <label><input type="checkbox" name="status" value="active" checked><span>Đang hoạt động</span></label>
+              <label><input type="checkbox" name="status" value="locked" checked><span>Đã khóa</span></label>
+              <label><input type="checkbox" name="status" value="deleted" checked><span>Đã xóa</span></label>
+            </fieldset>
+          </div>
+          <button class="btn-primary" type="button" id="recalculate-all">Tính lại tất cả</button>
+        </div>
+        <div id="rows" class="profile-grid"></div>
+      </main>
+    </div>
+  </div>
+  <script src="/entity-switch.js?v=2"></script>
+  <script src="/profiles.js?v=13"></script>
+  <script src="/shell-nav.js?v=2"></script>
+</body>
+</html>

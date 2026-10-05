@@ -1,0 +1,34 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="/theme.js?v=1"></script>
+  <title>Chợ Tốt Mua — Chat hỗ trợ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/demo.css?v=48">
+</head>
+<body>
+  <main class="shop-page">
+    <article class="shop-card">
+      <p class="pill">Tay cầm &amp; đĩa game</p>
+      <h1>DualSense Edge</h1>
+      <p>Cần hỗ trợ đơn hàng hoặc bảo hành, mở khung chat góc phải. Bạn không cần chọn ticket hay live chat — cửa hàng tự chuyển khi có nhân viên trực.</p>
+      <div class="account-row" id="accounts"></div>
+      <p id="banner" class="attention" hidden></p>
+    </article>
+  </main>
+
+  <section class="widget" aria-label="Chat hỗ trợ">
+    <header class="widget-head" id="widget-head"></header>
+    <div class="thread" id="thread"></div>
+    <form class="composer" id="composer">
+      <textarea id="draft" placeholder="Nhắn cho Chợ Tốt Mua"></textarea>
+      <button class="btn-primary" type="submit">Gửi</button>
+    </form>
+  </section>
+  <script src="/customer-chat.js?v=2"></script>
+</body>
+</html>
