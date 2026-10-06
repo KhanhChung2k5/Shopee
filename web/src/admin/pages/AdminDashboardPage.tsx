@@ -1,12 +1,15 @@
 import type { CSSProperties } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { INITIAL_CUSTOMERS } from '../data/sampleCustomers'
+import type { Customer } from '../types/customer'
 import { INITIAL_ORDERS, ORDER_STATUS_LABEL, type OrderStatus } from '../data/sampleOrders'
 import { formatVnd } from '../../data/sampleProducts'
+import { useAuth } from '../../state/AuthContext'
+import { apiFetch } from '../../lib/api'
 import LineChart from '../components/LineChart'
 import DonutChart from '../components/DonutChart'
 
-// Mock 7-period LTV trend — stands in for a real time-series query.
+// Mock 7-period LTV trend — stands in for a real time-series query (needs the Order module).
 const LTV_TREND = [38, 42, 39, 47, 52, 49, 61.84]
 const LTV_LABELS = ['13/9', '14/9', '15/9', '16/9', '17/9', '18/9', '19/9']
 const LTV_DELTA_PCT = 12.4
@@ -20,13 +23,21 @@ const ORDER_STATUS_COLOR: Record<OrderStatus, string> = {
 }
 
 export default function AdminDashboardPage() {
-  const total = INITIAL_CUSTOMERS.length
-  const active = INITIAL_CUSTOMERS.filter((c) => c.status === 'active').length
-  const locked = INITIAL_CUSTOMERS.filter((c) => c.status === 'locked').length
-  const deleted = INITIAL_CUSTOMERS.filter((c) => c.status === 'deleted').length
-  const totalLtv = INITIAL_CUSTOMERS.reduce((sum, c) => sum + c.ltv, 0)
+  const { token } = useAuth()
+  const [customers, setCustomers] = useState<Customer[]>([])
 
-  const topCustomers = [...INITIAL_CUSTOMERS]
+  useEffect(() => {
+    if (!token) return
+    apiFetch<Customer[]>('/customers', {}, token).then(setCustomers).catch(() => setCustomers([]))
+  }, [token])
+
+  const total = customers.length
+  const active = customers.filter((c) => c.status === 'active').length
+  const locked = customers.filter((c) => c.status === 'locked').length
+  const deleted = customers.filter((c) => c.status === 'deleted').length
+  const totalLtv = customers.reduce((sum, c) => sum + c.ltv, 0)
+
+  const topCustomers = [...customers]
     .filter((c) => c.status !== 'deleted')
     .sort((a, b) => b.ltv - a.ltv)
     .slice(0, 5)
@@ -83,13 +94,16 @@ export default function AdminDashboardPage() {
           <div className="admin-stat-card__label" style={{ marginBottom: 'var(--space-3)' }}>Top 5 khách hàng theo LTV</div>
           <table className="admin-table admin-table--compact">
             <tbody>
-              {topCustomers.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.fullName}</td>
-                  <td style={{ color: 'var(--color-muted-foreground)' }}>{c.favoriteCategory}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatVnd(c.ltv)}</td>
-                </tr>
-              ))}
+              {topCustomers.length === 0 ? (
+                <tr><td style={{ color: 'var(--color-muted-foreground)' }}>Chưa có khách hàng nào</td></tr>
+              ) : (
+                topCustomers.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.fullName ?? c.email}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatVnd(c.ltv)}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -126,7 +140,8 @@ export default function AdminDashboardPage() {
       </div>
 
       <p style={{ color: 'var(--color-muted-foreground)', fontSize: 13.5, marginTop: 'var(--space-4)' }}>
-        Dữ liệu minh hoạ — sẽ thay bằng số liệu thật từ <code>CustomerProfileCRM</code> khi API backend hoàn thiện.
+        Số liệu khách hàng là dữ liệu thật từ <code>GET /customers</code>. LTV/đơn hàng luôn là 0 và biểu đồ xu hướng/trạng thái đơn hàng
+        vẫn là dữ liệu minh hoạ cho tới khi module Order được xây dựng.
       </p>
     </div>
   )

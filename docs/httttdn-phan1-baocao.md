@@ -93,131 +93,197 @@ Ban Giám đốc, trưởng phòng Kinh doanh, trưởng phòng Kho vận, trư�
 
 ### 3.1 Bài toán
 
-Công ty Chợ Tốt Mua cần một hệ thống thông tin thay thế quy trình thủ công (Excel + mạng xã hội) hiện tại, đáp ứng đồng thời 3 nhóm nghiệp vụ:
+Công ty Chợ Tốt Mua cần một hệ thống thông tin thay thế quy trình thủ công (Excel + mạng xã hội) hiện tại. Nền tảng bán hàng (giỏ hàng, đặt hàng, sản phẩm, kho) đã được xây dựng như hạ tầng chung của doanh nghiệp (xem Phần II — Xây dựng & cài đặt CSDL), còn ở Phần III — theo đúng yêu cầu đồ án "chọn 1 trong 3 phân hệ HRM / CRM / MRP để cài đặt" — nhóm chọn **phân hệ CRM (Quản lý quan hệ khách hàng)** làm trọng tâm phân tích sâu. Toàn bộ BFD/DFD từ mục 3.2 trở xuống **chỉ mô tả phân hệ CRM**, không mô tả lại các phân hệ nền tảng (bán hàng, kho, nhân sự nội bộ) đã nêu ở Phần II.
 
-1. **Bán hàng trực tuyến**: khách hàng tự duyệt sản phẩm, đặt hàng, thanh toán, theo dõi đơn hàng trên website/app mà không cần liên hệ trực tiếp nhân viên.
-2. **Vận hành nội bộ**: nhân viên kinh doanh quản lý sản phẩm/giá, nhân viên kho quản lý tồn kho — xuất/nhập theo từng đơn hàng thực tế, quản trị viên phân quyền tài khoản theo phòng ban.
-3. **Quản lý quan hệ khách hàng (CRM)**: tổng hợp lịch sử mua hàng, phân khúc khách hàng, chăm sóc sau bán (ticket, chat), khảo sát ý kiến khách hàng có hệ thống, báo cáo nhân khẩu học phục vụ ra quyết định marketing.
+Bài toán cụ thể của phân hệ CRM: công ty hiện **không có dữ liệu tổng hợp về khách hàng** (không biết khách mua bao nhiêu lần, thích ngành hàng nào), **chăm sóc sau bán thiếu kênh tổng hợp** (phản hồi rải rác Facebook/Zalo/điện thoại, phản hồi chậm 4-8 giờ), và **chưa từng khảo sát ý kiến khách hàng bài bản** — dẫn tới không thể phân khúc khách hàng hay ra quyết định marketing đúng đối tượng. Phân hệ CRM cần giải quyết 5 nhóm nghiệp vụ:
 
-Hệ thống phải đảm bảo: dữ liệu tập trung (không còn file Excel dùng chung), có dấu vết audit (ai thay đổi gì, khi nào), và tách biệt rõ giao diện quản trị theo từng vai trò.
+1. **Quản lý tài khoản khách hàng**: khách hàng tự đăng ký/đăng nhập/chỉnh sửa hồ sơ; quản lý (CSKH) có thể thêm khách hàng mới (trường hợp hỗ trợ qua điện thoại), khoá/xoá mềm tài khoản.
+2. **Chăm sóc & phản hồi khách hàng**: tiếp nhận phản hồi, xử lý ticket/chat tập trung thay vì rải rác nhiều kênh.
+3. **Khảo sát khách hàng**: tạo bảng khảo sát, gửi tới khách hàng, khách hàng thực hiện, thống kê kết quả.
+4. **Phân khúc & chiến dịch khách hàng**: nhóm khách hàng theo tiêu chí (LTV, hạng thành viên...), gửi chiến dịch nhắm đúng đối tượng.
+5. **Báo cáo & phân tích khách hàng**: báo cáo độ tuổi/giới tính/trạng thái tài khoản, ngành hàng ưa thích.
 
-### 3.2 Sơ đồ chức năng (BFD)
+### 3.2 Sơ đồ chức năng (BFD) — phân hệ CRM
 
 ```mermaid
 graph TD
-    HT["HỆ THỐNG THÔNG TIN<br/>CHỢ TỐT MUA"]
+    HT["HỆ THỐNG QUẢN LÝ KHÁCH HÀNG<br/>Chợ Tốt Mua"]
 
-    HT --> QL[1. Quản lý Người dùng & Nhân sự]
-    HT --> SP[2. Quản lý Sản phẩm & Kho]
-    HT --> DH[3. Quản lý Đơn hàng & Thanh toán]
-    HT --> MK[4. Marketing & Khuyến mãi]
-    HT --> CRM[5. Chăm sóc Khách hàng & CRM]
+    HT --> TK[1. Quản lý tài khoản khách hàng]
+    HT --> CS[2. Chăm sóc và xử lý phản hồi]
+    HT --> KS[3. Khảo sát khách hàng]
+    HT --> PK[4. Phân khúc khách hàng<br/>và quản lý chiến dịch]
+    HT --> BC[5. Báo cáo và phân tích khách hàng]
 
-    QL --> QL1[Đăng ký / Đăng nhập]
-    QL --> QL2[Quản lý hồ sơ cá nhân]
-    QL --> QL3[Quản lý nhân viên nội bộ]
-    QL --> QL4[Phân quyền theo phòng ban]
+    TK --> TK1[Đăng ký / Đăng nhập]
+    TK --> TK2[Chỉnh sửa hồ sơ cá nhân]
+    TK --> TK3[Thêm khách hàng mới<br/>— nhân viên hỗ trợ qua điện thoại]
+    TK --> TK4[Khoá / Xoá mềm tài khoản]
 
-    SP --> SP1[Quản lý danh mục / thương hiệu]
-    SP --> SP2[Quản lý sản phẩm & biến thể]
-    SP --> SP3[Quản lý kho hàng]
-    SP --> SP4[Theo dõi nhập/xuất tồn kho]
+    CS --> CS1[Gửi phản hồi về sản phẩm<br/>— khách hàng]
+    CS --> CS2[Tiếp nhận và xử lý phản hồi<br/>— nhân viên CSKH]
+    CS --> CS3[Trao đổi qua Ticket / Chat]
 
-    DH --> DH1[Giỏ hàng]
-    DH --> DH2[Đặt hàng / Checkout]
-    DH --> DH3[Thanh toán & Ví điện tử]
-    DH --> DH4[Giao hàng & Vận chuyển]
-    DH --> DH5[Đổi trả & Hoàn tiền]
+    KS --> KS1[Tạo bảng khảo sát]
+    KS --> KS2[Gửi khảo sát tới khách hàng]
+    KS --> KS3[Khách hàng thực hiện khảo sát]
+    KS --> KS4[Thống kê kết quả khảo sát]
 
-    MK --> MK1[Voucher / Mã giảm giá]
-    MK --> MK2[Flash Sale]
-    MK --> MK3[Tích điểm thành viên]
-    MK --> MK4[Đánh giá sản phẩm]
+    PK --> PK1[Phân khúc khách hàng]
+    PK --> PK2[Tạo và gửi chiến dịch<br/>email / SMS / push]
 
-    CRM --> CRM1[Quản lý khách hàng<br/>thêm/khóa/xóa mềm]
-    CRM --> CRM2[Phân khúc khách hàng]
-    CRM --> CRM3[Chiến dịch & Thông báo]
-    CRM --> CRM4[Hỗ trợ / Ticket / Chat]
-    CRM --> CRM5[Khảo sát khách hàng]
-    CRM --> CRM6[Báo cáo nhân khẩu học]
+    BC --> BC1[Báo cáo độ tuổi, giới tính]
+    BC --> BC2[Báo cáo ngành hàng ưa thích]
+    BC --> BC3[Báo cáo trạng thái tài khoản<br/>active / locked / deleted]
 ```
 
-### 3.3 Sơ đồ ngữ cảnh (Context Diagram)
+### 3.3 Sơ đồ ngữ cảnh — DFD mức 0 (Context Diagram) — phân hệ CRM
 
 ```mermaid
 graph LR
-    KH((Khách hàng))
-    NVBH((Nhân viên<br/>Kinh doanh))
-    NVK((Nhân viên<br/>Kho vận))
-    NVCS((Nhân viên<br/>CSKH))
-    ADMIN((Quản trị viên))
-    DVVC((Đơn vị<br/>vận chuyển))
+    KH[Khách hàng]
+    NVCS[Nhân viên CSKH]
+    QL[Người quản lý]
+    BH[Phân hệ bán hàng]
 
-    HT{{"HỆ THỐNG THÔNG TIN<br/>CHỢ TỐT MUA"}}
+    HT(("HỆ THỐNG QUẢN LÝ<br/>KHÁCH HÀNG"))
 
-    KH -- "Đăng ký, đặt hàng,<br/>thanh toán, phản hồi,<br/>trả lời khảo sát" --> HT
-    HT -- "Xác nhận đơn,<br/>trạng thái giao hàng,<br/>thông báo, khảo sát" --> KH
+    KH -- "① Thông tin đăng ký,<br/>chỉnh sửa hồ sơ,<br/>phản hồi, khảo sát" --> HT
+    HT -- "② Xác nhận tài khoản,<br/>phản hồi hỗ trợ,<br/>nội dung khảo sát" --> KH
 
-    NVBH -- "Cập nhật sản phẩm,<br/>giá, khuyến mãi" --> HT
-    HT -- "Báo cáo doanh số" --> NVBH
+    NVCS -- "③ Nội dung xử lý ticket/chat,<br/>khảo sát mới,<br/>chiến dịch mới" --> HT
+    HT -- "④ Danh sách yêu cầu<br/>hỗ trợ chưa xử lý" --> NVCS
 
-    NVK -- "Cập nhật tồn kho,<br/>xác nhận xuất kho" --> HT
-    HT -- "Danh sách đơn cần đóng gói" --> NVK
+    QL -- "⑤ Yêu cầu thêm/khoá/xoá<br/>tài khoản khách hàng" --> HT
+    HT -- "⑥ Báo cáo khách hàng<br/>(độ tuổi, sở thích, trạng thái)" --> QL
 
-    NVCS -- "Xử lý ticket,<br/>trả lời chat,<br/>tạo khảo sát" --> HT
-    HT -- "Danh sách yêu cầu<br/>hỗ trợ chưa xử lý" --> NVCS
-
-    ADMIN -- "Tạo/khóa tài khoản,<br/>phân quyền" --> HT
-    HT -- "Báo cáo tổng hợp,<br/>nhật ký hệ thống" --> ADMIN
-
-    HT -- "Yêu cầu vận chuyển" --> DVVC
-    DVVC -- "Cập nhật tracking" --> HT
+    BH -- "⑦ Đơn hàng vừa giao xong" --> HT
 ```
 
-### 3.4 Sơ đồ luồng dữ liệu mức đỉnh (DFD Level 0)
+### 3.4 Sơ đồ luồng dữ liệu mức 1 — DFD mức 1 (phân rã phân hệ CRM thành 5 tiến trình chính)
 
 ```mermaid
 graph TD
-    KH((Khách hàng))
-    NV((Nhân viên))
-    ADMIN((Quản trị viên))
+    KH[Khách hàng]
+    NVCS[Nhân viên CSKH]
+    QL[Người quản lý]
+    P3EXT["Đơn hàng<br/>(phân hệ bán hàng — ngoài phạm vi CRM)"]
 
-    P1["1.0<br/>Quản lý tài khoản<br/>& phân quyền"]
-    P2["2.0<br/>Quản lý sản phẩm<br/>& tồn kho"]
-    P3["3.0<br/>Xử lý đơn hàng<br/>& thanh toán"]
-    P4["4.0<br/>Marketing<br/>& khuyến mãi"]
-    P5["5.0<br/>CRM & chăm sóc<br/>khách hàng"]
+    P1(("1.0<br/>Quản lý tài khoản<br/>khách hàng"))
+    P2(("2.0<br/>Chăm sóc và<br/>xử lý phản hồi"))
+    P3(("3.0<br/>Khảo sát<br/>khách hàng"))
+    P4(("4.0<br/>Phân khúc khách hàng<br/>và quản lý chiến dịch"))
+    P5(("5.0<br/>Báo cáo và<br/>phân tích khách hàng"))
 
-    D1[(User / Employee)]
-    D2[(Product / ProductVariant<br/>/ InventoryStock)]
-    D3[(Order / Payment)]
-    D4[(Voucher / PromotionProductDetail)]
-    D5[(User CRM fields /<br/>Survey / Conversation)]
+    D1[(D1 Hồ sơ<br/>khách hàng)]
+    D2[(D2 Hồ sơ hỗ trợ<br/>khách hàng)]
+    D3[(D3 Hồ sơ<br/>khảo sát)]
+    D4[(D4 Hồ sơ phân khúc<br/>và chiến dịch)]
 
-    KH -- "Thông tin đăng ký" --> P1
+    KH -- "① Thông tin đăng ký,<br/>chỉnh sửa hồ sơ" --> P1
+    QL -- "② Yêu cầu thêm/khoá/xoá<br/>tài khoản" --> P1
     P1 <--> D1
-    ADMIN -- "Tạo/khóa tài khoản" --> P1
-    NV -- "Thông tin nhân viên" --> P1
+    P1 -- "③ Xác nhận tài khoản" --> KH
 
-    NV -- "Cập nhật sản phẩm/kho" --> P2
+    KH -- "④ Phản hồi,<br/>yêu cầu hỗ trợ" --> P2
+    NVCS -- "⑤ Nội dung trả lời,<br/>xử lý ticket" --> P2
     P2 <--> D2
-    P2 -- "Thông tin sản phẩm" --> KH
+    P2 -- "⑥ Phản hồi" --> KH
+    P2 -- "⑦ Danh sách yêu cầu<br/>hỗ trợ chưa xử lý" --> NVCS
 
-    KH -- "Đặt hàng, thanh toán" --> P3
+    P3EXT -- "⑧ Đơn hàng vừa giao xong" --> P3
+    KH -- "⑨ Câu trả lời khảo sát" --> P3
+    NVCS -- "⑩ Bộ câu hỏi khảo sát" --> P3
     P3 <--> D3
-    P3 -- "Cần đúng tồn kho" --> P2
-    P3 -- "Xác nhận đơn" --> KH
+    P3 -- "⑪ Nội dung khảo sát" --> KH
 
-    NV -- "Tạo voucher/flash sale" --> P4
+    NVCS -- "⑫ Quy tắc phân khúc,<br/>nội dung chiến dịch" --> P4
+    D1 -- "⑬ Dữ liệu khách hàng<br/>(LTV, trạng thái)" --> P4
     P4 <--> D4
-    P4 -- "Ưu đãi áp dụng" --> P3
-    P4 -- "Thông báo khuyến mãi" --> KH
+    P4 -- "⑭ Email / SMS /<br/>thông báo push" --> KH
 
-    P3 -- "Dữ liệu đơn hàng hoàn tất" --> P5
-    KH -- "Phản hồi, trả lời khảo sát" --> P5
-    P5 <--> D5
-    NV -- "Xử lý ticket, tạo khảo sát" --> P5
-    P5 -- "Thông báo, kết quả khảo sát" --> KH
+    D1 -- "⑮ Tuổi / giới tính / trạng thái" --> P5
+    D4 -- "⑯ Danh sách phân khúc" --> P5
+    P5 -- "⑰ Báo cáo khách hàng" --> QL
+```
+
+### 3.5 Sơ đồ luồng dữ liệu mức 2 — DFD mức 2 (phân rã các tiến trình phức tạp)
+
+> DFD mức 2 phải phân rã **từng tiến trình mức 1 thực sự phức tạp thành một sơ đồ riêng** —
+> không gộp chung vào một sơ đồ duy nhất. Trong 5 tiến trình mức 1 (1.0–5.0), chỉ có **2.0
+> Chăm sóc và xử lý phản hồi** và **4.0 Phân khúc khách hàng và quản lý chiến dịch** có logic
+> nghiệp vụ đủ phức tạp để cần phân rã thêm (1.0 và 3.0 phần lớn là CRUD/workflow đơn giản,
+> 5.0 chỉ là truy vấn/tổng hợp dữ liệu nên không phân rã). Trong mỗi sơ đồ con, các bước
+> thuần CRUD đơn giản (1 lệnh thêm/sửa/xoá, không có logic quyết định) không được vẽ thành
+> tiến trình riêng mà gộp vào luồng dữ liệu vào/ra của tiến trình sở hữu chúng — chỉ tiến
+> trình có logic quyết định thực sự (so khớp điều kiện, chọn lựa, tổng hợp nhiều nguồn) mới
+> được tách thành ô riêng và đánh số.
+
+#### 3.5a Phân rã tiến trình 2.0 — Chăm sóc và xử lý phản hồi
+
+> Tách 2 chức năng phức tạp: **2.1 Phân công nhân viên xử lý** (phải chọn nhân viên phù hợp
+> theo tải việc/kỹ năng — có logic quyết định) và **2.2 Trao đổi và xử lý tin nhắn** (xử lý
+> hội thoại hai chiều, theo dõi trạng thái, xác định thời điểm đóng ticket). "Tạo yêu cầu"
+> (1 lệnh thêm bản ghi) và "đóng ticket" (1 lệnh cập nhật trạng thái) gộp vào luồng vào/ra
+> của 2.1/2.2 tương ứng, không vẽ thành ô riêng.
+
+```mermaid
+graph TD
+    KH[Khách hàng]
+    NVCS[Nhân viên CSKH]
+
+    P21(("2.1<br/>Phân công<br/>nhân viên xử lý"))
+    P22(("2.2<br/>Trao đổi và<br/>xử lý tin nhắn"))
+
+    DConv[(D1 Hồ sơ<br/>trao đổi)]
+    DEmp[(D4 Hồ sơ<br/>nhân viên)]
+    DAssign[(D3 Hồ sơ<br/>phân công)]
+    DMsg[(D2 Hồ sơ<br/>tin nhắn)]
+
+    KH -- "① Nội dung yêu cầu<br/>(ticket/chat)" --> P21
+    P21 -- "② Thông báo được phân công" --> NVCS
+    NVCS -- "③ Tin nhắn phản hồi" --> P22
+    KH -- "④ Tin nhắn tiếp theo" --> P22
+    NVCS -- "⑤ Yêu cầu đóng ticket" --> P22
+    P22 -- "⑥ Tin nhắn mới,<br/>thông báo đã giải quyết" --> KH
+
+    P21 --> DConv
+    DEmp <--> P21
+    P21 --> DAssign
+    P22 <--> DMsg
+    P22 --> DConv
+```
+
+> Lưu ý: 4 kho dữ liệu D1–D4 giữ nguyên như trước (CRUD đọc/ghi các kho này không cần đánh
+> số vì không phải luồng nghiệp vụ hai chiều với tác nhân) — chỉ gộp bớt số tiến trình, không
+> gộp bớt kho dữ liệu, vì cả 4 kho đều vẫn thực sự được dùng.
+
+#### 3.5b Phân rã tiến trình 4.0 — Phân khúc khách hàng và quản lý chiến dịch
+
+> Tách 2 chức năng phức tạp: **4.1 Đánh giá và gán phân khúc** (so khớp dữ liệu hành vi/giá
+> trị của từng khách hàng với điều kiện phân khúc do nhân viên thiết lập — có logic quyết
+> định) và **4.2 Tạo và gửi chiến dịch đa kênh** (chọn danh sách mục tiêu, dựng nội dung,
+> gửi qua nhiều kênh Email/SMS/Push — có logic điều phối nhiều nguồn). Đọc hồ sơ khách hàng
+> (D1) để so khớp và ghi/đọc hồ sơ phân khúc (D4) đều là CRUD đơn giản, không đánh số.
+
+```mermaid
+graph TD
+    NVCS[Nhân viên CSKH]
+    KH[Khách hàng]
+
+    P41(("4.1<br/>Đánh giá và<br/>gán phân khúc"))
+    P42(("4.2<br/>Tạo và gửi<br/>chiến dịch đa kênh"))
+
+    D1[(D1 Hồ sơ<br/>khách hàng)]
+    D4[(D4 Hồ sơ phân khúc<br/>và chiến dịch)]
+
+    NVCS -- "① Quy tắc phân khúc mới<br/>(điều kiện, ngưỡng)" --> P41
+    NVCS -- "② Nội dung và kênh<br/>chiến dịch" --> P42
+    P42 -- "③ Email / SMS / Push" --> KH
+
+    D1 --> P41
+    P41 --> D4
+    P42 <--> D4
 ```
 
 ---
@@ -246,7 +312,7 @@ Lược đồ tổng quan (ERD ở dạng class diagram, đã bao gồm khoá ch
 | Trường | Kiểu | Ràng buộc | Mô tả |
 |---|---|---|---|
 | id | UUID | PK | |
-| role | VARCHAR | NOT NULL, mặc định `buyer` | `buyer` / `admin` |
+| role | VARCHAR | NOT NULL, mặc định `buyer` | `buyer` / `staff` (nhân viên nội bộ nói chung — khác `Employee.department = 'admin'` là 1 bộ phận cụ thể) |
 | phone | VARCHAR | UNIQUE | |
 | email | VARCHAR | UNIQUE | |
 | password_hash | VARCHAR | NOT NULL | Mật khẩu đã băm (bcrypt) |

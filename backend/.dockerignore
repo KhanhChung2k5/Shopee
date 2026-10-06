@@ -1,0 +1,7 @@
+target/
+.env
+.git
+.idea
+*.iml
+run.log
+HELP.md
