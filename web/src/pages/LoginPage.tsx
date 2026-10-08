@@ -26,12 +26,10 @@ export default function LoginPage() {
 
     setSubmitting(true)
     try {
-      if (mode === 'login') {
-        await login(emailOrPhone, password)
-      } else {
-        await register(emailOrPhone, '', password, fullName)
-      }
-      navigate('/')
+      const user = mode === 'login' ? await login(emailOrPhone, password) : await register(emailOrPhone, '', password, fullName)
+      // Staff accounts (admin/sales/warehouse/cs) land on the admin console by
+      // default — only buyers see the storefront home.
+      navigate(user.role === 'staff' ? '/admin' : '/')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại')
     } finally {
