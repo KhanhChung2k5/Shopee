@@ -380,6 +380,12 @@ public class OrderService {
                 .orElseThrow(() -> new NoSuchElementException(
                         "Không tìm thấy biến thể sản phẩm đang hoạt động: " + item.getVariantId()
                 ));
+        if (item.getQuantity() > variant.availableQuantity()) {
+            throw new IllegalStateException(
+                    "Số lượng sản phẩm trong giỏ vượt tồn kho. Hiện chỉ còn "
+                            + variant.availableQuantity() + " sản phẩm: " + variant.productName()
+            );
+        }
         BigDecimal lineTotal = variant.unitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
         return new CheckoutLine(variant, item.getQuantity(), lineTotal);
     }

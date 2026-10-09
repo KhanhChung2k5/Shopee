@@ -36,9 +36,17 @@ public class ProductVariantLookup {
                                COALESCE(pv.image_url, p.image_urls ->> 0),
                                pv.price,
                                CAST(pv.attributes AS TEXT),
-                               (pv.status = 'active' AND p.status = 'published')
+                               (pv.status = 'active' AND p.status = 'published'
+                                   AND COALESCE(stock.available_quantity, 0) > 0),
+                               COALESCE(stock.available_quantity, 0)
                         FROM product_variants pv
                         JOIN products p ON p.id = pv.product_id
+                        LEFT JOIN (
+                            SELECT variant_id,
+                                   GREATEST(SUM(quantity - reserved_qty), 0) AS available_quantity
+                            FROM inventory_stocks
+                            GROUP BY variant_id
+                        ) stock ON stock.variant_id = pv.id
                         WHERE pv.id = :variantId
                         """)
                 .setParameter("variantId", variantId)
@@ -55,16 +63,27 @@ public class ProductVariantLookup {
                 (String) row[3],
                 (BigDecimal) row[4],
                 (String) row[5],
-                (Boolean) row[6]
+                (Boolean) row[6],
+                ((Number) row[7]).intValue()
         ));
     }
 
     /** Returns only the Catalog fields P3 must snapshot while creating an order. */
     public Optional<ProductVariantSnapshot> findActiveById(UUID variantId) {
         List<?> results = entityManager.createNativeQuery("""
-                        SELECT pv.id, pv.price, p.name, CAST(pv.attributes AS TEXT)
+                        SELECT pv.id,
+                               pv.price,
+                               p.name,
+                               CAST(pv.attributes AS TEXT),
+                               COALESCE(stock.available_quantity, 0)
                         FROM product_variants pv
                         JOIN products p ON p.id = pv.product_id
+                        LEFT JOIN (
+                            SELECT variant_id,
+                                   GREATEST(SUM(quantity - reserved_qty), 0) AS available_quantity
+                            FROM inventory_stocks
+                            GROUP BY variant_id
+                        ) stock ON stock.variant_id = pv.id
                         WHERE pv.id = :variantId
                           AND pv.status = 'active'
                           AND p.status = 'published'
@@ -83,7 +102,8 @@ public class ProductVariantLookup {
                 (UUID) row[0],
                 (BigDecimal) row[1],
                 (String) row[2],
-                (String) row[3]
+                (String) row[3],
+                ((Number) row[4]).intValue()
         );
     }
 }

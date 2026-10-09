@@ -182,6 +182,26 @@ class OrderServiceTest {
     }
 
     @Test
+    void createFromSelectedCart_rejectsQuantityAboveAvailableStock() {
+        UUID userId = UUID.randomUUID();
+        UUID addressId = UUID.randomUUID();
+        UUID variantId = UUID.randomUUID();
+        when(addressRepository.findById(addressId)).thenReturn(Optional.of(ownedAddress(userId, addressId)));
+        when(cartItemRepository.findByUserIdAndIsSelectedTrueOrderByUpdatedAtAsc(userId))
+                .thenReturn(List.of(new CartItem(userId, variantId, 3)));
+        when(productVariantLookup.findActiveById(variantId)).thenReturn(Optional.of(
+                new ProductVariantSnapshot(
+                        variantId, new BigDecimal("125000.00"), "Tay cầm", "{}", 2
+                )
+        ));
+
+        assertThatThrownBy(() -> orderService.createFromSelectedCart(userId, new OrderCreateRequest(addressId)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("chỉ còn 2");
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
     void createFromSelectedCart_hidesAddressOwnedByAnotherUser() {
         UUID userId = UUID.randomUUID();
         UUID addressId = UUID.randomUUID();

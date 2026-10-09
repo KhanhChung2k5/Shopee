@@ -11,6 +11,18 @@ public record CartProductSnapshot(
         String imageUrl,
         BigDecimal unitPrice,
         String attributesJson,
-        boolean available
+        boolean available,
+        int availableQuantity
 ) {
+    public CartProductSnapshot(
+            UUID variantId,
+            String productName,
+            String productType,
+            String imageUrl,
+            BigDecimal unitPrice,
+            String attributesJson,
+            boolean available
+    ) {
+        this(variantId, productName, productType, imageUrl, unitPrice, attributesJson, available, Integer.MAX_VALUE);
+    }
 }

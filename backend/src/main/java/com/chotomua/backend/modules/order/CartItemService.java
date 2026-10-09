@@ -39,10 +39,15 @@ public class CartItemService {
 
         CartItem item = cartItemRepository.findByUserIdAndVariantId(userId, request.variantId())
                 .map(existing -> {
-                    existing.setQuantity(safeAdd(existing.getQuantity(), request.quantity()));
+                    int nextQuantity = safeAdd(existing.getQuantity(), request.quantity());
+                    requireAvailableStock(request.variantId(), nextQuantity);
+                    existing.setQuantity(nextQuantity);
                     return existing;
                 })
-                .orElseGet(() -> new CartItem(userId, request.variantId(), request.quantity()));
+                .orElseGet(() -> {
+                    requireAvailableStock(request.variantId(), request.quantity());
+                    return new CartItem(userId, request.variantId(), request.quantity());
+                });
 
         return toResponse(cartItemRepository.save(item));
     }
@@ -50,6 +55,7 @@ public class CartItemService {
     @Transactional
     public CartItemResponse updateQuantity(UUID userId, UUID itemId, CartItemQuantityRequest request) {
         CartItem item = requireOwnedItem(userId, itemId);
+        requireAvailableStock(item.getVariantId(), request.quantity());
         item.setQuantity(request.quantity());
         return toResponse(cartItemRepository.save(item));
     }
@@ -83,5 +89,15 @@ public class CartItemService {
         } catch (ArithmeticException ex) {
             throw new IllegalArgumentException("Số lượng sản phẩm vượt quá giới hạn");
         }
+    }
+
+    private void requireAvailableStock(UUID variantId, int requestedQuantity) {
+        productVariantLookup.findCartProductById(variantId).ifPresent(product -> {
+            if (requestedQuantity > product.availableQuantity()) {
+                throw new IllegalArgumentException(
+                        "Số lượng yêu cầu vượt tồn kho. Hiện chỉ còn " + product.availableQuantity() + " sản phẩm"
+                );
+            }
+        });
     }
 }

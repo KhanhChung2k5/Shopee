@@ -8,6 +8,15 @@ public record ProductVariantSnapshot(
         UUID variantId,
         BigDecimal unitPrice,
         String productName,
-        String attributesJson
+        String attributesJson,
+        int availableQuantity
 ) {
+    public ProductVariantSnapshot(
+            UUID variantId,
+            BigDecimal unitPrice,
+            String productName,
+            String attributesJson
+    ) {
+        this(variantId, unitPrice, productName, attributesJson, Integer.MAX_VALUE);
+    }
 }

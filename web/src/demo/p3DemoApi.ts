@@ -197,6 +197,13 @@ function productForVariant(variantId: string): Product | undefined {
   return index >= 0 ? ALL_PRODUCTS[index] : undefined
 }
 
+// P3-DEMO-INTEGRATION-SEAM: deterministic fake stock until P2 exposes
+// availableQuantity from Inventory. Real requests receive this from Cart API.
+function demoAvailableQuantity(variantId: string) {
+  const index = ALL_PRODUCTS.findIndex((_, productIndex) => productVariantId(productIndex) === variantId)
+  return index < 0 ? 0 : 5 + (index % 8)
+}
+
 function parseBody(options: RequestInit): Record<string, unknown> {
   if (typeof options.body !== 'string' || options.body.length === 0) return {}
   try {
@@ -215,7 +222,8 @@ function cartResponse(item: DemoCartItem) {
     imageUrl: product?.imageUrl ?? null,
     unitPrice: product?.price ?? null,
     attributesJson: product ? JSON.stringify({ nềnTảng: product.platforms?.join(', ') ?? 'PS5' }) : null,
-    available: Boolean(product),
+    available: Boolean(product) && demoAvailableQuantity(item.variantId) > 0,
+    availableQuantity: demoAvailableQuantity(item.variantId),
   }
 }
 
@@ -331,7 +339,12 @@ export async function p3DemoFetch<T>(path: string, options: RequestInit = {}): P
     requireItem(productForVariant(variantId), 'Sản phẩm demo không tồn tại')
     const quantity = Math.max(1, Number(body.quantity ?? 1))
     let item = state.cartItems.find((entry) => entry.variantId === variantId)
-    if (item) item.quantity += quantity
+    const nextQuantity = item ? item.quantity + quantity : quantity
+    const availableQuantity = demoAvailableQuantity(variantId)
+    if (!Number.isSafeInteger(nextQuantity) || nextQuantity > availableQuantity) {
+      throw new P3DemoError(400, `Kho chỉ còn ${availableQuantity} sản phẩm`)
+    }
+    if (item) item.quantity = nextQuantity
     else {
       item = { id: createId(), variantId, quantity, isSelected: true, updatedAt: new Date().toISOString() }
       state.cartItems.push(item)
@@ -351,7 +364,12 @@ export async function p3DemoFetch<T>(path: string, options: RequestInit = {}): P
   const cartMatch = pathname.match(/^\/cart-items\/([^/]+)$/)
   if (cartMatch && method === 'PATCH') {
     const item = requireItem(state.cartItems.find((entry) => entry.id === cartMatch[1]), 'Không tìm thấy sản phẩm trong giỏ')
-    item.quantity = Math.max(1, Number(body.quantity ?? item.quantity))
+    const quantity = Math.max(1, Number(body.quantity ?? item.quantity))
+    const availableQuantity = demoAvailableQuantity(item.variantId)
+    if (!Number.isSafeInteger(quantity) || quantity > availableQuantity) {
+      throw new P3DemoError(400, `Kho chỉ còn ${availableQuantity} sản phẩm`)
+    }
+    item.quantity = quantity
     item.updatedAt = new Date().toISOString()
     writeState(state)
     return response(cartResponse(item) as T)
@@ -366,6 +384,8 @@ export async function p3DemoFetch<T>(path: string, options: RequestInit = {}): P
     const address = requireItem(state.addresses.find((entry) => entry.id === body.addressId), 'Vui lòng chọn địa chỉ giao hàng')
     const selected = state.cartItems.filter((item) => item.isSelected)
     if (selected.length === 0) throw new P3DemoError(400, 'Giỏ hàng chưa có sản phẩm được chọn')
+    const overStockItem = selected.find((item) => item.quantity > demoAvailableQuantity(item.variantId))
+    if (overStockItem) throw new P3DemoError(400, `Kho chỉ còn ${demoAvailableQuantity(overStockItem.variantId)} sản phẩm`)
     const items: DemoOrderItem[] = selected.map((cartItem) => {
       const product = requireItem(productForVariant(cartItem.variantId), 'Sản phẩm không còn khả dụng')
       return {

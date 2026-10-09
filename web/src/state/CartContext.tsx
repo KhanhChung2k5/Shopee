@@ -23,6 +23,7 @@ interface CartItemApiResponse {
   quantity: number
   isSelected: boolean
   available: boolean
+  availableQuantity: number
   updatedAt: string
 }
 
@@ -33,6 +34,7 @@ export interface CartLine {
   quantity: number
   isSelected: boolean
   available: boolean
+  availableQuantity: number | null
   source: 'api' | 'sample'
   product: Product
 }
@@ -71,6 +73,7 @@ function apiLine(item: CartItemApiResponse): CartLine {
     quantity: item.quantity,
     isSelected: item.isSelected,
     available: item.available,
+    availableQuantity: item.availableQuantity,
     source: 'api',
     product: {
       id: item.variantId,
@@ -93,6 +96,7 @@ function sampleLine(product: Product, quantity: number): CartLine {
     quantity,
     isSelected: true,
     available: true,
+    availableQuantity: null,
     source: 'sample',
     product,
   }

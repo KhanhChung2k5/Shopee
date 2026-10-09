@@ -101,6 +101,25 @@ class CartItemServiceTest {
     }
 
     @Test
+    void add_rejectsQuantityAboveAvailableStock() {
+        UUID userId = UUID.randomUUID();
+        UUID variantId = UUID.randomUUID();
+        when(productVariantLookup.existsActiveById(variantId)).thenReturn(true);
+        when(cartItemRepository.findByUserIdAndVariantId(userId, variantId)).thenReturn(Optional.empty());
+        when(productVariantLookup.findCartProductById(variantId)).thenReturn(Optional.of(
+                new CartProductSnapshot(
+                        variantId, "DualSense", "controller", null,
+                        new BigDecimal("2299000.00"), "{}", true, 2
+                )
+        ));
+
+        assertThatThrownBy(() -> cartItemService.add(userId, new CartItemCreateRequest(variantId, 3)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("chỉ còn 2");
+        verify(cartItemRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void updateQuantity_requiresItemOwnedByCurrentUser() {
         UUID userId = UUID.randomUUID();
         UUID itemId = UUID.randomUUID();
@@ -111,6 +130,27 @@ class CartItemServiceTest {
                 itemId,
                 new CartItemQuantityRequest(4)
         )).isInstanceOf(NoSuchElementException.class);
+    }
+
+    @Test
+    void updateQuantity_rejectsQuantityAboveAvailableStock() {
+        UUID userId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+        UUID variantId = UUID.randomUUID();
+        CartItem item = new CartItem(userId, variantId, 1);
+        when(cartItemRepository.findByIdAndUserId(itemId, userId)).thenReturn(Optional.of(item));
+        when(productVariantLookup.findCartProductById(variantId)).thenReturn(Optional.of(
+                new CartProductSnapshot(
+                        variantId, "DualSense", "controller", null,
+                        new BigDecimal("2299000.00"), "{}", true, 4
+                )
+        ));
+
+        assertThatThrownBy(() -> cartItemService.updateQuantity(
+                userId, itemId, new CartItemQuantityRequest(5)
+        )).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("chỉ còn 4");
+        verify(cartItemRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     @Test

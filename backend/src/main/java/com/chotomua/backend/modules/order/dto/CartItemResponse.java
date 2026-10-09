@@ -17,6 +17,7 @@ public record CartItemResponse(
         int quantity,
         boolean isSelected,
         boolean available,
+        int availableQuantity,
         OffsetDateTime updatedAt
 ) {
     public static CartItemResponse from(CartItem item, CartProductSnapshot product) {
@@ -31,6 +32,7 @@ public record CartItemResponse(
                 item.getQuantity(),
                 item.getIsSelected(),
                 product != null && product.available(),
+                product == null ? 0 : product.availableQuantity(),
                 item.getUpdatedAt()
         );
     }
