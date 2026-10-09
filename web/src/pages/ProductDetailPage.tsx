@@ -5,7 +5,10 @@ import { fetchProduct, formatVnd, resolveCatalogImageUrl, type CatalogProduct, t
 import { CONNECTION_LABELS, discountPercent, findProduct, type Product } from '../data/sampleProducts'
 import { useCart } from '../state/CartContext'
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+// The catalog contains deterministic UUID-shaped IDs for demo products. They
+// are accepted by the backend's UUID parser even when they do not carry an
+// RFC version/variant nibble, so validate the textual shape only here.
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function attributesLabel(attributes: Record<string, unknown> | string[] | null) {
   if (!attributes) return ''

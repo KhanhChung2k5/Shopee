@@ -2,10 +2,12 @@ package com.chotomua.backend.modules.catalog;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,13 +27,16 @@ public class InventoryController {
     private final InventoryMovementRepository movements;
     private final ProductVariantRepository variants;
     private final WarehouseRepository warehouses;
+    private final InventoryStockService inventoryStockService;
 
     public InventoryController(InventoryStockRepository stocks, InventoryMovementRepository movements,
-                               ProductVariantRepository variants, WarehouseRepository warehouses) {
+                               ProductVariantRepository variants, WarehouseRepository warehouses,
+                               InventoryStockService inventoryStockService) {
         this.stocks = stocks;
         this.movements = movements;
         this.variants = variants;
         this.warehouses = warehouses;
+        this.inventoryStockService = inventoryStockService;
     }
 
     @GetMapping("/stocks")
@@ -75,6 +80,18 @@ public class InventoryController {
         return StockResponse.from(savedStock);
     }
 
+    @PostMapping("/exports")
+    @Transactional
+    public StockResponse exportStock(@Valid @RequestBody ExportStockRequest request) {
+        ProductVariant variant = variants.findById(request.variantId())
+                .orElseThrow(() -> new CatalogNotFoundException("Product variant not found: " + request.variantId()));
+        Warehouse warehouse = warehouses.findById(request.warehouseId())
+                .orElseThrow(() -> new CatalogNotFoundException("Warehouse not found: " + request.warehouseId()));
+        InventoryStock updated = inventoryStockService.exportStock(warehouse.getId(),
+                new InventoryStockService.ExportLine(variant.getId(), request.quantity()));
+        return StockResponse.from(updated);
+    }
+
     @GetMapping("/stocks/{stockId}/movements")
     @Transactional(readOnly = true)
     public List<MovementResponse> movements(@PathVariable UUID stockId) {
@@ -86,6 +103,10 @@ public class InventoryController {
     }
 
     public record SetStockRequest(@NotNull @PositiveOrZero Integer quantity) {
+    }
+
+    public record ExportStockRequest(@NotNull UUID variantId, @NotNull UUID warehouseId,
+                                     @NotNull @Positive Integer quantity) {
     }
 
     public record StockResponse(UUID id, UUID variantId, String sku, UUID warehouseId, String warehouseName,

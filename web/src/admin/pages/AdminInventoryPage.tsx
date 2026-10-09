@@ -70,6 +70,23 @@ export default function AdminInventoryPage() {
     }
   }
 
+  const exportStock = async (stock: InventoryStock) => {
+    const entered = window.prompt(`Số lượng xuất cho SKU ${stock.sku} (khả dụng ${stock.availableQuantity}):`, '1')
+    if (entered == null || entered.trim() === '') return
+    const quantity = Number(entered)
+    if (!Number.isInteger(quantity) || quantity < 1) { setError('Số lượng xuất phải là số nguyên lớn hơn 0.'); return }
+    if (quantity > stock.availableQuantity) { setError(`Chỉ còn ${stock.availableQuantity} sản phẩm khả dụng để xuất.`); return }
+    try {
+      await apiFetch('/api/catalog/inventory/exports', {
+        method: 'POST',
+        body: JSON.stringify({ variantId: stock.variantId, warehouseId: stock.warehouseId, quantity }),
+      }, token)
+      await refresh()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Không xuất được số lượng tồn kho đã chọn.')
+    }
+  }
+
   return <div>
     <div className="admin-toolbar">
       <h1 style={{ margin: 0 }}>Tồn kho ({filtered.length})</h1>
@@ -83,18 +100,18 @@ export default function AdminInventoryPage() {
     {error && <p role="alert" style={{ color: 'var(--color-urgent)' }}>{error}</p>}
     {lowStock > 0 && <div className="admin-bulk-bar" style={{ background: 'var(--color-urgent-light)', borderColor: 'var(--color-urgent)' }}>⚠ {lowStock} biến thể sắp hết hàng (khả dụng dưới 30)</div>}
     {loading ? <p>Đang tải tồn kho…</p> : <div className="admin-table-wrap"><table className="admin-table">
-      <thead><tr><th>SKU / biến thể</th><th>Kho</th><th>Tồn thực tế</th><th>Đã giữ</th><th>Khả dụng</th><th></th></tr></thead>
+      <thead><tr><th>SKU / biến thể</th><th>Kho</th><th>Tồn thực tế</th><th>Đã giữ</th><th>Khả dụng</th><th>Thao tác</th></tr></thead>
       <tbody>{filtered.map((stock) => <tr key={stock.id} className={selected?.id === stock.id ? 'is-selected' : ''}>
         <td><button className="admin-link-button" type="button" onClick={() => setSelected(stock)}>{stock.sku}</button></td>
         <td>{stock.warehouseName}</td><td>{stock.quantity}</td><td>{stock.reservedQuantity}</td>
         <td style={{ color: stock.availableQuantity < 30 ? 'var(--color-urgent)' : undefined, fontWeight: stock.availableQuantity < 30 ? 700 : 400 }}>{stock.availableQuantity}</td>
-        <td><button type="button" className="button button--outline" onClick={() => void adjust(stock)}>Điều chỉnh</button></td>
+        <td><div className="admin-row-actions"><button type="button" className="button button--outline" onClick={() => void adjust(stock)}>Điều chỉnh</button><button type="button" className="button button--outline" disabled={stock.availableQuantity < 1} onClick={() => void exportStock(stock)}>Xuất kho</button></div></td>
       </tr>)}</tbody>
     </table>{filtered.length === 0 && <p className="admin-empty">Chưa có dữ liệu tồn kho.</p>}</div>}
     {selected && <section className="admin-receipt-history">
       <div className="admin-toolbar"><h2 style={{ margin: 0 }}>Lịch sử · {selected.sku} / {selected.warehouseName}</h2><button className="button button--outline" type="button" onClick={() => setSelected(null)}>Đóng</button></div>
       {movements.length === 0 ? <p>Chưa có biến động tồn kho.</p> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Thời gian</th><th>Loại</th><th>Số lượng thay đổi</th><th>Tham chiếu</th></tr></thead><tbody>
-        {movements.map((movement) => <tr key={movement.id}><td>{new Date(movement.occurredAt).toLocaleString('vi-VN')}</td><td>{movementLabel[movement.type]}</td><td>{movement.quantity > 0 ? '+' : ''}{movement.quantity}</td><td>{movement.goodsReceiptId ?? movement.orderId ?? 'Điều chỉnh thủ công'}</td></tr>)}
+        {movements.map((movement) => <tr key={movement.id}><td>{new Date(movement.occurredAt).toLocaleString('vi-VN')}</td><td>{movementLabel[movement.type]}</td><td>{movement.quantity > 0 ? '+' : ''}{movement.quantity}</td><td>{movement.goodsReceiptId ?? movement.orderId ?? (movement.type === 'export' ? 'Xuất kho thủ công' : 'Điều chỉnh thủ công')}</td></tr>)}
       </tbody></table></div>}
     </section>}
   </div>

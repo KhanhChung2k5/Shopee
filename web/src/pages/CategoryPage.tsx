@@ -8,6 +8,25 @@ import { CATEGORIES, categorySlug, productsByCategorySlug } from '../data/sample
 import { useProductFilters } from '../state/useProductFilters'
 
 const PAGE_SIZE = 12
+const API_PAGE_SIZE = 100
+
+async function fetchCategoryProducts(categoryId: string) {
+  const firstPage = await fetchProducts(new URLSearchParams({
+    categoryId,
+    page: '0',
+    size: String(API_PAGE_SIZE),
+  }))
+  const products = [...firstPage.content]
+  for (let page = 1; page < firstPage.totalPages; page += 1) {
+    const nextPage = await fetchProducts(new URLSearchParams({
+      categoryId,
+      page: String(page),
+      size: String(API_PAGE_SIZE),
+    }))
+    products.push(...nextPage.content)
+  }
+  return products
+}
 
 function SampleCategoryPage({ slug, name }: { slug: string; name: string }) {
   const filters = useProductFilters(productsByCategorySlug(slug))
@@ -51,10 +70,8 @@ export default function CategoryPage() {
         const found = categories.find((item) => item.slug === slug) ?? null
         if (found) {
           setCategory(found)
-          const params = new URLSearchParams({ categoryId: found.id, page: '0', size: '100' })
-          const result = await fetchProducts(params)
+          const categoryProducts = await fetchCategoryProducts(found.id)
           if (!active) return
-          const categoryProducts = result.content.filter((product) => product.categoryId === found.id)
           setProducts(categoryProducts)
           const sampleCategory = CATEGORIES.find((item) => categorySlug(item.label) === slug)
           setUsingSampleData(categoryProducts.length === 0 && !!sampleCategory)

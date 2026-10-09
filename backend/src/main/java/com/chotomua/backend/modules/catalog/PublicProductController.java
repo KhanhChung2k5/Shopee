@@ -17,6 +17,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -29,12 +33,14 @@ public class PublicProductController {
     private final ProductRepository products;
     private final ProductVariantRepository variants;
     private final InventoryStockRepository stocks;
+    private final CategoryRepository categories;
 
     public PublicProductController(ProductRepository products, ProductVariantRepository variants,
-                                   InventoryStockRepository stocks) {
+                                   InventoryStockRepository stocks, CategoryRepository categories) {
         this.products = products;
         this.variants = variants;
         this.stocks = stocks;
+        this.categories = categories;
     }
 
     @GetMapping
@@ -49,8 +55,12 @@ public class PublicProductController {
             throw new IllegalArgumentException("page must be >= 0 and size must be between 1 and 100.");
         }
 
-        Page<Product> result = products.findPublishedProducts(categoryId, normalize(brandName),
-                normalize(productType), normalize(search), PageRequest.of(page, size));
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Product> result = categoryId == null
+                ? products.findPublishedProducts(null, normalize(brandName), normalize(productType),
+                        normalize(search), pageable)
+                : products.findPublishedProductsInCategories(categoryTree(categoryId), normalize(brandName),
+                        normalize(productType), normalize(search), pageable);
         List<UUID> productIds = result.getContent().stream().map(Product::getId).toList();
         Map<UUID, List<ProductVariant>> variantsByProduct = productIds.isEmpty() ? Map.of()
                 : variants.findByProduct_IdInAndStatus(productIds, "active").stream()
@@ -86,6 +96,21 @@ public class PublicProductController {
     private String normalize(String value) {
         if (value == null || value.isBlank()) return "";
         return value.trim();
+    }
+
+    private Set<UUID> categoryTree(UUID rootId) {
+        Set<UUID> result = new LinkedHashSet<>();
+        Deque<UUID> pending = new ArrayDeque<>();
+        result.add(rootId);
+        pending.add(rootId);
+        while (!pending.isEmpty()) {
+            UUID parentId = pending.removeFirst();
+            for (Category child : categories.findByParent_Id(parentId)) {
+                UUID childId = child.getId();
+                if (childId != null && result.add(childId)) pending.addLast(childId);
+            }
+        }
+        return result;
     }
 
     public record PageResponse<T>(List<T> content, int page, int size, long totalElements, int totalPages) {

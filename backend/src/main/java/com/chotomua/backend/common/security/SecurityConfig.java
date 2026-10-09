@@ -70,8 +70,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Vite dev server origins (web + admin run from the same React app).
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://127.0.0.1:5173"));
+        // Vite web app and Flutter web dev server origins.
+        config.setAllowedOrigins(List.of("http://localhost:5173", "http://127.0.0.1:5173",
+                "http://localhost:5000", "http://127.0.0.1:5000"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

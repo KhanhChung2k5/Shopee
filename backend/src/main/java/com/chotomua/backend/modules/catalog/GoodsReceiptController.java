@@ -34,18 +34,16 @@ public class GoodsReceiptController {
     private final EmployeeRepository employees;
     private final WarehouseRepository warehouses;
     private final ProductVariantRepository variants;
-    private final InventoryStockRepository stocks;
-    private final InventoryMovementRepository movements;
+    private final InventoryStockService inventoryStockService;
 
     public GoodsReceiptController(GoodsReceiptRepository receipts, EmployeeRepository employees,
                                   WarehouseRepository warehouses, ProductVariantRepository variants,
-                                  InventoryStockRepository stocks, InventoryMovementRepository movements) {
+                                  InventoryStockService inventoryStockService) {
         this.receipts = receipts;
         this.employees = employees;
         this.warehouses = warehouses;
         this.variants = variants;
-        this.stocks = stocks;
-        this.movements = movements;
+        this.inventoryStockService = inventoryStockService;
     }
 
     @GetMapping
@@ -92,17 +90,10 @@ public class GoodsReceiptController {
         GoodsReceipt receipt = receipts.findByIdForUpdate(id)
                 .orElseThrow(() -> new CatalogNotFoundException("Goods receipt not found: " + id));
         requirePending(receipt);
-        for (GoodsReceiptItem item : receipt.getItems()) {
-            InventoryStock stock = stocks.findByVariant_IdAndWarehouse_Id(
-                            item.getVariant().getId(), receipt.getWarehouse().getId())
-                    .orElseGet(() -> new InventoryStock(item.getVariant(), receipt.getWarehouse()));
-            stock.setQuantity(Math.addExact(stock.getQuantity(), item.getQuantity()));
-            InventoryStock savedStock = stocks.save(stock);
-
-            InventoryMovement movement = new InventoryMovement(savedStock, "import", item.getQuantity());
-            movement.setGoodsReceiptId(receipt.getId());
-            movements.save(movement);
-        }
+        List<InventoryStockService.ImportLine> importLines = receipt.getItems().stream()
+                .map(item -> new InventoryStockService.ImportLine(item.getVariant(), item.getQuantity()))
+                .toList();
+        inventoryStockService.importForReceipt(receipt.getId(), receipt.getWarehouse(), importLines);
         receipt.setStatus("approved");
         return GoodsReceiptResponse.from(receipts.save(receipt));
     }
