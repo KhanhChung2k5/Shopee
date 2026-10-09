@@ -1,6 +1,7 @@
 package com.chotomua.backend.common.security;
 
 import java.util.List;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -41,6 +42,18 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/health", "/auth/register", "/auth/login").permitAll()
+                // Published product discovery is available to shoppers without a JWT.
+                .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/catalog/categories", "/api/catalog/categories/**")
+                    .permitAll()
+                .requestMatchers("/api/catalog/warehouses/**", "/api/catalog/goods-receipts/**",
+                    "/api/catalog/inventory/**")
+                    .hasAnyAuthority("DEPT_WAREHOUSE", "DEPT_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/catalog/product-variants",
+                    "/api/catalog/product-variants/**")
+                    .hasAnyAuthority("DEPT_SALES", "DEPT_WAREHOUSE", "DEPT_ADMIN")
+                .requestMatchers("/api/catalog/categories/**", "/api/catalog/products/**",
+                    "/api/catalog/product-variants/**").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
                 // Only staff in the "admin" department may create internal employee accounts.
                 .requestMatchers("/employees/**").hasAuthority("DEPT_ADMIN")
                 .anyRequest().authenticated()

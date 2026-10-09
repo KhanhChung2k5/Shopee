@@ -21,6 +21,7 @@ export const ADMIN_SECTION_ACCESS: Record<string, Department[]> = {
   '/admin': ['sales', 'warehouse', 'admin', 'cs'],
   '/admin/san-pham': ['sales', 'admin'],
   '/admin/kho': ['warehouse', 'admin'],
+  '/admin/phieu-nhap': ['warehouse', 'admin'],
   '/admin/don-hang': ['sales', 'warehouse', 'admin'],
   '/admin/marketing': ['sales', 'admin'],
   '/admin/khach-hang': ['cs', 'admin'],

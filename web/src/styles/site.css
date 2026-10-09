@@ -366,6 +366,17 @@ button { font: inherit; cursor: pointer; }
 .product-detail__badge { background: var(--color-urgent); color: #fff; font-weight: 800; font-size: 12px; padding: 3px 8px; border-radius: 5px; }
 .product-detail__meta { display: flex; gap: var(--space-4); color: var(--color-muted-foreground); font-size: 13.5px; margin-bottom: var(--space-4); }
 .product-detail__specs { margin: 0 0 var(--space-4); display: flex; flex-direction: column; gap: 6px; background: var(--color-background); border-radius: var(--radius-sm); padding: var(--space-3); }
+.product-detail__variant-picker { min-height: 96px; }
+.product-detail__variant-option { display: flex; align-items: center; gap: 8px; margin-block: 8px; }
+.product-detail__variant-empty { display: flex; align-items: center; min-height: 38px; margin: 0; color: var(--color-muted-foreground); font-size: 13.5px; }
+.product-detail__spec-section { margin: 0 0 var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-3); background: var(--color-background); }
+.product-detail__spec-section h2 { margin: 0 0 var(--space-3); font-size: 16px; }
+.product-detail__spec-list { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+.product-detail__spec-list > div { display: grid; grid-template-columns: minmax(100px, 0.8fr) minmax(0, 1.2fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--color-border); font-size: 13.5px; }
+.product-detail__spec-list > div:nth-last-child(-n + 2) { border-bottom: 0; }
+.product-detail__spec-list dt { color: var(--color-muted-foreground); margin: 0; }
+.product-detail__spec-list dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.product-detail__spec-empty { margin: 0; color: var(--color-muted-foreground); font-size: 13.5px; }
 .product-detail__specs > div { display: flex; gap: var(--space-2); font-size: 13.5px; }
 .product-detail__specs dt { color: var(--color-muted-foreground); min-width: 140px; margin: 0; }
 .product-detail__specs dd { margin: 0; font-weight: 600; }
@@ -482,6 +493,9 @@ button { font: inherit; cursor: pointer; }
 }
 
 @media (max-width: 480px) {
+  .product-detail__spec-list { grid-template-columns: 1fr; }
+  .product-detail__spec-list > div:nth-last-child(-n + 2) { border-bottom: 1px solid var(--color-border); }
+  .product-detail__spec-list > div:last-child { border-bottom: 0; }
   .product-grid { grid-template-columns: repeat(2, 1fr); }
   .category-grid { grid-template-columns: repeat(3, 1fr); }
   .hero-side { display: none; }

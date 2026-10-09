@@ -100,12 +100,13 @@ export default function CheckoutPage() {
           <section className="checkout-section">
             <p className="checkout-section__title">Sản phẩm trong đơn ({lines.length})</p>
             {lines.map((l) => (
-              <div className="checkout-line" key={l.productId}>
+              <div className="checkout-line" key={l.lineKey}>
                 <div className="checkout-line__media">
                   <ProductThumb seed={l.product.thumbSeed} productType={l.product.productType} imageUrl={l.product.imageUrl} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p className="checkout-line__name">{l.product.name}</p>
+                  {l.variantLabel && <p className="checkout-line__qty">Biến thể: {l.variantLabel}</p>}
                   <p className="checkout-line__qty">Số lượng: {l.quantity}</p>
                 </div>
                 <strong style={{ fontSize: 13.5 }}>{formatVnd(l.product.price * l.quantity)}</strong>

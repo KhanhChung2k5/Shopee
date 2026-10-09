@@ -27,21 +27,22 @@ export default function CartPage() {
         <div>
           <h1 className="section-title">Giỏ hàng ({lines.length})</h1>
           {lines.map((l) => (
-            <div className="cart-item" key={l.productId}>
+            <div className="cart-item" key={l.lineKey}>
               <div className="cart-item__media">
                 <ProductThumb seed={l.product.thumbSeed} productType={l.product.productType} imageUrl={l.product.imageUrl} />
               </div>
               <div className="cart-item__body">
                 <p className="cart-item__name">{l.product.name}</p>
+                {l.variantLabel && <p className="cart-item__name">Biến thể: {l.variantLabel}</p>}
                 <div className="qty-stepper">
-                  <button type="button" onClick={() => setQuantity(l.productId, l.quantity - 1)} aria-label="Giảm số lượng">−</button>
+                  <button type="button" onClick={() => setQuantity(l.lineKey, l.quantity - 1)} aria-label="Giảm số lượng">−</button>
                   <span>{l.quantity}</span>
-                  <button type="button" onClick={() => setQuantity(l.productId, l.quantity + 1)} aria-label="Tăng số lượng">+</button>
+                  <button type="button" disabled={l.availableQuantity != null && l.quantity >= l.availableQuantity} onClick={() => setQuantity(l.lineKey, l.quantity + 1)} aria-label="Tăng số lượng">+</button>
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <p className="cart-item__price">{formatVnd(l.product.price * l.quantity)}</p>
-                <button className="cart-item__remove" type="button" onClick={() => removeItem(l.productId)}>Xoá</button>
+                <button className="cart-item__remove" type="button" onClick={() => removeItem(l.lineKey)}>Xoá</button>
               </div>
             </div>
           ))}

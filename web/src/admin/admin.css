@@ -120,6 +120,28 @@
 
 .admin-toolbar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); flex-wrap: wrap; }
 
+.catalog-form {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;
+  padding: var(--space-4); margin-bottom: var(--space-4); background: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: var(--radius-md);
+}
+.catalog-form__heading, .catalog-form__wide, .catalog-form__actions { grid-column: 1 / -1; }
+.catalog-form__heading { display: flex; align-items: center; justify-content: space-between; }
+.catalog-form__heading h2 { margin: 0; font-size: 18px; }
+.catalog-form label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; }
+.catalog-form input, .catalog-form select, .catalog-form textarea {
+  width: 100%; min-width: 0; padding: 9px 10px; color: var(--color-foreground);
+  background: var(--color-background); border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+}
+.catalog-form small { color: var(--color-muted-foreground); font-weight: 400; }
+.catalog-form__actions { display: flex; justify-content: flex-end; }
+.receipt-line { display: grid; grid-template-columns: 2fr 1fr 1fr auto; align-items: end; gap: 10px; padding-block: 10px; border-bottom: 1px solid var(--color-border); }
+.admin-row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.admin-row-actions .button { padding: 6px 10px; font-size: 12px; }
+.admin-link-button { padding: 0; color: var(--color-primary-dark); background: none; border: none; font: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; }
+.admin-receipt-history { margin-top: var(--space-5); }
+@media (max-width: 700px) { .catalog-form { grid-template-columns: 1fr; } .receipt-line { grid-template-columns: 1fr; } }
+
 .admin-dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-3); align-items: start; }
 .admin-table--compact th, .admin-table--compact td { padding: 6px 4px; font-size: 13px; }
 .admin-quick-links { display: flex; flex-direction: column; gap: var(--space-3); }

@@ -66,6 +66,9 @@ public class Product {
     @Column(name = "warranty_months")
     private Integer warrantyMonths;
 
+    @Column(name = "origin_country", length = 100)
+    private String originCountry;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "image_urls", columnDefinition = "jsonb")
     private JsonNode imageUrls;
@@ -183,6 +186,14 @@ public class Product {
 
     public void setWarrantyMonths(Integer warrantyMonths) {
         this.warrantyMonths = warrantyMonths;
+    }
+
+    public String getOriginCountry() {
+        return originCountry;
+    }
+
+    public void setOriginCountry(String originCountry) {
+        this.originCountry = originCountry;
     }
 
     public JsonNode getImageUrls() {

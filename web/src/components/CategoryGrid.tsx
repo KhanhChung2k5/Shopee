@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CATEGORIES, categorySlug } from '../data/sampleProducts'
+import { cacheCategories, fetchCategories, getCachedCategories, type CatalogCategory } from '../lib/catalog'
 import { useRevealOnScroll } from '../state/useRevealOnScroll'
 
 const ICONS: Record<string, string> = {
@@ -11,25 +12,57 @@ const ICONS: Record<string, string> = {
 
 export default function CategoryGrid() {
   const revealRef = useRevealOnScroll<HTMLUListElement>()
+  const [categories, setCategories] = useState<CatalogCategory[]>(getCachedCategories)
+  const [loading, setLoading] = useState(true)
+  const [message, setMessage] = useState('')
+  const [retryKey, setRetryKey] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    fetchCategories()
+      .then((items) => {
+        if (!active) return
+        setCategories(items)
+        cacheCategories(items)
+        setMessage(items.length === 0 ? 'Database hiện chưa có danh mục.' : '')
+      })
+      .catch(() => {
+        if (!active) return
+        const cached = getCachedCategories()
+        setCategories(cached)
+        setMessage(cached.length > 0
+          ? 'API đang mất kết nối; đang giữ danh mục đã tải gần nhất.'
+          : 'Không tải được danh mục. Hãy kiểm tra backend rồi thử tải lại.')
+      })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [retryKey])
 
   return (
-    <section className="section" aria-labelledby="categories-heading">
+    <section id="categories" className="section" aria-labelledby="categories-heading">
       <div className="container">
         <h2 id="categories-heading" className="section-title section-title--plain">Danh mục nổi bật</h2>
+        {loading && <p aria-live="polite">Đang tải danh mục…</p>}
+        {message && <p role="status" style={{ color: 'var(--color-muted-foreground)' }}>
+          {message}{' '}
+          <button className="button button--outline" type="button" onClick={() => { setLoading(true); setRetryKey((value) => value + 1) }}>Thử tải lại</button>
+        </p>}
         <ul className="category-grid reveal-grid" ref={revealRef}>
-          {CATEGORIES.map((cat) => (
-            <li key={cat.label}>
-              <Link to={`/danh-muc/${categorySlug(cat.label)}`}>
+          {categories.map((cat) => {
+            const iconKey = /đĩa|game/i.test(cat.name) ? 'disc' : /tay cầm|controller/i.test(cat.name) ? 'gamepad' : 'accessory'
+            return <li key={cat.id}>
+              <Link to={`/danh-muc/${cat.slug}`}>
                 <span className="category-icon">
                   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d={ICONS[cat.iconKey]} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={ICONS[iconKey]} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </span>
-                {cat.label}
+                {cat.name}
               </Link>
             </li>
-          ))}
+          })}
         </ul>
+        {!loading && !message && categories.length === 0 && <p role="status">Chưa có danh mục để hiển thị.</p>}
       </div>
     </section>
   )

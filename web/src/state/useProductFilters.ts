@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { Product, ProductType } from '../data/sampleProducts'
+import type { ProductType } from '../data/sampleProducts'
 
 const TYPE_LABELS: Record<ProductType, string> = {
   game_disc: 'Đĩa game',
@@ -7,7 +7,7 @@ const TYPE_LABELS: Record<ProductType, string> = {
   accessory: 'Phụ kiện',
 }
 
-export function useProductFilters(products: Product[]) {
+export function useProductFilters<T extends { platforms?: string[] | null; productType: ProductType }>(products: T[]) {
   const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(new Set())
   const [selectedTypes, setSelectedTypes] = useState<Set<ProductType>>(new Set())
 

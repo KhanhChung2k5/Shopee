@@ -15,6 +15,7 @@ import AdminCustomersPage from './admin/pages/AdminCustomersPage'
 import AdminDemographicsPage from './admin/pages/AdminDemographicsPage'
 import AdminProductsPage from './admin/pages/AdminProductsPage'
 import AdminInventoryPage from './admin/pages/AdminInventoryPage'
+import AdminGoodsReceiptsPage from './admin/pages/AdminGoodsReceiptsPage'
 import AdminOrdersPage from './admin/pages/AdminOrdersPage'
 import AdminMarketingPage from './admin/pages/AdminMarketingPage'
 import AdminEmployeesPage from './admin/pages/AdminEmployeesPage'
@@ -70,6 +71,7 @@ function App() {
           <Route index element={<RequireDepartment><AdminDashboardPage /></RequireDepartment>} />
           <Route path="san-pham" element={<RequireDepartment><AdminProductsPage /></RequireDepartment>} />
           <Route path="kho" element={<RequireDepartment><AdminInventoryPage /></RequireDepartment>} />
+          <Route path="phieu-nhap" element={<RequireDepartment><AdminGoodsReceiptsPage /></RequireDepartment>} />
           <Route path="don-hang" element={<RequireDepartment><AdminOrdersPage /></RequireDepartment>} />
           <Route path="marketing" element={<RequireDepartment><AdminMarketingPage /></RequireDepartment>} />
           <Route path="khach-hang" element={<RequireDepartment><AdminCustomersPage /></RequireDepartment>} />

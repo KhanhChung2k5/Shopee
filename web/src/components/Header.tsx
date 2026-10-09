@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useCart } from '../state/CartContext'
 import { useTheme } from '../state/useTheme'
 import { useAuth } from '../state/AuthContext'
@@ -8,8 +8,25 @@ export default function Header() {
   const { totalQuantity } = useCart()
   const { isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [query, setQuery] = useState('')
   const { theme, toggle } = useTheme()
+
+  useEffect(() => {
+    if (location.pathname === '/' && location.hash === '#categories') {
+      document.getElementById('categories')?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [location.pathname, location.hash])
+
+  const goToCategories = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    if (location.pathname === '/') {
+      document.getElementById('categories')?.scrollIntoView({ behavior: 'smooth' })
+      if (location.hash !== '#categories') navigate('/#categories', { replace: true })
+      return
+    }
+    navigate('/#categories')
+  }
 
   const goSearch = (q: string) => {
     if (!q.trim()) return
@@ -21,7 +38,8 @@ export default function Header() {
       <div className="topbar">
         <div className="container topbar__inner">
           <ul className="topbar__links">
-            <li><a href="#">Kênh Người Bán</a></li>
+            <li><Link to="/admin">Kênh Người Bán</Link></li>
+            <li><Link to="/#categories" onClick={goToCategories}>Danh mục</Link></li>
             <li><a href="#">Tải ứng dụng</a></li>
             <li><a href="#">Kết nối</a></li>
           </ul>

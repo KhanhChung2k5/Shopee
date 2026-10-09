@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import CatalogProductGrid from './CatalogProductGrid'
+import { fetchProducts, type CatalogProductSummary } from '../lib/catalog'
 import { FLASH_SALE_PRODUCTS } from '../data/sampleProducts'
 import ProductCard from './ProductCard'
 import { useRevealOnScroll } from '../state/useRevealOnScroll'
@@ -30,7 +32,32 @@ function useCountdown(hoursFromNow: number, minutesFromNow: number) {
 
 export default function FlashSale() {
   const { h, m, s } = useCountdown(3, 15)
-  const revealRef = useRevealOnScroll<HTMLUListElement>()
+  const [products, setProducts] = useState<CatalogProductSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [usingSampleData, setUsingSampleData] = useState(false)
+  const revealRef = useRevealOnScroll<HTMLUListElement>(!loading)
+
+  useEffect(() => {
+    let active = true
+    fetchProducts(new URLSearchParams({ page: '0', size: '100' }))
+      .then((result) => {
+        if (!active) return
+        const discountedProducts = result.content.filter((product) =>
+          product.price != null && product.comparePrice != null && product.comparePrice > product.price,
+        ).slice(0, 10)
+        setProducts(discountedProducts)
+        setUsingSampleData(discountedProducts.length === 0)
+      })
+      .catch(() => {
+        if (active) {
+          setUsingSampleData(true)
+          setError('API chưa tải được sản phẩm; đang hiển thị dữ liệu mẫu.')
+        }
+      })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [])
 
   return (
     <section className="section flash-section" aria-labelledby="flash-heading">
@@ -51,11 +78,13 @@ export default function FlashSale() {
           <a className="section-link" href="#">Xem tất cả<span aria-hidden="true"> →</span></a>
         </div>
 
-        <ul className="product-row reveal-grid" ref={revealRef}>
-          {FLASH_SALE_PRODUCTS.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </ul>
+        {error && <p role="alert" style={{ color: 'var(--color-urgent)' }}>{error}</p>}
+        {!loading && usingSampleData && <p role="status" style={{ color: 'var(--color-muted-foreground)' }}>API chưa có sản phẩm giảm giá; đang hiển thị dữ liệu mẫu.</p>}
+        {loading ? <p>Đang tải sản phẩm khuyến mãi…</p> : products.length > 0
+          ? <CatalogProductGrid products={products} className="product-row reveal-grid" listRef={revealRef} />
+          : usingSampleData
+            ? <ul className="product-row reveal-grid is-visible" ref={revealRef}>{FLASH_SALE_PRODUCTS.map((product) => <ProductCard key={product.id} product={product} />)}</ul>
+            : <p style={{ color: 'var(--color-muted-foreground)' }}>Chưa có sản phẩm đang giảm giá.</p>}
       </div>
     </section>
   )

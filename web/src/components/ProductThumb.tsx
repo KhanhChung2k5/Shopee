@@ -1,5 +1,6 @@
-import { useId } from 'react'
+import { useEffect, useId, useState } from 'react'
 import type { ProductType } from '../data/sampleProducts'
+import { resolveCatalogImageUrl } from '../lib/catalog'
 
 // Gradient + icon per product type, tinted with the brand's own palette
 // (not generic stock colors) so cards read as "gaming storefront" at a
@@ -20,17 +21,26 @@ export default function ProductThumb({
   seed,
   productType = 'accessory',
   imageUrl,
+  appearance = 'default',
 }: {
   seed: number
   productType?: ProductType
   imageUrl?: string
+  appearance?: 'default' | 'detail'
 }) {
   const gradientId = useId()
-  const [from, to] = GRADIENTS[productType]
+  const [from, to]: [string, string] = appearance === 'detail'
+    ? ['#f8fafc', '#e2e8f0']
+    : GRADIENTS[productType]
+  const iconColor = appearance === 'detail' ? '#64748b' : '#fff'
   const angle = 45 + (seed % 4) * 22
+  const resolvedImageUrl = resolveCatalogImageUrl(imageUrl)
+  const [imageFailed, setImageFailed] = useState(false)
 
-  if (imageUrl) {
-    return <img src={imageUrl} alt="" className="product-thumb__image" loading="lazy" />
+  useEffect(() => setImageFailed(false), [resolvedImageUrl])
+
+  if (resolvedImageUrl && !imageFailed) {
+    return <img src={resolvedImageUrl} alt="" className="product-thumb__image" loading="lazy" onError={() => setImageFailed(true)} />
   }
 
   return (
@@ -42,12 +52,12 @@ export default function ProductThumb({
         </linearGradient>
       </defs>
       <rect width="100" height="100" fill={`url(#${gradientId})`} />
-      <circle cx="50" cy="46" r="30" fill="#fff" opacity="0.08" />
+      <circle cx="50" cy="46" r="30" fill={iconColor} opacity="0.08" />
       <path
         d={ICON_PATHS[productType]}
         fill="none"
-        stroke="#fff"
-        strokeOpacity="0.92"
+        stroke={iconColor}
+        strokeOpacity={appearance === 'detail' ? 0.75 : 0.92}
         strokeWidth="3.4"
         strokeLinecap="round"
         strokeLinejoin="round"

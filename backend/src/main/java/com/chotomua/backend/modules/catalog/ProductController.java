@@ -107,6 +107,7 @@ public class ProductController {
         product.setReleaseDate(request.releaseDate());
         product.setConnectionType(request.connectionType());
         product.setWarrantyMonths(request.warrantyMonths());
+        product.setOriginCountry(request.originCountry());
         if (request.imageUrls() != null) {
             ArrayNode urls = JsonNodeFactory.instance.arrayNode();
             request.imageUrls().forEach(urls::add);
@@ -130,20 +131,21 @@ public class ProductController {
             @jakarta.validation.constraints.Pattern(regexp = "wired|wireless|bluetooth")
             @Size(max = 20) String connectionType,
             @jakarta.validation.constraints.PositiveOrZero Integer warrantyMonths,
+            @Size(max = 100) String originCountry,
             List<@Size(max = 500) String> imageUrls) {
     }
 
     public record ProductResponse(UUID id, UUID categoryId, String brandName, String name,
                                   String description, String status, String productType, JsonNode platforms,
                                   String publisher, String genre, String ageRating, LocalDate releaseDate,
-                                  String connectionType, Integer warrantyMonths, JsonNode imageUrls) {
+                                  String connectionType, Integer warrantyMonths, String originCountry, JsonNode imageUrls) {
         static ProductResponse from(Product product) {
             return new ProductResponse(product.getId(),
                     product.getCategory() == null ? null : product.getCategory().getId(),
                     product.getBrandName(), product.getName(), product.getDescription(), product.getStatus(),
                     product.getProductType(), product.getPlatforms(), product.getPublisher(), product.getGenre(),
                     product.getAgeRating(), product.getReleaseDate(), product.getConnectionType(),
-                    product.getWarrantyMonths(), product.getImageUrls());
+                    product.getWarrantyMonths(), product.getOriginCountry(), product.getImageUrls());
         }
     }
 }

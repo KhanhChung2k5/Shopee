@@ -7,10 +7,11 @@ import { useEffect, useRef } from 'react'
  * No-op (class added immediately) when the browser has no
  * IntersectionObserver or the user prefers reduced motion.
  */
-export function useRevealOnScroll<T extends HTMLElement>() {
+export function useRevealOnScroll<T extends HTMLElement>(enabled = true) {
   const ref = useRef<T | null>(null)
 
   useEffect(() => {
+    if (!enabled) return
     const el = ref.current
     if (!el) return
 
@@ -33,7 +34,7 @@ export function useRevealOnScroll<T extends HTMLElement>() {
     )
     observer.observe(el)
     return () => observer.disconnect()
-  }, [])
+  }, [enabled])
 
   return ref
 }

@@ -30,6 +30,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/admin/san-pham', label: 'Sản phẩm', icon: <path d="M20 7 12 3 4 7v10l8 4 8-4V7ZM4 7l8 4 8-4M12 11v10" /> },
       { to: '/admin/kho', label: 'Kho hàng', icon: <path d="M3 10 12 4l9 6v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-9ZM9 20v-6h6v6" /> },
+      { to: '/admin/phieu-nhap', label: 'Phiếu nhập', icon: <path d="M4 5h16v14H4zM8 9h8M8 13h5M12 3v4m-3-2 3 3 3-3" /> },
     ],
   },
   {
@@ -63,6 +64,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin': 'Tổng quan',
   '/admin/san-pham': 'Sản phẩm',
   '/admin/kho': 'Kho hàng',
+  '/admin/phieu-nhap': 'Phiếu nhập hàng',
   '/admin/don-hang': 'Đơn hàng',
   '/admin/marketing': 'Marketing',
   '/admin/khach-hang': 'Quản lý khách hàng',

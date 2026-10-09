@@ -31,6 +31,7 @@ export interface Product {
   ageRating?: string
   connectionType?: ConnectionType
   warrantyMonths?: number
+  originCountry?: string
   /** One of CATEGORIES[].label — the primary category shown in nav/filtering. */
   category: string
 }
