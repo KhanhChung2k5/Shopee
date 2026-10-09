@@ -5,6 +5,9 @@ import HomePage from './pages/HomePage'
 import ProductDetailPage from './pages/ProductDetailPage'
 import CartPage from './pages/CartPage'
 import CheckoutPage from './pages/CheckoutPage'
+import OrderHistoryPage from './pages/OrderHistoryPage'
+import OrderDetailPage from './pages/OrderDetailPage'
+import VoucherWalletPage from './pages/VoucherWalletPage'
 import CategoryPage from './pages/CategoryPage'
 import SearchPage from './pages/SearchPage'
 import LoginPage from './pages/LoginPage'
@@ -23,11 +26,14 @@ import { AuthProvider } from './state/AuthContext'
 import ProfilePage from './pages/ProfilePage'
 import RequireStaff from './components/RequireStaff'
 import RequireDepartment from './components/RequireDepartment'
+import P3DemoBanner from './demo/P3DemoBanner'
 
 function CustomerShell() {
   return (
     <CartProvider>
       <a className="skip-link" href="#main-content">Bỏ qua để đến nội dung chính</a>
+      {/* P3-DEMO-INTEGRATION-SEAM: remove together with web/src/demo. */}
+      <P3DemoBanner />
       <Header />
       <main id="main-content">
         <Routes>
@@ -35,6 +41,9 @@ function CustomerShell() {
           <Route path="/san-pham/:id" element={<ProductDetailPage />} />
           <Route path="/gio-hang" element={<CartPage />} />
           <Route path="/thanh-toan" element={<CheckoutPage />} />
+          <Route path="/don-hang" element={<OrderHistoryPage />} />
+          <Route path="/don-hang/:id" element={<OrderDetailPage />} />
+          <Route path="/kho-voucher" element={<VoucherWalletPage />} />
           <Route path="/danh-muc/:slug" element={<CategoryPage />} />
           <Route path="/tim-kiem" element={<SearchPage />} />
           <Route path="/dang-nhap" element={<LoginPage />} />
