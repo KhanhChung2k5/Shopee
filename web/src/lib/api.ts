@@ -1,3 +1,5 @@
+import { isP3DemoMode, P3DemoError, p3DemoFetch } from '../demo/p3DemoApi'
+
 export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
 
 export class ApiError extends Error {
@@ -14,6 +16,17 @@ export class ApiError extends Error {
  * the backend's message field on non-2xx so callers can show it directly.
  */
 export async function apiFetch<T = unknown>(path: string, options: RequestInit = {}, token?: string | null): Promise<T> {
+  // P3-DEMO-INTEGRATION-SEAM: remove this branch after P1/P2/P4/P5 APIs are
+  // integrated. The rest of the app remains on the same apiFetch contract.
+  if (isP3DemoMode()) {
+    try {
+      return await p3DemoFetch<T>(path, options)
+    } catch (error) {
+      if (error instanceof P3DemoError) throw new ApiError(error.status, error.message)
+      throw error
+    }
+  }
+
   const headers = new Headers(options.headers)
   if (options.body) headers.set('Content-Type', 'application/json')
   if (token) headers.set('Authorization', `Bearer ${token}`)

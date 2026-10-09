@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../state/AuthContext'
 import { ApiError } from '../lib/api'
 
@@ -14,6 +14,8 @@ export default function LoginPage() {
 
   const { login, register } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const returnTo = (location.state as { from?: string } | null)?.from ?? '/'
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -27,9 +29,8 @@ export default function LoginPage() {
     setSubmitting(true)
     try {
       const user = mode === 'login' ? await login(emailOrPhone, password) : await register(emailOrPhone, '', password, fullName)
-      // Staff accounts (admin/sales/warehouse/cs) land on the admin console by
-      // default — only buyers see the storefront home.
-      navigate(user.role === 'staff' ? '/admin' : '/')
+      const destination = returnTo !== '/' ? returnTo : user.role === 'staff' ? '/admin' : '/'
+      navigate(destination, { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra, vui lòng thử lại')
     } finally {

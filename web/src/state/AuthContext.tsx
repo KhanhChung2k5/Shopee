@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 import { apiFetch } from '../lib/api'
 
 export interface AuthUser {
@@ -11,6 +11,7 @@ export interface AuthUser {
 interface AuthContextValue {
   token: string | null
   user: AuthUser | null
+  isReady: boolean
   isAuthenticated: boolean
   /** False until the initial localStorage read completes — guards (RequireStaff etc.)
    *  must wait for this before deciding to redirect, otherwise they see the pre-hydration
@@ -22,7 +23,6 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
-
 const STORAGE_KEY = 'chotomua_auth'
 
 interface AuthResponse {
@@ -33,34 +33,39 @@ interface AuthResponse {
   department: string | null
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(null)
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [ready, setReady] = useState(false)
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as { token: string; user: AuthUser }
-        setToken(parsed.token)
-        setUser(parsed.user)
+function readStoredAuth(): { token: string | null; user: AuthUser | null } {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw) as { token?: unknown; user?: AuthUser } | null
+      if (parsed && typeof parsed.token === 'string' && parsed.user) {
+        return { token: parsed.token, user: parsed.user }
       }
-    } catch {
-      // corrupted/blocked storage — just start logged out
-    } finally {
-      setReady(true)
     }
-  }, [])
+  } catch {
+    // Corrupted or blocked storage: start with an anonymous session.
+  }
+  return { token: null, user: null }
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [initialAuth] = useState(readStoredAuth)
+  const [token, setToken] = useState<string | null>(initialAuth.token)
+  const [user, setUser] = useState<AuthUser | null>(initialAuth.user)
 
   const persist = (data: AuthResponse): AuthUser => {
-    const nextUser: AuthUser = { id: data.userId, role: data.role, fullName: data.fullName, department: data.department }
+    const nextUser: AuthUser = {
+      id: data.userId,
+      role: data.role,
+      fullName: data.fullName,
+      department: data.department,
+    }
     setToken(data.token)
     setUser(nextUser)
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ token: data.token, user: nextUser }))
     } catch {
-      // ignore — session still works in-memory for this tab
+      // The current in-memory session remains usable.
     }
     return nextUser
   }
@@ -89,20 +94,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.removeItem(STORAGE_KEY)
     } catch {
-      // ignore
+      // Ignore unavailable storage.
     }
   }
 
   const value = useMemo<AuthContextValue>(
-    () => ({ token, user, isAuthenticated: token !== null, ready, login, register, logout }),
-    [token, user, ready],
+    () => ({ token, user, isReady: true, ready: true, isAuthenticated: token !== null, login, register, logout }),
+    [token, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
+  const context = useContext(AuthContext)
+  if (!context) throw new Error('useAuth must be used within AuthProvider')
+  return context
 }

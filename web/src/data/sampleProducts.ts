@@ -156,14 +156,37 @@ export interface VoucherOffer {
   title: string
   expiryLabel: string
   isShipping?: boolean
+  discountType: 'fixed' | 'percent' | 'shipping'
+  discountValue: number
+  minOrderValue: number
+  maxDiscount?: number
 }
 
 export const VOUCHERS: VoucherOffer[] = [
-  { id: 'v-1', amountLabel: '₫50K', conditionLabel: 'Đơn từ 500K', title: 'Voucher toàn sàn', expiryLabel: 'HSD: 30/09/2026' },
-  { id: 'v-2', amountLabel: '', conditionLabel: 'Freeship', title: 'Miễn phí vận chuyển', expiryLabel: 'Đơn từ 99K', isShipping: true },
-  { id: 'v-3', amountLabel: '10%', conditionLabel: 'Tối đa 30K', title: 'Giảm cho đơn đầu tiên', expiryLabel: 'HSD: 15/10/2026' },
-  { id: 'v-4', amountLabel: '₫30K', conditionLabel: 'Đơn từ 300K', title: 'Ngành hàng tay cầm', expiryLabel: 'HSD: 05/10/2026' },
+  { id: 'v-1', amountLabel: '₫50K', conditionLabel: 'Đơn từ 500K', title: 'Voucher toàn sàn', expiryLabel: 'HSD: 30/12/2026', discountType: 'fixed', discountValue: 50_000, minOrderValue: 500_000 },
+  { id: 'v-2', amountLabel: '', conditionLabel: 'Freeship', title: 'Miễn phí vận chuyển', expiryLabel: 'Đơn từ 99K', isShipping: true, discountType: 'shipping', discountValue: 0, minOrderValue: 99_000 },
+  { id: 'v-3', amountLabel: '10%', conditionLabel: 'Tối đa 30K', title: 'Giảm cho đơn đầu tiên', expiryLabel: 'HSD: 15/10/2026', discountType: 'percent', discountValue: 10, minOrderValue: 0, maxDiscount: 30_000 },
+  { id: 'v-4', amountLabel: '₫30K', conditionLabel: 'Đơn từ 300K', title: 'Ngành hàng tay cầm', expiryLabel: 'HSD: 05/11/2026', discountType: 'fixed', discountValue: 30_000, minOrderValue: 300_000 },
 ]
+
+// P3-DEMO-INTEGRATION-SEAM: temporary P4 calculation shared by checkout and
+// the fake order API. Replace this with a server-side Voucher API response.
+export function calculateVoucherDiscount(voucher: VoucherOffer | undefined, subtotal: number, shippingFee = 0) {
+  if (!voucher || subtotal < voucher.minOrderValue) return 0
+  if (voucher.discountType === 'shipping') return Math.min(shippingFee, voucher.discountValue || shippingFee)
+  if (voucher.discountType === 'percent') {
+    const percentDiscount = subtotal * voucher.discountValue / 100
+    return Math.min(percentDiscount, voucher.maxDiscount ?? percentDiscount)
+  }
+  return Math.min(subtotal, voucher.discountValue)
+}
+
+export function calculateVoucherBundleDiscount(vouchers: VoucherOffer[], subtotal: number, shippingFee = 0) {
+  const productVoucher = vouchers.find((voucher) => voucher.discountType !== 'shipping')
+  const shippingVoucher = vouchers.find((voucher) => voucher.discountType === 'shipping')
+  return calculateVoucherDiscount(productVoucher, subtotal, shippingFee)
+    + calculateVoucherDiscount(shippingVoucher, subtotal, shippingFee)
+}
 
 export interface BannerSlide {
   eyebrow: string

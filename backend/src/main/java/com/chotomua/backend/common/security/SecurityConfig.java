@@ -3,6 +3,7 @@ package com.chotomua.backend.common.security;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -43,6 +44,15 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/health", "/auth/register", "/auth/login").permitAll()
+                .requestMatchers("/cart-items/**").hasRole("BUYER")
+                .requestMatchers(HttpMethod.POST, "/orders").hasRole("BUYER")
+                .requestMatchers(HttpMethod.GET, "/orders/**").hasAnyRole("BUYER", "STAFF")
+                .requestMatchers(HttpMethod.PATCH, "/orders/*/status").hasAnyRole("BUYER", "STAFF")
+                .requestMatchers(
+                        HttpMethod.PATCH,
+                        "/orders/*/shipping-info",
+                        "/orders/*/tracking"
+                ).hasRole("STAFF")
                 // Only staff in the "admin" department may create internal employee accounts.
                 .requestMatchers("/employees/**").hasAuthority("DEPT_ADMIN")
                 // CRM "Khách hàng" admin page — admin-only, same as employee management.
