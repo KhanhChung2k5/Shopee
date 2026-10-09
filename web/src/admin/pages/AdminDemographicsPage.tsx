@@ -1,4 +1,7 @@
-import { INITIAL_CUSTOMERS, age } from '../data/sampleCustomers'
+import { useEffect, useState } from 'react'
+import { age, type Customer } from '../types/customer'
+import { useAuth } from '../../state/AuthContext'
+import { apiFetch } from '../../lib/api'
 
 const AGE_BUCKETS: [string, (a: number) => boolean][] = [
   ['Dưới 18', (a) => a < 18],
@@ -25,11 +28,22 @@ function BarChart({ rows }: { rows: { label: string; count: number }[] }) {
 }
 
 export default function AdminDemographicsPage() {
-  const activeCustomers = INITIAL_CUSTOMERS.filter((c) => c.status !== 'deleted')
+  const { token } = useAuth()
+  const [customers, setCustomers] = useState<Customer[]>([])
+
+  useEffect(() => {
+    if (!token) return
+    apiFetch<Customer[]>('/customers', {}, token).then(setCustomers).catch(() => setCustomers([]))
+  }, [token])
+
+  const activeCustomers = customers.filter((c) => c.status !== 'deleted')
 
   const ageRows = AGE_BUCKETS.map(([label, test]) => ({
     label,
-    count: activeCustomers.filter((c) => test(age(c.dob))).length,
+    count: activeCustomers.filter((c) => {
+      const a = age(c.dob)
+      return a !== null && test(a)
+    }).length,
   }))
 
   const genderRows = ['Nam', 'Nữ', 'Khác'].map((g) => ({
@@ -37,17 +51,12 @@ export default function AdminDemographicsPage() {
     count: activeCustomers.filter((c) => c.gender === g).length,
   }))
 
-  const categoryMap = new Map<string, number>()
-  activeCustomers.forEach((c) => categoryMap.set(c.favoriteCategory, (categoryMap.get(c.favoriteCategory) ?? 0) + 1))
-  const categoryRows = Array.from(categoryMap.entries())
-    .map(([label, count]) => ({ label, count }))
-    .sort((a, b) => b.count - a.count)
-
   return (
     <div>
       <h1>Báo cáo nhân khẩu học khách hàng</h1>
       <p style={{ color: 'var(--color-muted-foreground)', fontSize: 13.5, marginBottom: 'var(--space-5)' }}>
-        Tính trên {activeCustomers.length} khách hàng đang hoạt động/khoá (không tính tài khoản đã xoá mềm).
+        Tính trên {activeCustomers.length} khách hàng đang hoạt động/khoá (không tính tài khoản đã xoá mềm). Dữ liệu thật từ{' '}
+        <code>GET /customers</code> — tuổi/giới tính có thể trống nếu khách chưa cập nhật hồ sơ.
       </p>
 
       <div className="admin-stat-row" style={{ gridTemplateColumns: '1fr 1fr' }}>
@@ -61,10 +70,9 @@ export default function AdminDemographicsPage() {
         </div>
       </div>
 
-      <div className="admin-stat-card">
-        <div className="admin-stat-card__label" style={{ marginBottom: 'var(--space-3)' }}>Ngành hàng ưa thích (suy ra từ lịch sử mua hàng)</div>
-        <BarChart rows={categoryRows} />
-      </div>
+      <p style={{ color: 'var(--color-muted-foreground)', fontSize: 13.5 }}>
+        Báo cáo "Ngành hàng ưa thích" cần dữ liệu đơn hàng thật — sẽ bật lại khi module Order được xây dựng.
+      </p>
     </div>
   )
 }

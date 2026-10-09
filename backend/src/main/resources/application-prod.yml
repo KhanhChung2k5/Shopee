@@ -1,0 +1,23 @@
+# Production overrides (activate with SPRING_PROFILES_ACTIVE=prod).
+# All secrets/connection info still come from env vars — nothing here
+# hardcodes a value; it only changes the *fallback behavior* vs dev:
+# JWT_SECRET and the DB_* vars have no default and MUST be provided,
+# so the app fails fast at startup instead of silently running with
+# the dev-only JWT secret or a local DB.
+spring:
+  config:
+    # Prod runs from env vars injected by Docker/the host — no .env file to load.
+    import: optional:file:.env[.properties]
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}?sslmode=${DB_SSLMODE:require}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-minutes: ${JWT_EXPIRATION_MINUTES:1440}

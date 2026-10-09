@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { INITIAL_CUSTOMERS, age, type Customer, type CustomerStatus } from '../data/sampleCustomers'
+import { age, type Customer, type CustomerStatus } from '../types/customer'
 import { formatVnd } from '../../data/sampleProducts'
+import { useAuth } from '../../state/AuthContext'
+import { apiFetch, ApiError } from '../../lib/api'
 
 const STATUS_LABEL: Record<CustomerStatus, string> = {
   active: 'Hoạt động',
@@ -28,10 +30,9 @@ function useToast() {
 }
 
 export default function AdminCustomersPage() {
-  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS)
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newEmail, setNewEmail] = useState('')
+  const { token } = useAuth()
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<CustomerStatus | 'all'>('all')
   const [sortKey, setSortKey] = useState<SortKey>('fullName')
@@ -39,16 +40,31 @@ export default function AdminCustomersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const toast = useToast()
 
+  const refresh = () => {
+    if (!token) return
+    apiFetch<Customer[]>('/customers', {}, token)
+      .then((data) => {
+        setCustomers(data)
+        setLoadError(null)
+      })
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Không tải được danh sách khách hàng'))
+  }
+
+  useEffect(() => {
+    refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     let list = customers.filter(
       (c) =>
         (statusFilter === 'all' || c.status === statusFilter) &&
-        (!q || c.fullName.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)),
+        (!q || (c.fullName ?? '').toLowerCase().includes(q) || (c.email ?? '').toLowerCase().includes(q)),
     )
     list = [...list].sort((a, b) => {
-      const va = sortKey === 'fullName' ? a.fullName : sortKey === 'age' ? age(a.dob) : sortKey === 'totalOrders' ? a.totalOrders : a.ltv
-      const vb = sortKey === 'fullName' ? b.fullName : sortKey === 'age' ? age(b.dob) : sortKey === 'totalOrders' ? b.totalOrders : b.ltv
+      const va = sortKey === 'fullName' ? (a.fullName ?? '') : sortKey === 'age' ? (age(a.dob) ?? -1) : sortKey === 'totalOrders' ? a.totalOrders : a.ltv
+      const vb = sortKey === 'fullName' ? (b.fullName ?? '') : sortKey === 'age' ? (age(b.dob) ?? -1) : sortKey === 'totalOrders' ? b.totalOrders : b.ltv
       const cmp = typeof va === 'string' ? va.localeCompare(vb as string) : (va as number) - (vb as number)
       return sortDir === 'asc' ? cmp : -cmp
     })
@@ -64,37 +80,49 @@ export default function AdminCustomersPage() {
     }
   }
 
+  const setStatus = async (id: string, status: CustomerStatus) => {
+    try {
+      await apiFetch(`/customers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }, token)
+      refresh()
+    } catch (err) {
+      toast.show(err instanceof ApiError ? err.message : 'Cập nhật trạng thái thất bại')
+    }
+  }
+
   const toggleLock = (id: string) => {
-    setCustomers((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: c.status === 'locked' ? 'active' : 'locked' } : c)),
-    )
     const c = customers.find((x) => x.id === id)
-    toast.show(c?.status === 'locked' ? `Đã mở khoá "${c.fullName}"` : `Đã khoá "${c?.fullName}"`)
+    if (!c) return
+    const next: CustomerStatus = c.status === 'locked' ? 'active' : 'locked'
+    setStatus(id, next)
+    toast.show(next === 'locked' ? `Đã khoá "${c.fullName}"` : `Đã mở khoá "${c.fullName}"`)
   }
 
   const softDelete = (id: string) => {
     const c = customers.find((x) => x.id === id)
-    if (!confirm(`Xoá mềm "${c?.fullName}"? Lịch sử đơn hàng vẫn được giữ nguyên, chỉ ẩn tài khoản.`)) return
-    setCustomers((prev) => prev.map((x) => (x.id === id ? { ...x, status: 'deleted' } : x)))
+    if (!c) return
+    if (!confirm(`Xoá mềm "${c.fullName}"? Tài khoản bị ẩn khỏi hệ thống nhưng vẫn giữ nguyên trong DB.`)) return
+    setStatus(id, 'deleted')
     setSelected((prev) => {
       const next = new Set(prev)
       next.delete(id)
       return next
     })
-    toast.show(`Đã xoá mềm "${c?.fullName}"`)
+    toast.show(`Đã xoá mềm "${c.fullName}"`)
   }
 
-  const bulkLock = () => {
-    setCustomers((prev) => prev.map((c) => (selected.has(c.id) ? { ...c, status: 'locked' } : c)))
+  const bulkLock = async () => {
+    await Promise.all([...selected].map((id) => apiFetch(`/customers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'locked' }) }, token)))
     toast.show(`Đã khoá ${selected.size} khách hàng`)
     setSelected(new Set())
+    refresh()
   }
 
-  const bulkSoftDelete = () => {
+  const bulkSoftDelete = async () => {
     if (!confirm(`Xoá mềm ${selected.size} khách hàng đã chọn?`)) return
-    setCustomers((prev) => prev.map((c) => (selected.has(c.id) ? { ...c, status: 'deleted' } : c)))
+    await Promise.all([...selected].map((id) => apiFetch(`/customers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'deleted' }) }, token)))
     toast.show(`Đã xoá mềm ${selected.size} khách hàng`)
     setSelected(new Set())
+    refresh()
   }
 
   const toggleSelectAll = () => {
@@ -114,30 +142,6 @@ export default function AdminCustomersPage() {
     })
   }
 
-  const addCustomer = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newName.trim() || !newEmail.trim()) return
-    setCustomers((prev) => [
-      {
-        id: `c-${Date.now()}`,
-        fullName: newName.trim(),
-        email: newEmail.trim(),
-        phone: '-',
-        gender: 'Khác',
-        dob: '2000-01-01',
-        status: 'active',
-        favoriteCategory: '-',
-        totalOrders: 0,
-        ltv: 0,
-      },
-      ...prev,
-    ])
-    toast.show(`Đã thêm "${newName.trim()}"`)
-    setNewName('')
-    setNewEmail('')
-    setShowAddForm(false)
-  }
-
   const clearFilters = () => {
     setQuery('')
     setStatusFilter('all')
@@ -149,33 +153,9 @@ export default function AdminCustomersPage() {
     <div>
       <div className="admin-toolbar">
         <h1 style={{ margin: 0 }}>Khách hàng ({filtered.length}/{customers.length})</h1>
-        <button className="button button--primary button--sm" type="button" onClick={() => setShowAddForm((s) => !s)}>
-          {showAddForm ? 'Huỷ' : '+ Thêm khách hàng'}
-        </button>
       </div>
 
-      {showAddForm && (
-        <form onSubmit={addCustomer} style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
-          <input
-            className="search__input"
-            style={{ position: 'static', maxWidth: 220 }}
-            placeholder="Họ tên"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            required
-          />
-          <input
-            className="search__input"
-            style={{ position: 'static', maxWidth: 260 }}
-            type="email"
-            placeholder="Email"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-            required
-          />
-          <button className="button button--outline button--sm" type="submit">Lưu</button>
-        </form>
-      )}
+      {loadError && <p style={{ color: 'var(--color-urgent)' }}>{loadError}</p>}
 
       <div className="admin-toolbar">
         <input
@@ -224,7 +204,6 @@ export default function AdminCustomersPage() {
               <th className="admin-table__sortable" onClick={() => toggleSort('fullName')}>Họ tên{sortArrow('fullName')}</th>
               <th>Email / SĐT</th>
               <th className="admin-table__sortable" onClick={() => toggleSort('age')}>Tuổi{sortArrow('age')}</th>
-              <th>Sở thích (ngành hàng)</th>
               <th className="admin-table__sortable" onClick={() => toggleSort('totalOrders')}>Đơn hàng{sortArrow('totalOrders')}</th>
               <th className="admin-table__sortable" onClick={() => toggleSort('ltv')}>LTV{sortArrow('ltv')}</th>
               <th>Trạng thái</th>
@@ -234,10 +213,12 @@ export default function AdminCustomersPage() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9}>
+                <td colSpan={8}>
                   <div className="admin-empty">
-                    <p>Không có khách hàng nào khớp bộ lọc hiện tại.</p>
-                    <button className="button button--outline button--sm" type="button" onClick={clearFilters}>Xoá bộ lọc</button>
+                    <p>{customers.length === 0 ? 'Chưa có khách hàng nào đăng ký.' : 'Không có khách hàng nào khớp bộ lọc hiện tại.'}</p>
+                    {customers.length > 0 && (
+                      <button className="button button--outline button--sm" type="button" onClick={clearFilters}>Xoá bộ lọc</button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -252,14 +233,13 @@ export default function AdminCustomersPage() {
                       onChange={() => toggleSelectOne(c.id)}
                     />
                   </td>
-                  <td>{c.fullName}</td>
+                  <td>{c.fullName ?? '—'}</td>
                   <td>
-                    {c.email}
+                    {c.email ?? '—'}
                     <br />
-                    <span style={{ color: 'var(--color-muted-foreground)' }}>{c.phone}</span>
+                    <span style={{ color: 'var(--color-muted-foreground)' }}>{c.phone ?? '—'}</span>
                   </td>
-                  <td>{age(c.dob)}</td>
-                  <td>{c.favoriteCategory}</td>
+                  <td>{age(c.dob) ?? '—'}</td>
                   <td>{c.totalOrders}</td>
                   <td>{formatVnd(c.ltv)}</td>
                   <td>
@@ -290,6 +270,11 @@ export default function AdminCustomersPage() {
           </tbody>
         </table>
       </div>
+
+      <p style={{ color: 'var(--color-muted-foreground)', fontSize: 13.5, marginTop: 'var(--space-3)' }}>
+        Dữ liệu thật từ bảng <code>users</code> (role=buyer). "Đơn hàng"/"LTV" sẽ luôn hiển thị 0 cho tới khi module Order được xây dựng.
+        Khách hàng tự đăng ký qua app — admin không tạo tài khoản khách hàng trực tiếp.
+      </p>
 
       {toast.message && <div className="admin-toast" role="status">{toast.message}</div>}
     </div>
