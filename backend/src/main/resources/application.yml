@@ -10,6 +10,10 @@ spring:
     import: optional:file:.env[.properties]
   application:
     name: backend
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
   datasource:
     # DB_SSLMODE mặc định "prefer" (không ép SSL) để Postgres local trong Docker
     # (không bật SSL) vẫn kết nối được. Khi trỏ sang Neon (bắt buộc SSL), set
