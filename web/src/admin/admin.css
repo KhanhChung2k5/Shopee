@@ -95,6 +95,12 @@
 .admin-table tr:last-child td { border-bottom: none; }
 .admin-table tr:hover td { background: var(--color-background); }
 .admin-table tr.is-selected td { background: var(--color-primary-light); }
+.marketing-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
+.marketing-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; }
+.marketing-form .search__input { position: static; padding-inline: 12px; }
+.marketing-form__message { grid-column: 1 / -1; color: var(--color-urgent); margin: 0; }
+.marketing-form__actions { grid-column: 1 / -1; display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.marketing-actions { display: flex; gap: var(--space-2); }
 .admin-table input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--color-primary); cursor: pointer; }
 
 .admin-empty { text-align: center; padding: var(--space-5) 0; color: var(--color-muted-foreground); display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }

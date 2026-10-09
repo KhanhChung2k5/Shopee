@@ -43,7 +43,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/health", "/auth/register", "/auth/login").permitAll()
+                .requestMatchers("/health", "/auth/register", "/auth/login", "/flash-sales").permitAll()
                 .requestMatchers("/cart-items/**").hasRole("BUYER")
                 .requestMatchers(HttpMethod.POST, "/orders").hasRole("BUYER")
                 .requestMatchers(HttpMethod.GET, "/orders/**").hasAnyRole("BUYER", "STAFF")
@@ -57,6 +57,10 @@ public class SecurityConfig {
                 .requestMatchers("/employees/**").hasAuthority("DEPT_ADMIN")
                 // CRM "Khách hàng" admin page — admin-only, same as employee management.
                 .requestMatchers("/customers/**").hasAuthority("DEPT_ADMIN")
+                .requestMatchers("/wallet", "/wallet/**").hasAuthority("ROLE_BUYER")
+                .requestMatchers("/vouchers", "/vouchers/**").hasAuthority("ROLE_BUYER")
+                .requestMatchers("/loyalty", "/loyalty/**").hasAuthority("ROLE_BUYER")
+                .requestMatchers("/marketing", "/marketing/**").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

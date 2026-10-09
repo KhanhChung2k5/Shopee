@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../state/AuthContext'
 import { apiFetch, ApiError } from '../lib/api'
+import WalletPanel from './WalletPanel'
+import LoyaltyPanel from './LoyaltyPanel'
 
 interface UserProfile {
   id: string
@@ -25,17 +27,17 @@ interface Address {
 const EMPTY_ADDRESS_FORM = { recipientName: '', phone: '', fullAddress: '', isDefault: false }
 
 export default function ProfilePage() {
-  const { token, isAuthenticated, logout } = useAuth()
+  const { token, user, isAuthenticated, logout } = useAuth()
 
   if (!isAuthenticated) {
     return <Navigate to="/dang-nhap" replace />
   }
 
-  return <ProfilePageContent token={token as string} logout={logout} />
+  return <ProfilePageContent token={token as string} logout={logout} isBuyer={user?.role === 'buyer'} />
 }
 
-function ProfilePageContent({ token, logout }: { token: string; logout: () => void }) {
-  const [tab, setTab] = useState<'profile' | 'addresses'>('profile')
+function ProfilePageContent({ token, logout, isBuyer }: { token: string; logout: () => void; isBuyer: boolean }) {
+  const [tab, setTab] = useState<'profile' | 'addresses' | 'wallet' | 'loyalty'>('profile')
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileForm, setProfileForm] = useState({ fullName: '', gender: '', dob: '' })
@@ -133,8 +135,8 @@ function ProfilePageContent({ token, logout }: { token: string; logout: () => vo
 
   return (
     <div className="container" style={{ paddingBlock: 'var(--space-6)', maxWidth: 640 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
-        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
           <button
             type="button"
             className={tab === 'profile' ? 'button button--primary' : 'button button--outline'}
@@ -149,6 +151,24 @@ function ProfilePageContent({ token, logout }: { token: string; logout: () => vo
           >
             Địa chỉ giao hàng
           </button>
+          {isBuyer && (
+            <>
+              <button
+                type="button"
+                className={tab === 'wallet' ? 'button button--primary' : 'button button--outline'}
+                onClick={() => setTab('wallet')}
+              >
+                Ví của tôi
+              </button>
+              <button
+                type="button"
+                className={tab === 'loyalty' ? 'button button--primary' : 'button button--outline'}
+                onClick={() => setTab('loyalty')}
+              >
+                Điểm thành viên
+              </button>
+            </>
+          )}
         </div>
         <button type="button" className="button button--outline" onClick={logout}>
           Đăng xuất
@@ -301,6 +321,9 @@ function ProfilePageContent({ token, logout }: { token: string; logout: () => vo
           </div>
         </>
       )}
+
+      {tab === 'wallet' && isBuyer && <WalletPanel token={token} />}
+      {tab === 'loyalty' && isBuyer && <LoyaltyPanel token={token} />}
     </div>
   )
 }

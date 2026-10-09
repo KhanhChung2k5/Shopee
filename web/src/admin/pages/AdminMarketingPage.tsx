@@ -1,71 +1,75 @@
-import { FLASH_SALE_PRODUCTS, VOUCHERS, formatVnd } from '../../data/sampleProducts'
+import { useCallback, useEffect, useState } from 'react'
+import { useAuth } from '../../state/AuthContext'
+import { apiFetch } from '../../lib/api'
+import ProgramManager from '../marketing/ProgramManager'
+import VoucherManager from '../marketing/VoucherManager'
+import ProductDiscountManager from '../marketing/ProductDiscountManager'
+import InvoiceDiscountManager from '../marketing/InvoiceDiscountManager'
+import type { PromotionProgram, Voucher, ProductDiscount, InvoiceDiscount } from '../marketing/types'
+import { errorMessage } from '../marketing/types'
+
+async function fetchMarketingData(token: string) {
+  const [programs, vouchers, productDiscounts, invoiceDiscounts] = await Promise.all([
+    apiFetch<PromotionProgram[]>('/marketing/programs', {}, token),
+    apiFetch<Voucher[]>('/marketing/vouchers', {}, token),
+    apiFetch<ProductDiscount[]>('/marketing/product-discounts', {}, token),
+    apiFetch<InvoiceDiscount[]>('/marketing/invoice-discounts', {}, token),
+  ])
+  return { programs, vouchers, productDiscounts, invoiceDiscounts }
+}
 
 export default function AdminMarketingPage() {
+  const { token } = useAuth()
+  const [programs, setPrograms] = useState<PromotionProgram[]>([])
+  const [vouchers, setVouchers] = useState<Voucher[]>([])
+  const [productDiscounts, setProductDiscounts] = useState<ProductDiscount[]>([])
+  const [invoiceDiscounts, setInvoiceDiscounts] = useState<InvoiceDiscount[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const refresh = useCallback(async () => {
+    if (!token) return
+    const data = await fetchMarketingData(token)
+    setPrograms(data.programs)
+    setVouchers(data.vouchers)
+    setProductDiscounts(data.productDiscounts)
+    setInvoiceDiscounts(data.invoiceDiscounts)
+    setError(null)
+  }, [token])
+
+  useEffect(() => {
+    if (!token) return
+    let active = true
+    fetchMarketingData(token)
+      .then((data) => {
+        if (!active) return
+        setPrograms(data.programs)
+        setVouchers(data.vouchers)
+        setProductDiscounts(data.productDiscounts)
+        setInvoiceDiscounts(data.invoiceDiscounts)
+      })
+      .catch((cause) => {
+        if (active) setError(errorMessage(cause, 'Không tải được dữ liệu marketing'))
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => { active = false }
+  }, [token])
+
   return (
     <div>
       <h1>Marketing</h1>
-
-      <div className="admin-stat-card" style={{ marginBottom: 'var(--space-4)' }}>
-        <div className="admin-stat-card__label" style={{ marginBottom: 'var(--space-3)' }}>Voucher đang chạy ({VOUCHERS.length})</div>
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Tên voucher</th>
-                <th>Giá trị</th>
-                <th>Điều kiện</th>
-                <th>Hết hạn</th>
-              </tr>
-            </thead>
-            <tbody>
-              {VOUCHERS.map((v) => (
-                <tr key={v.id}>
-                  <td>{v.title}</td>
-                  <td>{v.amountLabel || 'Freeship'}</td>
-                  <td>{v.conditionLabel}</td>
-                  <td>{v.expiryLabel}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="admin-stat-card">
-        <div className="admin-stat-card__label" style={{ marginBottom: 'var(--space-3)' }}>Flash Sale đang chạy ({FLASH_SALE_PRODUCTS.length})</div>
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Sản phẩm</th>
-                <th>Giá Flash Sale</th>
-                <th>Đã bán / Giới hạn</th>
-                <th>Tiến độ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {FLASH_SALE_PRODUCTS.map((p) => {
-                const pct = Math.min(100, Math.round(((p.soldCount ?? 0) / (p.limitCount ?? 1)) * 100))
-                return (
-                  <tr key={p.id}>
-                    <td>{p.name}</td>
-                    <td>{formatVnd(p.price)}</td>
-                    <td>{p.soldCount}/{p.limitCount}</td>
-                    <td>
-                      <div className="admin-bar-track" style={{ width: 120 }}>
-                        <div className="admin-bar-fill" style={{ width: `${pct}%` }} />
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <p style={{ color: 'var(--color-muted-foreground)', fontSize: 13.5, marginTop: 'var(--space-3)' }}>
-        Dữ liệu minh hoạ — sẽ nối CRUD <code>Voucher</code>/<code>FlashSale</code> thật khi có API domain Marketing.
-      </p>
+      {loading && <p>Đang tải dữ liệu...</p>}
+      {error && <p role="alert" style={{ color: 'var(--color-urgent)' }}>{error}</p>}
+      {!loading && !error && token && (
+        <>
+          <ProgramManager token={token} programs={programs} onChanged={refresh} />
+          <VoucherManager token={token} programs={programs} vouchers={vouchers} onChanged={refresh} />
+          <ProductDiscountManager token={token} programs={programs} discounts={productDiscounts} onChanged={refresh} />
+          <InvoiceDiscountManager token={token} programs={programs} discounts={invoiceDiscounts} onChanged={refresh} />
+        </>
+      )}
     </div>
   )
 }

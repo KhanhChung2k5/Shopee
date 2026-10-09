@@ -187,7 +187,6 @@ export function calculateVoucherBundleDiscount(vouchers: VoucherOffer[], subtota
   return calculateVoucherDiscount(productVoucher, subtotal, shippingFee)
     + calculateVoucherDiscount(shippingVoucher, subtotal, shippingFee)
 }
-
 export interface BannerSlide {
   eyebrow: string
   title: string
@@ -199,6 +198,6 @@ export interface BannerSlide {
 
 export const BANNER_SLIDES: BannerSlide[] = [
   { eyebrow: 'Ưu đãi tay cầm chính hãng', title: 'Giảm đến 30% tay cầm không dây', description: 'Áp dụng cho tay cầm PS5, Xbox Series X/S, Switch Pro', ctaLabel: 'Mua ngay', ctaHref: '#suggested-products', variant: 'a' },
-  { eyebrow: 'Miễn phí vận chuyển', title: 'Freeship mọi đơn từ 99K', description: 'Nhập mã FREE99 tại trang thanh toán', ctaLabel: 'Lấy mã ngay', ctaHref: '#vouchers', variant: 'b' },
+  { eyebrow: 'Ưu đãi cho thành viên', title: 'Xem voucher đang có', description: 'Đăng nhập để xem mã giảm giá phù hợp với bạn', ctaLabel: 'Xem voucher', ctaHref: '#vouchers', variant: 'b' },
   { eyebrow: 'Đĩa game mới về', title: 'Hàng trăm tựa game mới cập bến', description: 'Giảm thêm 15% cho đơn hàng đầu tiên', ctaLabel: 'Khám phá', ctaHref: '#suggested-products', variant: 'c' },
 ]
