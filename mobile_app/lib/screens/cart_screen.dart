@@ -66,7 +66,11 @@ class CartScreen extends StatelessWidget {
                             child: SizedBox(
                               width: 64,
                               height: 64,
-                              child: ProductThumb(productType: line.product.productType, iconScale: 0.45),
+                              child: ProductThumb(
+                                productType: line.product.productType,
+                                imageUrl: line.product.imageUrl,
+                                iconScale: 0.45,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -82,7 +86,13 @@ class CartScreen extends StatelessWidget {
                                   children: [
                                     _QtyButton(icon: Icons.remove_rounded, onTap: () => cart.updateQuantity(line, line.quantity - 1)),
                                     SizedBox(width: 32, child: Text('${line.quantity}', textAlign: TextAlign.center)),
-                                    _QtyButton(icon: Icons.add_rounded, onTap: () => cart.updateQuantity(line, line.quantity + 1)),
+                                    _QtyButton(
+                                      icon: Icons.add_rounded,
+                                      onTap: line.product.availableQuantity != null &&
+                                              line.quantity >= line.product.availableQuantity!
+                                          ? null
+                                          : () => cart.updateQuantity(line, line.quantity + 1),
+                                    ),
                                     const Spacer(),
                                     IconButton(
                                       onPressed: () => cart.removeLine(line),
@@ -158,7 +168,7 @@ class CartScreen extends StatelessWidget {
 class _QtyButton extends StatelessWidget {
   const _QtyButton({required this.icon, required this.onTap});
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -168,7 +178,11 @@ class _QtyButton extends StatelessWidget {
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
-        child: SizedBox(width: 28, height: 28, child: Icon(icon, size: 15)),
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: Icon(icon, size: 15, color: onTap == null ? AppColors.mutedForeground : AppColors.foreground),
+        ),
       ),
     );
   }

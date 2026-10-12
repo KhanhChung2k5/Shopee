@@ -44,6 +44,15 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/health", "/auth/register", "/auth/login", "/flash-sales").permitAll()
+                // Public storefront discovery, while catalog management stays staff-only.
+                .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/catalog/categories", "/api/catalog/categories/**").permitAll()
+                .requestMatchers("/api/catalog/warehouses/**", "/api/catalog/goods-receipts/**", "/api/catalog/inventory/**")
+                .hasAnyAuthority("DEPT_WAREHOUSE", "DEPT_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/catalog/product-variants", "/api/catalog/product-variants/**")
+                .hasAnyAuthority("DEPT_SALES", "DEPT_WAREHOUSE", "DEPT_ADMIN")
+                .requestMatchers("/api/catalog/categories/**", "/api/catalog/products/**", "/api/catalog/product-variants/**")
+                .hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
                 .requestMatchers("/cart-items/**").hasRole("BUYER")
                 .requestMatchers(HttpMethod.POST, "/orders").hasRole("BUYER")
                 .requestMatchers(HttpMethod.GET, "/orders/**").hasAnyRole("BUYER", "STAFF")

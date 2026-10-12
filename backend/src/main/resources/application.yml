@@ -29,6 +29,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        type:
+          json_format_mapper: org.hibernate.type.format.jackson.Jackson3JsonFormatMapper
     show-sql: true
   flyway:
     enabled: true

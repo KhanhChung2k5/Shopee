@@ -22,6 +22,14 @@ class Product {
     required this.name,
     required this.price,
     required this.comparePrice,
+    this.id,
+    this.variantId,
+    this.sku,
+    this.imageUrl,
+    this.description,
+    this.originCountry,
+    this.availableQuantity,
+    this.brandName,
     this.rating,
     this.soldLabel,
     this.soldCount,
@@ -31,6 +39,7 @@ class Product {
     this.publisher,
     this.genre,
     this.ageRating,
+    this.releaseDate,
     this.connectionType,
     this.warrantyMonths,
   });
@@ -38,6 +47,14 @@ class Product {
   final String name;
   final int price;
   final int comparePrice;
+  final String? id;
+  final String? variantId;
+  final String? sku;
+  final String? imageUrl;
+  final String? description;
+  final String? originCountry;
+  final int? availableQuantity;
+  final String? brandName;
   final double? rating;
   final String? soldLabel;
   final int? soldCount;
@@ -47,10 +64,13 @@ class Product {
   final String? publisher;
   final String? genre;
   final String? ageRating;
+  final String? releaseDate;
   final ConnectionType? connectionType;
   final int? warrantyMonths;
 
-  int get discountPercent => (100 - (price / comparePrice * 100)).round();
+  int get discountPercent => comparePrice <= 0 || price >= comparePrice
+      ? 0
+      : (100 - (price / comparePrice * 100)).round();
 
   double get soldProgress =>
       (soldCount != null && limitCount != null && limitCount! > 0)
@@ -91,7 +111,9 @@ class BannerSlide {
 }
 
 class CategoryItem {
-  const CategoryItem({required this.label, required this.icon});
+  const CategoryItem({required this.label, required this.icon, this.id, this.slug});
   final String label;
   final IconData icon;
+  final String? id;
+  final String? slug;
 }

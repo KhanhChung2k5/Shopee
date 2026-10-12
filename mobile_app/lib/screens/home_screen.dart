@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/sample_data.dart';
 import '../models/product.dart';
+import '../services/catalog_service.dart';
 import '../state/cart_scope.dart';
 import '../theme/app_theme.dart';
 import '../widgets/category_grid.dart';
@@ -17,7 +18,9 @@ import 'cart_screen.dart';
 import 'vouchers_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.catalogService});
+
+  final CatalogService? catalogService;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -25,17 +28,61 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final DateTime _flashSaleEndsAt = DateTime.now().add(const Duration(hours: 3, minutes: 15));
+  late final CatalogService _catalog = widget.catalogService ?? CatalogService();
+
+  List<CategoryItem> _categories = SampleData.categories;
+  List<Product> _suggestedProducts = SampleData.suggestedProducts;
+  bool _categoriesFallback = false;
+  bool _productsFallback = false;
 
   static const _pageSize = 10;
   int _visibleSuggested = _pageSize;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+    _loadSuggestedProducts();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final categories = await _catalog.fetchCategories();
+      if (!mounted) return;
+      setState(() {
+        if (categories.isNotEmpty) {
+          _categories = categories;
+        } else {
+          _categoriesFallback = true;
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() => _categoriesFallback = true);
+    }
+  }
+
+  Future<void> _loadSuggestedProducts() async {
+    try {
+      final result = await _catalog.fetchProducts(page: 0, size: 100);
+      if (!mounted) return;
+      setState(() {
+        _suggestedProducts = result.products;
+        _visibleSuggested = _pageSize;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _productsFallback = true);
+    }
+  }
+
   void _openProduct(Product product) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)));
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ProductDetailScreen(product: product, catalogService: _catalog),
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
-    final suggested = SampleData.suggestedProducts;
+    final suggested = _suggestedProducts;
     final visibleSuggested = suggested.take(_visibleSuggested).toList();
     final cart = CartScope.of(context);
 
@@ -75,10 +122,12 @@ class _HomeScreenState extends State<HomeScreen> {
               child: HeroCarousel(slides: SampleData.banners),
             ),
             const SectionHeader(title: 'Danh mục nổi bật'),
+            if (_categoriesFallback)
+              const _CatalogFallbackNote(text: 'Đang giữ danh mục mẫu vì máy chủ chưa trả danh sách danh mục.'),
             CategoryGrid(
-              categories: SampleData.categories,
+              categories: _categories,
               onCategoryTap: (c) => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => CategoryProductsScreen(category: c)),
+                MaterialPageRoute(builder: (_) => CategoryProductsScreen(category: c, catalogService: _catalog)),
               ),
             ),
             const SizedBox(height: 28),
@@ -100,24 +149,31 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 28),
             const SectionHeader(title: 'Gợi ý hôm nay'),
+            if (_productsFallback)
+              const _CatalogFallbackNote(text: 'Không kết nối được Catalog API; đang hiển thị sản phẩm mẫu.'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: visibleSuggested.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 0.6,
-                ),
-                itemBuilder: (context, i) => ProductCard(
-                  product: visibleSuggested[i],
-                  width: double.infinity,
-                  onTap: () => _openProduct(visibleSuggested[i]),
-                ),
-              ),
+              child: suggested.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 28),
+                      child: Center(child: Text('Chưa có sản phẩm để gợi ý.')),
+                    )
+                  : GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: visibleSuggested.length,
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 0.6,
+                      ),
+                      itemBuilder: (context, i) => ProductCard(
+                        product: visibleSuggested[i],
+                        width: double.infinity,
+                        onTap: () => _openProduct(visibleSuggested[i]),
+                      ),
+                    ),
             ),
             if (_visibleSuggested < suggested.length)
               Padding(
@@ -140,6 +196,17 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+class _CatalogFallbackNote extends StatelessWidget {
+  const _CatalogFallbackNote({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        child: Text(text, style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12)),
+      );
 }
 
 class _FlashSaleSection extends StatelessWidget {

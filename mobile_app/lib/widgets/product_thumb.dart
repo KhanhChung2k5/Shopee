@@ -5,9 +5,10 @@ import '../models/product.dart';
 /// so both clients render the same "gaming storefront" visual language
 /// instead of a flat placeholder block.
 class ProductThumb extends StatelessWidget {
-  const ProductThumb({super.key, required this.productType, this.iconScale = 0.42});
+  const ProductThumb({super.key, required this.productType, this.imageUrl, this.iconScale = 0.42});
 
   final ProductType productType;
+  final String? imageUrl;
   final double iconScale;
 
   static const Map<ProductType, List<Color>> _gradients = {
@@ -28,21 +29,33 @@ class ProductThumb extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = constraints.maxWidth.isFinite ? constraints.maxWidth : 100.0;
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: colors,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: colors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  _icons[productType],
+                  size: size * iconScale,
+                  color: Colors.white.withValues(alpha: 0.92),
+                ),
+              ),
             ),
-          ),
-          child: Center(
-            child: Icon(
-              _icons[productType],
-              size: size * iconScale,
-              color: Colors.white.withValues(alpha: 0.92),
-            ),
-          ),
+            if (imageUrl != null)
+              Image.network(
+                imageUrl!,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+          ],
         );
       },
     );

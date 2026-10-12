@@ -57,26 +57,27 @@ class ProductCard extends StatelessWidget {
                 aspectRatio: 1,
                 child: Stack(
                   children: [
-                    ProductThumb(productType: product.productType),
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.urgent,
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        child: Text(
-                          '-${product.discountPercent}%',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
+                    ProductThumb(productType: product.productType, imageUrl: product.imageUrl),
+                    if (product.discountPercent > 0)
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.urgent,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Text(
+                            '-${product.discountPercent}%',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ),
-                    ),
                     if (product.platforms != null && product.platforms!.isNotEmpty)
                       Positioned(
                         top: 8,
