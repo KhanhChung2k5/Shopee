@@ -27,6 +27,7 @@ import ProfilePage from './pages/ProfilePage'
 import RequireStaff from './components/RequireStaff'
 import RequireDepartment from './components/RequireDepartment'
 import P3DemoBanner from './demo/P3DemoBanner'
+import MobileNav from './components/MobileNav'
 
 function CustomerShell() {
   return (
@@ -52,6 +53,7 @@ function CustomerShell() {
         </Routes>
       </main>
       <Footer />
+      <MobileNav />
     </CartProvider>
   )
 }
