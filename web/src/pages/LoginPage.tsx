@@ -39,11 +39,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="container" style={{ paddingBlock: 'var(--space-6)', maxWidth: 420 }}>
-      <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+    <div className="container auth-page">
+      <div className="auth-card">
+        <div className="auth-card__intro">
+          <p>Chợ Tốt Mua</p>
+          <h1>{mode === 'login' ? 'Chào mừng bạn quay lại' : 'Tạo tài khoản mới'}</h1>
+          <span>{mode === 'login' ? 'Đăng nhập để theo dõi đơn hàng và lưu sản phẩm.' : 'Chỉ mất một phút để bắt đầu mua sắm.'}</span>
+        </div>
+      <div className="auth-tabs" role="tablist" aria-label="Đăng nhập hoặc đăng ký">
         <button
           type="button"
-          className={mode === 'login' ? 'button button--primary' : 'button button--outline'}
+          className={`auth-tabs__button${mode === 'login' ? ' auth-tabs__button--active' : ''}`}
           onClick={() => {
             setMode('login')
             setError(null)
@@ -53,7 +59,7 @@ export default function LoginPage() {
         </button>
         <button
           type="button"
-          className={mode === 'register' ? 'button button--primary' : 'button button--outline'}
+          className={`auth-tabs__button${mode === 'register' ? ' auth-tabs__button--active' : ''}`}
           onClick={() => {
             setMode('register')
             setError(null)
@@ -63,54 +69,50 @@ export default function LoginPage() {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+      <form className="form-stack" onSubmit={handleSubmit}>
         {mode === 'register' && (
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
+          <label className="form-field">
             Họ và tên
             <input
-              className="search__input"
               type="text"
               required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              style={{ paddingInline: 16, position: 'static' }}
+              className="form-field__input"
             />
           </label>
         )}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
+        <label className="form-field">
           {mode === 'login' ? 'Email hoặc số điện thoại' : 'Email'}
           <input
-            className="search__input"
             type={mode === 'login' ? 'text' : 'email'}
             required
             value={emailOrPhone}
             onChange={(e) => setEmailOrPhone(e.target.value)}
-            style={{ paddingInline: 16, position: 'static' }}
+            className="form-field__input"
           />
         </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
+        <label className="form-field">
           Mật khẩu
           <input
-            className="search__input"
             type="password"
             required
             minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={{ paddingInline: 16, position: 'static' }}
+            className="form-field__input"
           />
         </label>
         {mode === 'register' && (
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
+          <label className="form-field">
             Nhập lại mật khẩu
             <input
-              className="search__input"
               type="password"
               required
               minLength={6}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              style={{ paddingInline: 16, position: 'static' }}
+              className="form-field__input"
             />
           </label>
         )}
@@ -121,10 +123,11 @@ export default function LoginPage() {
           </p>
         )}
 
-        <button className="button button--primary" type="submit" disabled={submitting} style={{ marginTop: 8 }}>
+        <button className="button button--primary auth-card__submit" type="submit" disabled={submitting}>
           {submitting ? 'Đang xử lý...' : mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
         </button>
       </form>
+      </div>
     </div>
   )
 }

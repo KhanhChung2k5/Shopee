@@ -134,19 +134,19 @@ function ProfilePageContent({ token, logout, isBuyer }: { token: string; logout:
   }
 
   return (
-    <div className="container" style={{ paddingBlock: 'var(--space-6)', maxWidth: 640 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+    <div className="container profile-page">
+      <div className="profile-page__heading">
+        <div className="profile-tabs" role="tablist" aria-label="Quản lý tài khoản">
           <button
             type="button"
-            className={tab === 'profile' ? 'button button--primary' : 'button button--outline'}
+            className={`profile-tabs__button${tab === 'profile' ? ' profile-tabs__button--active' : ''}`}
             onClick={() => setTab('profile')}
           >
             Hồ sơ cá nhân
           </button>
           <button
             type="button"
-            className={tab === 'addresses' ? 'button button--primary' : 'button button--outline'}
+            className={`profile-tabs__button${tab === 'addresses' ? ' profile-tabs__button--active' : ''}`}
             onClick={() => setTab('addresses')}
           >
             Địa chỉ giao hàng
@@ -155,14 +155,14 @@ function ProfilePageContent({ token, logout, isBuyer }: { token: string; logout:
             <>
               <button
                 type="button"
-                className={tab === 'wallet' ? 'button button--primary' : 'button button--outline'}
+                className={`profile-tabs__button${tab === 'wallet' ? ' profile-tabs__button--active' : ''}`}
                 onClick={() => setTab('wallet')}
               >
                 Ví của tôi
               </button>
               <button
                 type="button"
-                className={tab === 'loyalty' ? 'button button--primary' : 'button button--outline'}
+                className={`profile-tabs__button${tab === 'loyalty' ? ' profile-tabs__button--active' : ''}`}
                 onClick={() => setTab('loyalty')}
               >
                 Điểm thành viên
@@ -170,7 +170,7 @@ function ProfilePageContent({ token, logout, isBuyer }: { token: string; logout:
             </>
           )}
         </div>
-        <button type="button" className="button button--outline" onClick={logout}>
+        <button type="button" className="button button--outline profile-page__logout" onClick={logout}>
           Đăng xuất
         </button>
       </div>
