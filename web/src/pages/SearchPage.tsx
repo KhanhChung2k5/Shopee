@@ -6,6 +6,7 @@ import ProductFilterBar from '../components/ProductFilterBar'
 import { fetchProducts, type CatalogProductSummary } from '../lib/catalog'
 import { useProductFilters } from '../state/useProductFilters'
 import { searchProducts } from '../data/sampleProducts'
+import { isP3DemoMode } from '../demo/p3DemoApi'
 
 export default function SearchPage() {
   const [searchParams] = useSearchParams()
@@ -23,12 +24,12 @@ export default function SearchPage() {
       .then((result) => {
         if (!active) return
         setResults(result.content)
-        setUsingSampleData(result.totalElements === 0)
+        setUsingSampleData(isP3DemoMode() && result.totalElements === 0)
       })
       .catch(() => {
         if (active) {
-          setUsingSampleData(true)
-          setError('API chưa tải được sản phẩm; đang hiển thị dữ liệu mẫu.')
+          setUsingSampleData(isP3DemoMode())
+          setError('Không tải được sản phẩm. Vui lòng thử lại sau.')
         }
       })
       .finally(() => { if (active) setLoading(false) })

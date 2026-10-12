@@ -43,7 +43,7 @@ export default function Footer() {
       </div>
       <div className="footer-bottom">
         <div className="container">
-          <p>&copy; 2026 Chợ Tốt Mua. Thiết kế minh hoạ — dữ liệu và hình ảnh trong trang là dữ liệu mẫu.</p>
+          <p>&copy; 2026 Chợ Tốt Mua. Hình minh hoạ được dùng khi sản phẩm chưa có ảnh.</p>
           <ApiStatus />
         </div>
       </div>

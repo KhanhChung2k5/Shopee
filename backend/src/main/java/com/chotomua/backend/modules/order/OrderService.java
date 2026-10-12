@@ -4,6 +4,11 @@ import com.chotomua.backend.modules.identity.Address;
 import com.chotomua.backend.modules.identity.AddressRepository;
 import com.chotomua.backend.modules.identity.Employee;
 import com.chotomua.backend.modules.identity.EmployeeRepository;
+import com.chotomua.backend.modules.marketing.VoucherQuoteService;
+import com.chotomua.backend.modules.marketing.VoucherUsage;
+import com.chotomua.backend.modules.marketing.VoucherUsageRepository;
+import com.chotomua.backend.modules.marketing.dto.VoucherQuoteRequest;
+import com.chotomua.backend.modules.marketing.dto.VoucherQuoteResponse;
 import com.chotomua.backend.modules.order.dto.OrderCreateRequest;
 import com.chotomua.backend.modules.order.dto.OrderDetailResponse;
 import com.chotomua.backend.modules.order.dto.OrderResponse;
@@ -25,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class OrderService {
 
-    private static final BigDecimal NO_DISCOUNT = BigDecimal.ZERO;
     private static final BigDecimal FREE_SHIPPING = BigDecimal.ZERO;
 
     private final CartItemRepository cartItemRepository;
@@ -36,6 +40,8 @@ public class OrderService {
     private final EmployeeRepository employeeRepository;
     private final ProductVariantLookup productVariantLookup;
     private final WarehouseLookup warehouseLookup;
+    private final VoucherQuoteService voucherQuoteService;
+    private final VoucherUsageRepository voucherUsageRepository;
 
     public OrderService(
             CartItemRepository cartItemRepository,
@@ -45,7 +51,9 @@ public class OrderService {
             AddressRepository addressRepository,
             EmployeeRepository employeeRepository,
             ProductVariantLookup productVariantLookup,
-            WarehouseLookup warehouseLookup
+            WarehouseLookup warehouseLookup,
+            VoucherQuoteService voucherQuoteService,
+            VoucherUsageRepository voucherUsageRepository
     ) {
         this.cartItemRepository = cartItemRepository;
         this.orderRepository = orderRepository;
@@ -55,11 +63,13 @@ public class OrderService {
         this.employeeRepository = employeeRepository;
         this.productVariantLookup = productVariantLookup;
         this.warehouseLookup = warehouseLookup;
+        this.voucherQuoteService = voucherQuoteService;
+        this.voucherUsageRepository = voucherUsageRepository;
     }
 
     /**
      * Creates one order from all selected cart rows. Prices and product data are always loaded
-     * server-side. Payment/promotion logic belongs to P4 and can replace the zero discount later.
+     * server-side. A voucher is quoted again against this trusted subtotal before the order is saved.
      */
     @Transactional
     public OrderResponse createFromSelectedCart(UUID userId, OrderCreateRequest request) {
@@ -76,14 +86,20 @@ public class OrderService {
         BigDecimal subtotal = lines.stream()
                 .map(CheckoutLine::lineTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal total = subtotal.subtract(NO_DISCOUNT).add(FREE_SHIPPING);
+        VoucherQuoteResponse voucherQuote = null;
+        if (request.voucherCode() != null && !request.voucherCode().isBlank()) {
+            voucherQuote = voucherQuoteService.quote(userId,
+                    new VoucherQuoteRequest(request.voucherCode(), subtotal));
+        }
+        BigDecimal discount = voucherQuote == null ? BigDecimal.ZERO : voucherQuote.discountAmount();
+        BigDecimal total = subtotal.subtract(discount).add(FREE_SHIPPING);
 
         Order order = orderRepository.save(new Order(
                 userId,
                 address.getId(),
                 address.getFullAddress(),
                 subtotal,
-                NO_DISCOUNT,
+                discount,
                 FREE_SHIPPING,
                 total
         ));
@@ -109,6 +125,9 @@ public class OrderService {
                 "buyer",
                 "Tạo đơn hàng"
         ));
+        if (voucherQuote != null) {
+            voucherUsageRepository.save(new VoucherUsage(voucherQuote.voucherId(), userId, order.getId()));
+        }
         cartItemRepository.deleteAll(selectedItems);
 
         return OrderResponse.from(order, savedItems);

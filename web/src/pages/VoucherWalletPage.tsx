@@ -1,14 +1,31 @@
+import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { VOUCHERS } from '../data/sampleProducts'
+import { formatVnd, VOUCHERS } from '../data/sampleProducts'
+import { isP3DemoMode } from '../demo/p3DemoApi'
+import { apiFetch } from '../lib/api'
+import type { AvailableVoucher } from '../lib/vouchers'
 import { useAuth } from '../state/AuthContext'
 
-/**
- * P3-DEMO-INTEGRATION-SEAM: this customer voucher wallet uses sample P4 data.
- * Replace VOUCHERS with the Marketing/Voucher API when P4 is merged.
- */
 export default function VoucherWalletPage() {
-  const { isAuthenticated, isReady, user } = useAuth()
+  const { isAuthenticated, isReady, token, user } = useAuth()
   const navigate = useNavigate()
+  const demoMode = isP3DemoMode()
+  const [vouchers, setVouchers] = useState<AvailableVoucher[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!token || demoMode) return
+    const controller = new AbortController()
+    apiFetch<AvailableVoucher[]>('/vouchers', { signal: controller.signal }, token)
+      .then(setVouchers)
+      .catch((reason: unknown) => {
+        if (reason instanceof DOMException && reason.name === 'AbortError') return
+        setError(reason instanceof Error ? reason.message : 'Không tải được voucher')
+      })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    return () => controller.abort()
+  }, [demoMode, token])
 
   if (!isReady) return <div className="container voucher-wallet-state">Đang kiểm tra đăng nhập…</div>
   if (!isAuthenticated) return <Navigate to="/dang-nhap" replace state={{ from: '/kho-voucher' }} />
@@ -22,15 +39,15 @@ export default function VoucherWalletPage() {
           <p>Ưu đãi của tôi</p>
           <h1>Kho Voucher</h1>
         </div>
-        <span>{VOUCHERS.length} voucher khả dụng</span>
+        <span>{demoMode ? VOUCHERS.length : vouchers.length} voucher khả dụng</span>
       </header>
 
-      <div className="voucher-wallet-notice">
-        Dữ liệu voucher đang được mô phỏng tạm thời. P4 có thể thay nguồn dữ liệu tại <code>VoucherWalletPage</code> mà không ảnh hưởng luồng đơn hàng P3.
-      </div>
+      {!demoMode && loading && <p>Đang tải voucher…</p>}
+      {!demoMode && error && <p role="alert">{error}</p>}
+      {!demoMode && !loading && !error && vouchers.length === 0 && <p>Hiện chưa có voucher khả dụng cho bạn.</p>}
 
       <ul className="voucher-wallet-grid">
-        {VOUCHERS.map((voucher) => (
+        {demoMode ? VOUCHERS.map((voucher) => (
           <li className={`voucher-card${voucher.isShipping ? ' voucher-card--ship' : ''}`} key={voucher.id}>
             <div className="voucher-card__value">
               {voucher.isShipping ? (
@@ -43,6 +60,18 @@ export default function VoucherWalletPage() {
             <div className="voucher-card__body">
               <p className="voucher-card__name">{voucher.title}</p>
               <p className="voucher-card__expiry">{voucher.expiryLabel}</p>
+              <span className="voucher-wallet-ready">Sẵn sàng sử dụng</span>
+            </div>
+          </li>
+        )) : vouchers.map((voucher) => (
+          <li className="voucher-card" key={voucher.id}>
+            <div className="voucher-card__value">
+              <span className="voucher-card__amount">{voucher.type === 'percentage' ? `-${voucher.value}%` : `-${formatVnd(voucher.value)}`}</span>
+              <span className="voucher-card__condition">Mã: {voucher.code}</span>
+            </div>
+            <div className="voucher-card__body">
+              <p className="voucher-card__name">{voucher.programName}</p>
+              <p className="voucher-card__expiry">Hết hạn: {new Date(voucher.endsAt).toLocaleString('vi-VN')}</p>
               <span className="voucher-wallet-ready">Sẵn sàng sử dụng</span>
             </div>
           </li>

@@ -4,6 +4,8 @@ import ProductThumb from '../components/ProductThumb'
 import { fetchProduct, formatVnd, resolveCatalogImageUrl, type CatalogProduct, type ProductType } from '../lib/catalog'
 import { CONNECTION_LABELS, discountPercent, findProduct, type Product } from '../data/sampleProducts'
 import { useCart } from '../state/CartContext'
+import { useAuth } from '../state/AuthContext'
+import { isP3DemoMode } from '../demo/p3DemoApi'
 
 // The catalog contains deterministic UUID-shaped IDs for demo products. They
 // are accepted by the backend's UUID parser even when they do not carry an
@@ -31,14 +33,16 @@ function sampleOrigin(sample: Product | undefined) {
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { addItem } = useCart()
+  const { addItem, error: cartError } = useCart()
+  const { token } = useAuth()
   const [product, setProduct] = useState<CatalogProduct | null>(null)
   const [selectedVariantId, setSelectedVariantId] = useState('')
   const [qty, setQty] = useState(1)
   const [activeImg, setActiveImg] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const sampleProduct = id && !UUID_PATTERN.test(id) ? findProduct(id) : undefined
+  const [isAdding, setIsAdding] = useState(false)
+  const sampleProduct = isP3DemoMode() && id && !UUID_PATTERN.test(id) ? findProduct(id) : undefined
 
   useEffect(() => {
     let active = true
@@ -50,7 +54,7 @@ export default function ProductDetailPage() {
     setActiveImg(0)
     if (!id || !UUID_PATTERN.test(id)) {
       setProduct(null)
-      setError(id && findProduct(id) ? '' : 'Không tìm thấy sản phẩm.')
+      setError(isP3DemoMode() && id && findProduct(id) ? '' : 'Không tìm thấy sản phẩm.')
       setLoading(false)
       return () => { active = false }
     }
@@ -107,17 +111,19 @@ export default function ProductDetailPage() {
     },
   ].filter((row): row is { label: string; value: string } => typeof row.value === 'string' && row.value.trim().length > 0)
 
-  const purchase = (goToCart: boolean) => {
-    if (sampleProduct) {
-      addItem(sampleProduct.id, qty)
-      if (goToCart) navigate('/gio-hang')
+  const purchase = async (goToCart: boolean) => {
+    if (!token && !isP3DemoMode()) {
+      navigate('/dang-nhap', { state: { from: `/san-pham/${id}` } })
       return
     }
-    if (!product || !canBuy || !variant) return
-    // P3 cart operates on the sellable variant UUID. Product metadata is
-    // returned by the Cart API after it is added.
-    void addItem(variant.id, qty)
-    if (goToCart) navigate('/gio-hang')
+    if (!sampleProduct && (!product || !canBuy || !variant)) return
+    setIsAdding(true)
+    try {
+      const added = await addItem(sampleProduct ? sampleProduct.id : variant!.id, qty)
+      if (added && goToCart) navigate('/gio-hang')
+    } finally {
+      setIsAdding(false)
+    }
   }
 
   if (!sampleProduct && loading) return <div className="container" style={{ padding: 'var(--space-6) 0' }}>Đang tải thông tin sản phẩm…</div>
@@ -186,9 +192,10 @@ export default function ProductDetailPage() {
             </div>
           </div>
           <div className="product-detail__actions">
-            <button className="button button--outline" type="button" disabled={!canBuy} onClick={() => purchase(false)}>Thêm vào giỏ hàng</button>
-            <button className="button button--primary" type="button" disabled={!canBuy} onClick={() => purchase(true)}>Mua ngay</button>
+            <button className="button button--outline" type="button" disabled={!canBuy || isAdding} onClick={() => void purchase(false)}>Thêm vào giỏ hàng</button>
+            <button className="button button--primary" type="button" disabled={!canBuy || isAdding} onClick={() => void purchase(true)}>Mua ngay</button>
           </div>
+          {cartError && <p role="alert" style={{ color: 'var(--color-urgent)', marginTop: 12 }}>{cartError}</p>}
           {!sampleProduct && !canBuy && <p role="status" style={{ color: 'var(--color-urgent)', marginTop: 12 }}>Sản phẩm/biến thể hiện không đủ tồn kho để mua.</p>}
         </div>
       </div>

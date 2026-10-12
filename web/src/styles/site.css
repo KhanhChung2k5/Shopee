@@ -120,6 +120,7 @@ input, select, textarea { font: inherit; }
 .form-field__input { width: 100%; height: 46px; padding-inline: 14px; border: 1.5px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-background); color: var(--color-foreground); }
 .form-field__input:focus { border-color: var(--color-primary); outline: 0; background: var(--color-surface); }
 .auth-card__submit { width: 100%; margin-top: var(--space-1); }
+.auth-card__hint { margin: calc(var(--space-2) * -1) 0 0; color: var(--color-muted-foreground); font-size: 12px; line-height: 1.45; }
 .profile-page { max-width: 760px; padding-block: var(--space-6); }
 .profile-page__heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
 .profile-tabs { flex: 1; max-width: 420px; }

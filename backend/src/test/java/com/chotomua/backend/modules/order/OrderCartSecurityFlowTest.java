@@ -57,7 +57,9 @@ class OrderCartSecurityFlowTest {
                 mock(AddressRepository.class),
                 mock(EmployeeRepository.class),
                 productVariantLookup,
-                mock(WarehouseLookup.class)
+                mock(WarehouseLookup.class),
+                mock(com.chotomua.backend.modules.marketing.VoucherQuoteService.class),
+                mock(com.chotomua.backend.modules.marketing.VoucherUsageRepository.class)
         );
 
         mockMvc = MockMvcBuilders

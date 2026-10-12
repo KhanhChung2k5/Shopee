@@ -45,7 +45,7 @@ interface CartContextValue {
   isLoading: boolean
   error: string | null
   busyIds: ReadonlySet<string>
-  addItem: (variantId: string, quantity?: number) => Promise<void>
+  addItem: (variantId: string, quantity?: number) => Promise<boolean>
   removeItem: (lineId: string) => Promise<void>
   setQuantity: (lineId: string, quantity: number) => Promise<void>
   setSelected: (lineId: string, selected: boolean) => Promise<void>
@@ -154,13 +154,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       ? demoVariantIdForProduct(variantId) ?? variantId
       : variantId
 
-    // Temporary compatibility path for P2's mock catalog. Once P2 supplies
-    // real variant UUIDs, this same call automatically uses the Cart API.
-    if (!token || !UUID_PATTERN.test(requestVariantId)) {
+    // Sample cart lines exist only in the explicitly requested P3 demo.
+    if (isP3DemoMode() && (!token || !UUID_PATTERN.test(requestVariantId))) {
       const product = findProduct(variantId)
       if (!product) {
         setError('Không tìm thấy sản phẩm để thêm vào giỏ hàng')
-        return
+        return false
       }
       setSampleLines((current) => {
         const existing = current.find((line) => line.variantId === variantId)
@@ -169,7 +168,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
           line.id === existing.id ? { ...line, quantity: line.quantity + quantity } : line,
         )
       })
-      return
+      return true
+    }
+
+    if (!token) {
+      setError('Vui lòng đăng nhập trước khi thêm sản phẩm vào giỏ hàng')
+      return false
+    }
+    if (!UUID_PATTERN.test(requestVariantId)) {
+      setError('Sản phẩm mẫu không thể thêm vào giỏ hàng thật')
+      return false
     }
 
     markBusy(variantId, true)
@@ -180,8 +188,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }, token)
       const line = apiLine(item)
       setApiLines((current) => [...current.filter((entry) => entry.id !== line.id), line])
+      return true
     } catch (requestError) {
       setError(errorMessage(requestError, 'Không thể thêm sản phẩm vào giỏ hàng'))
+      return false
     } finally {
       markBusy(variantId, false)
     }

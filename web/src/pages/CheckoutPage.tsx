@@ -5,6 +5,7 @@ import { calculateVoucherBundleDiscount, calculateVoucherDiscount, formatVnd, VO
 import { PAYMENT_METHODS } from '../data/sampleAddresses'
 import { isP3DemoMode } from '../demo/p3DemoApi'
 import { apiFetch, ApiError } from '../lib/api'
+import type { AvailableVoucher, VoucherQuote } from '../lib/vouchers'
 import { useAuth } from '../state/AuthContext'
 import { useCart } from '../state/CartContext'
 
@@ -52,6 +53,12 @@ function CheckoutContent({ token }: { token: string }) {
   const [voucherIds, setVoucherIds] = useState<string[]>([])
   const [draftVoucherIds, setDraftVoucherIds] = useState<string[]>([])
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false)
+  const [availableVouchers, setAvailableVouchers] = useState<AvailableVoucher[]>([])
+  const [voucherLoading, setVoucherLoading] = useState(false)
+  const [voucherError, setVoucherError] = useState<string | null>(null)
+  const [voucherCode, setVoucherCode] = useState('')
+  const [draftVoucherCode, setDraftVoucherCode] = useState('')
+  const [quoteResult, setQuoteResult] = useState<{ key: string; quote?: VoucherQuote; error?: string } | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -75,24 +82,62 @@ function CheckoutContent({ token }: { token: string }) {
   const apiLines = selectedLines.filter((line) => line.source === 'api')
   const subtotal = selectedLines.reduce((sum, line) => sum + line.product.price * line.quantity, 0)
   const demoMode = isP3DemoMode()
+  const quoteKey = `${voucherCode}:${subtotal}`
+  const currentQuote = quoteResult?.key === quoteKey ? quoteResult.quote : undefined
+  const quoteError = quoteResult?.key === quoteKey ? quoteResult.error : undefined
+  const quoting = !demoMode && !!voucherCode && subtotal > 0 && quoteResult?.key !== quoteKey
   const shippingFee = demoMode ? 30_000 : 0
   const selectedVouchers = VOUCHERS.filter((voucher) => voucherIds.includes(voucher.id))
-  const discountAmount = calculateVoucherBundleDiscount(selectedVouchers, subtotal, shippingFee)
+  const discountAmount = demoMode
+    ? calculateVoucherBundleDiscount(selectedVouchers, subtotal, shippingFee)
+    : Number(currentQuote?.discountAmount ?? 0)
   const totalAmount = Math.max(0, subtotal + shippingFee - discountAmount)
   const draftVouchers = VOUCHERS.filter((voucher) => draftVoucherIds.includes(voucher.id))
   const draftDiscountAmount = calculateVoucherBundleDiscount(draftVouchers, subtotal, shippingFee)
   const shippingVouchers = VOUCHERS.filter((voucher) => voucher.discountType === 'shipping')
   const productVouchers = VOUCHERS.filter((voucher) => voucher.discountType !== 'shipping')
 
+  useEffect(() => {
+    if (demoMode) return
+    const controller = new AbortController()
+    setVoucherLoading(true)
+    apiFetch<AvailableVoucher[]>('/vouchers', { signal: controller.signal }, token)
+      .then(setAvailableVouchers)
+      .catch((reason: unknown) => {
+        if (reason instanceof DOMException && reason.name === 'AbortError') return
+        setVoucherError(reason instanceof ApiError ? reason.message : 'Không tải được voucher')
+      })
+      .finally(() => { if (!controller.signal.aborted) setVoucherLoading(false) })
+    return () => controller.abort()
+  }, [demoMode, token])
+
+  useEffect(() => {
+    if (demoMode || !voucherCode || subtotal <= 0) return
+    const controller = new AbortController()
+    apiFetch<VoucherQuote>('/vouchers/quote', {
+      method: 'POST',
+      signal: controller.signal,
+      body: JSON.stringify({ code: voucherCode, subtotal }),
+    }, token)
+      .then((quote) => setQuoteResult({ key: quoteKey, quote }))
+      .catch((reason: unknown) => {
+        if (reason instanceof DOMException && reason.name === 'AbortError') return
+        setQuoteResult({ key: quoteKey, error: reason instanceof ApiError ? reason.message : 'Không báo giá được voucher' })
+      })
+    return () => controller.abort()
+  }, [demoMode, quoteKey, voucherCode, subtotal, token])
+
   const openVoucherModal = () => {
     setDraftVoucherIds([...voucherIds])
+    setDraftVoucherCode(voucherCode)
     setIsVoucherModalOpen(true)
   }
 
   const closeVoucherModal = () => setIsVoucherModalOpen(false)
 
   const applyVoucher = () => {
-    setVoucherIds([...draftVoucherIds])
+    if (demoMode) setVoucherIds([...draftVoucherIds])
+    else setVoucherCode(draftVoucherCode)
     setIsVoucherModalOpen(false)
   }
 
@@ -142,13 +187,14 @@ function CheckoutContent({ token }: { token: string }) {
   }
 
   const handlePlaceOrder = async () => {
-    if (!addressId || hasSampleLines || apiLines.length === 0) return
+    if (!addressId || hasSampleLines || apiLines.length === 0 || (voucherCode && !demoMode && !currentQuote)) return
 
     setIsSubmitting(true)
     setError(null)
     try {
-      const requestBody: { addressId: string; voucherIds?: string[] } = { addressId }
+      const requestBody: { addressId: string; voucherIds?: string[]; voucherCode?: string } = { addressId }
       if (demoMode && voucherIds.length > 0) requestBody.voucherIds = voucherIds
+      if (!demoMode && voucherCode) requestBody.voucherCode = voucherCode
       const order = await apiFetch<CreatedOrder>('/orders', {
         method: 'POST',
         body: JSON.stringify(requestBody),
@@ -203,6 +249,7 @@ function CheckoutContent({ token }: { token: string }) {
   }
 
   const cannotSubmit = isSubmitting || isAddressLoading || !addressId || hasSampleLines || apiLines.length === 0
+    || (!demoMode && !!voucherCode && !currentQuote)
 
   return (
     <>
@@ -256,10 +303,18 @@ function CheckoutContent({ token }: { token: string }) {
           <section className="checkout-section">
             <p className="checkout-section__title">
               <span>Voucher</span>
-              <button className="checkout-section__link checkout-section__link-button" type="button" disabled={!demoMode} onClick={openVoucherModal}>Chọn Voucher</button>
+              <button className="checkout-section__link checkout-section__link-button" type="button" disabled={!demoMode && (voucherLoading || availableVouchers.length === 0)} onClick={openVoucherModal}>Chọn Voucher</button>
             </p>
             {!demoMode ? (
-              <p className="checkout-muted">Voucher sẽ khả dụng sau khi API của P4 được tích hợp.</p>
+              <div className="checkout-voucher-selection">
+                <div>
+                  <strong>{voucherCode ? `Mã ${voucherCode}` : 'Chưa chọn voucher'}</strong>
+                  <span>{voucherLoading ? 'Đang tải voucher…' : voucherError ?? (availableVouchers.length === 0 ? 'Hiện chưa có voucher khả dụng.' : 'Có thể chọn một voucher giảm giá cho đơn hàng.')}</span>
+                  {quoting && <span>Đang kiểm tra mức giảm…</span>}
+                  {quoteError && <span role="alert" style={{ color: 'var(--color-urgent)' }}>{quoteError}</span>}
+                </div>
+                {discountAmount > 0 && <strong className="checkout-discount">-{formatVnd(discountAmount)}</strong>}
+              </div>
             ) : (
               <div className="checkout-voucher-selection">
                 <div>
@@ -374,6 +429,33 @@ function CheckoutContent({ token }: { token: string }) {
                 <button className="button button--outline" type="button" onClick={closeVoucherModal}>Trở lại</button>
                 <button className="button button--primary" type="button" onClick={applyVoucher}>Đồng ý</button>
               </div>
+            </footer>
+          </section>
+        </div>
+      )}
+      {!demoMode && isVoucherModalOpen && (
+        <div className="voucher-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeVoucherModal() }}>
+          <section className="voucher-modal" role="dialog" aria-modal="true" aria-labelledby="voucher-modal-title">
+            <header className="voucher-modal__header">
+              <div><p>Chợ Tốt Mua Voucher</p><h2 id="voucher-modal-title">Chọn Voucher</h2></div>
+              <button type="button" aria-label="Đóng cửa sổ chọn voucher" onClick={closeVoucherModal}>×</button>
+            </header>
+            <div className="voucher-modal__body">
+              <p className="voucher-modal__hint">Chọn một voucher. Mức giảm sẽ được kiểm tra theo giá trị đơn hàng hiện tại.</p>
+              {availableVouchers.map((voucher) => (
+                <label key={voucher.id} className={`radio-card voucher-option${draftVoucherCode === voucher.code ? ' radio-card--selected' : ''}`}>
+                  <input type="radio" name="voucher" checked={draftVoucherCode === voucher.code} onChange={() => setDraftVoucherCode(voucher.code)} />
+                  <span className="voucher-option__ticket">{voucher.type === 'percentage' ? `-${voucher.value}%` : `-${formatVnd(voucher.value)}`}</span>
+                  <span className="voucher-option__body">
+                    <span className="radio-card__title">{voucher.programName}</span>
+                    <span className="radio-card__desc checkout-address-text">Mã: {voucher.code} · Hết hạn: {new Date(voucher.endsAt).toLocaleString('vi-VN')}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <footer className="voucher-modal__footer">
+              <button className="button button--outline" type="button" onClick={() => setDraftVoucherCode('')}>Bỏ chọn voucher</button>
+              <div><button className="button button--outline" type="button" onClick={closeVoucherModal}>Trở lại</button><button className="button button--primary" type="button" onClick={applyVoucher}>Đồng ý</button></div>
             </footer>
           </section>
         </div>

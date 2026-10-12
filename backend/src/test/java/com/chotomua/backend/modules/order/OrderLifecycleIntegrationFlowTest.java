@@ -140,7 +140,9 @@ class OrderLifecycleIntegrationFlowTest {
                 addressRepository,
                 employeeRepository,
                 productVariantLookup,
-                warehouseLookup
+                warehouseLookup,
+                mock(com.chotomua.backend.modules.marketing.VoucherQuoteService.class),
+                mock(com.chotomua.backend.modules.marketing.VoucherUsageRepository.class)
         );
         MockMvc mockMvc = MockMvcBuilders
                 .standaloneSetup(new OrderController(orderService))

@@ -97,7 +97,7 @@ export default function LoginPage() {
           <input
             type="password"
             required
-            minLength={6}
+            minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="form-field__input"
@@ -109,7 +109,7 @@ export default function LoginPage() {
             <input
               type="password"
               required
-              minLength={6}
+              minLength={8}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="form-field__input"
@@ -121,6 +121,10 @@ export default function LoginPage() {
           <p style={{ fontSize: 13, color: 'var(--color-urgent)', margin: 0 }} role="alert">
             {error}
           </p>
+        )}
+
+        {mode === 'register' && (
+          <p className="auth-card__hint">Mật khẩu có ít nhất 8 ký tự, gồm chữ và số.</p>
         )}
 
         <button className="button button--primary auth-card__submit" type="submit" disabled={submitting}>

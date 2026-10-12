@@ -6,6 +6,7 @@ import ProductGridStatic from '../components/ProductGridStatic'
 import ProductFilterBar from '../components/ProductFilterBar'
 import { CATEGORIES, categorySlug, productsByCategorySlug } from '../data/sampleProducts'
 import { useProductFilters } from '../state/useProductFilters'
+import { isP3DemoMode } from '../demo/p3DemoApi'
 
 const PAGE_SIZE = 12
 const API_PAGE_SIZE = 100
@@ -74,12 +75,12 @@ export default function CategoryPage() {
           if (!active) return
           setProducts(categoryProducts)
           const sampleCategory = CATEGORIES.find((item) => categorySlug(item.label) === slug)
-          setUsingSampleData(categoryProducts.length === 0 && !!sampleCategory)
+          setUsingSampleData(isP3DemoMode() && categoryProducts.length === 0 && !!sampleCategory)
         } else {
           const sampleCategory = CATEGORIES.find((item) => categorySlug(item.label) === slug)
-          setCategory(sampleCategory && slug ? { id: '', name: sampleCategory.label, slug, parentId: null } : null)
+          setCategory(isP3DemoMode() && sampleCategory && slug ? { id: '', name: sampleCategory.label, slug, parentId: null } : null)
           setProducts([])
-          setUsingSampleData(!!sampleCategory)
+          setUsingSampleData(isP3DemoMode() && !!sampleCategory)
         }
         setPage(0)
       })
@@ -87,7 +88,7 @@ export default function CategoryPage() {
         if (!active) return
         const cached = getCachedCategories().find((item) => item.slug === slug)
         const sampleCategory = CATEGORIES.find((item) => categorySlug(item.label) === slug)
-        if (sampleCategory && slug) {
+        if (isP3DemoMode() && sampleCategory && slug) {
           setCategory({ id: '', name: sampleCategory.label, slug, parentId: null })
           setProducts([])
           setUsingSampleData(true)

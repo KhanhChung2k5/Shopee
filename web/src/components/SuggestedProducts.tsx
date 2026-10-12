@@ -3,6 +3,7 @@ import CatalogProductGrid from './CatalogProductGrid'
 import { fetchProducts, type CatalogProductSummary } from '../lib/catalog'
 import { SUGGESTED_PRODUCTS } from '../data/sampleProducts'
 import ProductCard from './ProductCard'
+import { isP3DemoMode } from '../demo/p3DemoApi'
 import { useRevealOnScroll } from '../state/useRevealOnScroll'
 
 const PAGE_SIZE = 10
@@ -23,14 +24,14 @@ export default function SuggestedProducts() {
       .then((result) => {
         if (!active) return
         setProducts(result.content)
-        setUsingSampleData(result.content.length === 0)
+        setUsingSampleData(isP3DemoMode() && result.content.length === 0)
         setPage(result.page)
         setHasMore(result.content.length > 0 && result.page + 1 < result.totalPages)
       })
       .catch(() => {
         if (active) {
-          setUsingSampleData(true)
-          setError('API chưa tải được sản phẩm; đang hiển thị dữ liệu mẫu.')
+          setUsingSampleData(isP3DemoMode())
+          setError('Không tải được sản phẩm. Vui lòng thử lại sau.')
         }
       })
       .finally(() => { if (active) setLoading(false) })
@@ -60,6 +61,7 @@ export default function SuggestedProducts() {
         {!loading && usingSampleData && <p role="status" style={{ color: 'var(--color-muted-foreground)' }}>API chưa có sản phẩm đã xuất bản; đang hiển thị dữ liệu mẫu.</p>}
         {loading ? <p>Đang tải sản phẩm…</p> : usingSampleData
           ? <ul className="product-grid reveal-grid is-visible" ref={revealRef}>{SUGGESTED_PRODUCTS.map((product) => <ProductCard key={product.id} product={product} />)}</ul>
+          : products.length === 0 ? <p>Hiện chưa có sản phẩm đã xuất bản.</p>
           : <CatalogProductGrid products={products} className="product-grid reveal-grid" listRef={revealRef} />}
         {!usingSampleData && hasMore && (
           <div className="load-more-wrap">

@@ -14,6 +14,11 @@ import com.chotomua.backend.modules.identity.AddressRepository;
 import com.chotomua.backend.modules.identity.Employee;
 import com.chotomua.backend.modules.identity.EmployeeRepository;
 import com.chotomua.backend.modules.identity.User;
+import com.chotomua.backend.modules.marketing.VoucherQuoteService;
+import com.chotomua.backend.modules.marketing.VoucherUsage;
+import com.chotomua.backend.modules.marketing.VoucherUsageRepository;
+import com.chotomua.backend.modules.marketing.dto.VoucherQuoteRequest;
+import com.chotomua.backend.modules.marketing.dto.VoucherQuoteResponse;
 import com.chotomua.backend.modules.order.dto.OrderCreateRequest;
 import com.chotomua.backend.modules.order.dto.OrderShippingInfoRequest;
 import com.chotomua.backend.modules.order.dto.OrderStatusUpdateRequest;
@@ -39,6 +44,8 @@ class OrderServiceTest {
     private EmployeeRepository employeeRepository;
     private ProductVariantLookup productVariantLookup;
     private WarehouseLookup warehouseLookup;
+    private VoucherQuoteService voucherQuoteService;
+    private VoucherUsageRepository voucherUsageRepository;
     private OrderService orderService;
 
     @BeforeEach
@@ -51,6 +58,8 @@ class OrderServiceTest {
         employeeRepository = mock(EmployeeRepository.class);
         productVariantLookup = mock(ProductVariantLookup.class);
         warehouseLookup = mock(WarehouseLookup.class);
+        voucherQuoteService = mock(VoucherQuoteService.class);
+        voucherUsageRepository = mock(VoucherUsageRepository.class);
         orderService = new OrderService(
                 cartItemRepository,
                 orderRepository,
@@ -59,8 +68,69 @@ class OrderServiceTest {
                 addressRepository,
                 employeeRepository,
                 productVariantLookup,
-                warehouseLookup
+                warehouseLookup,
+                voucherQuoteService,
+                voucherUsageRepository
         );
+    }
+
+    @Test
+    void checkoutWithVoucherRequotesTrustedSubtotalAndRecordsUsage() {
+        UUID userId = UUID.randomUUID();
+        UUID addressId = UUID.randomUUID();
+        UUID variantId = UUID.randomUUID();
+        UUID voucherId = UUID.randomUUID();
+        when(addressRepository.findById(addressId)).thenReturn(Optional.of(ownedAddress(userId, addressId)));
+        when(cartItemRepository.findByUserIdAndIsSelectedTrueOrderByUpdatedAtAsc(userId))
+                .thenReturn(List.of(new CartItem(userId, variantId, 2)));
+        when(productVariantLookup.findActiveById(variantId)).thenReturn(Optional.of(
+                new ProductVariantSnapshot(variantId, new BigDecimal("120000.00"), "Tay cầm", "{}")
+        ));
+        when(voucherQuoteService.quote(any(), any(VoucherQuoteRequest.class))).thenReturn(
+                new VoucherQuoteResponse(voucherId, "SALE10", new BigDecimal("240000.00"),
+                        new BigDecimal("24000.00"), new BigDecimal("216000.00")));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            setId(order, UUID.randomUUID());
+            return order;
+        });
+        when(orderItemRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = orderService.createFromSelectedCart(userId, new OrderCreateRequest(addressId, "sale10"));
+
+        assertThat(result.discountAmount()).isEqualByComparingTo("24000.00");
+        assertThat(result.totalAmount()).isEqualByComparingTo("216000.00");
+        ArgumentCaptor<VoucherQuoteRequest> quoteCaptor = ArgumentCaptor.forClass(VoucherQuoteRequest.class);
+        verify(voucherQuoteService).quote(org.mockito.ArgumentMatchers.eq(userId), quoteCaptor.capture());
+        assertThat(quoteCaptor.getValue().subtotal()).isEqualByComparingTo("240000.00");
+        ArgumentCaptor<VoucherUsage> usageCaptor = ArgumentCaptor.forClass(VoucherUsage.class);
+        verify(voucherUsageRepository).save(usageCaptor.capture());
+        assertThat(usageCaptor.getValue().getVoucherId()).isEqualTo(voucherId);
+        assertThat(usageCaptor.getValue().getUserId()).isEqualTo(userId);
+        assertThat(usageCaptor.getValue().getOrderId()).isEqualTo(result.id());
+    }
+
+    @Test
+    void checkoutRejectsInvalidVoucherBeforeSavingOrder() {
+        UUID userId = UUID.randomUUID();
+        UUID addressId = UUID.randomUUID();
+        UUID variantId = UUID.randomUUID();
+        when(addressRepository.findById(addressId)).thenReturn(Optional.of(ownedAddress(userId, addressId)));
+        when(cartItemRepository.findByUserIdAndIsSelectedTrueOrderByUpdatedAtAsc(userId))
+                .thenReturn(List.of(new CartItem(userId, variantId, 1)));
+        when(productVariantLookup.findActiveById(variantId)).thenReturn(Optional.of(
+                new ProductVariantSnapshot(variantId, new BigDecimal("100000.00"), "Đĩa game", "{}")
+        ));
+        when(voucherQuoteService.quote(any(), any(VoucherQuoteRequest.class)))
+                .thenThrow(new IllegalArgumentException("Voucher đã hết hạn"));
+
+        assertThatThrownBy(() -> orderService.createFromSelectedCart(userId,
+                new OrderCreateRequest(addressId, "EXPIRED")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("hết hạn");
+        verify(orderRepository, never()).save(any());
+        verify(voucherUsageRepository, never()).save(any());
+        verify(cartItemRepository, never()).deleteAll(any());
     }
 
     @Test

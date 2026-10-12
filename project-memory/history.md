@@ -1,5 +1,13 @@
 # History
 
+## 2026-10-12 — P2/P3/P4 integration on `codex/merge-p2-p3-p4`
+
+- The live checkout now discovers P4 vouchers, quotes the selected code, and sends `voucherCode` with `POST /orders`. P3 `OrderService` re-quotes against the server-side cart subtotal, persists the discount on the order, and records `voucher_usages` in the same transaction. P3 demo mode remains separate and keeps its sample voucher behavior.
+- Live catalog, search, category and product detail pages no longer fall back to unbuyable P3 sample products when the API is empty or unavailable. Sample products remain only behind explicit `?p3-demo=1`.
+- Added optional `docs/local-integration-seed.sql` for a disposable/local DB (three published SKUs, stock, two vouchers). It is not a Flyway migration and must not be run on production/shared data.
+- Verified full backend Maven tests with a local PostgreSQL instance and explicit Byte Buddy javaagent (JDK 25), plus web build and lint on Node 24. Live HTTP smoke covered registration/login, product discovery, address, cart, voucher discovery/quote, order creation/detail; DB confirmed `voucher_usages` and discounted total.
+- Local services for manual testing: PostgreSQL port 5434, backend port 8080, web port 5175. This is temporary runtime state, not a deployment.
+
 ## 2026-10-01
 
 - Cloned repo `KhanhChung2k5/Shopee`.
