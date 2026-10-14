@@ -72,6 +72,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PATCH, "/refund-returns/**").hasAnyAuthority("DEPT_CS", "DEPT_ADMIN")
                 .requestMatchers("/vouchers", "/vouchers/**").hasAuthority("ROLE_BUYER")
                 .requestMatchers("/loyalty", "/loyalty/**").hasAuthority("ROLE_BUYER")
+                .requestMatchers(HttpMethod.POST, "/reviews").hasRole("BUYER")
                 .requestMatchers("/marketing", "/marketing/**").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
                 .anyRequest().authenticated()
             )
