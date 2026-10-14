@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react'
 import CatalogProductGrid from './CatalogProductGrid'
 import { fetchProducts, type CatalogProductSummary } from '../lib/catalog'
-import { SUGGESTED_PRODUCTS } from '../data/sampleProducts'
-import ProductCard from './ProductCard'
-import { isP3DemoMode } from '../demo/p3DemoApi'
 import { useRevealOnScroll } from '../state/useRevealOnScroll'
 
 const PAGE_SIZE = 10
@@ -15,7 +12,6 @@ export default function SuggestedProducts() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
-  const [usingSampleData, setUsingSampleData] = useState(false)
   const revealRef = useRevealOnScroll<HTMLUListElement>(!loading)
 
   useEffect(() => {
@@ -24,13 +20,11 @@ export default function SuggestedProducts() {
       .then((result) => {
         if (!active) return
         setProducts(result.content)
-        setUsingSampleData(isP3DemoMode() && result.content.length === 0)
         setPage(result.page)
         setHasMore(result.content.length > 0 && result.page + 1 < result.totalPages)
       })
       .catch(() => {
         if (active) {
-          setUsingSampleData(isP3DemoMode())
           setError('Không tải được sản phẩm. Vui lòng thử lại sau.')
         }
       })
@@ -58,12 +52,9 @@ export default function SuggestedProducts() {
       <div className="container">
         <h2 id="suggested-heading" className="section-title section-title--plain">Gợi ý hôm nay</h2>
         {error && <p role="alert" style={{ color: 'var(--color-urgent)' }}>{error}</p>}
-        {!loading && usingSampleData && <p role="status" style={{ color: 'var(--color-muted-foreground)' }}>API chưa có sản phẩm đã xuất bản; đang hiển thị dữ liệu mẫu.</p>}
-        {loading ? <p>Đang tải sản phẩm…</p> : usingSampleData
-          ? <ul className="product-grid reveal-grid is-visible" ref={revealRef}>{SUGGESTED_PRODUCTS.map((product) => <ProductCard key={product.id} product={product} />)}</ul>
-          : products.length === 0 ? <p>Hiện chưa có sản phẩm đã xuất bản.</p>
+        {loading ? <p>Đang tải sản phẩm…</p> : products.length === 0 ? <p>Hiện chưa có sản phẩm đã xuất bản.</p>
           : <CatalogProductGrid products={products} className="product-grid reveal-grid" listRef={revealRef} />}
-        {!usingSampleData && hasMore && (
+        {hasMore && (
           <div className="load-more-wrap">
             <button className="button button--outline" type="button" disabled={loadingMore} onClick={() => void loadMore()}>
               {loadingMore ? 'Đang tải…' : 'Xem thêm sản phẩm'}

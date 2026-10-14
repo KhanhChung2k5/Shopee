@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { formatVnd, type ProductType } from '../data/sampleProducts'
+import { formatVnd, type ProductType } from '../lib/catalog'
 import { apiFetch } from '../lib/api'
 import { useAuth } from '../state/AuthContext'
 import ProductThumb from './ProductThumb'

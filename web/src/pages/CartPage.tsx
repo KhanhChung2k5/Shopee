@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { formatVnd } from '../data/sampleProducts'
+import { formatVnd } from '../lib/catalog'
 import ProductThumb from '../components/ProductThumb'
 import { useCart } from '../state/CartContext'
 

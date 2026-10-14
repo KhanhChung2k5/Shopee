@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { formatVnd, VOUCHERS } from '../data/sampleProducts'
-import { isP3DemoMode } from '../demo/p3DemoApi'
+import { formatVnd } from '../lib/catalog'
 import { apiFetch } from '../lib/api'
 import type { AvailableVoucher } from '../lib/vouchers'
 import { useAuth } from '../state/AuthContext'
@@ -9,13 +8,12 @@ import { useAuth } from '../state/AuthContext'
 export default function VoucherWalletPage() {
   const { isAuthenticated, isReady, token, user } = useAuth()
   const navigate = useNavigate()
-  const demoMode = isP3DemoMode()
   const [vouchers, setVouchers] = useState<AvailableVoucher[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!token || demoMode) return
+    if (!token) return
     const controller = new AbortController()
     apiFetch<AvailableVoucher[]>('/vouchers', { signal: controller.signal }, token)
       .then(setVouchers)
@@ -25,7 +23,7 @@ export default function VoucherWalletPage() {
       })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [demoMode, token])
+  }, [token])
 
   if (!isReady) return <div className="container voucher-wallet-state">Đang kiểm tra đăng nhập…</div>
   if (!isAuthenticated) return <Navigate to="/dang-nhap" replace state={{ from: '/kho-voucher' }} />
@@ -39,31 +37,15 @@ export default function VoucherWalletPage() {
           <p>Ưu đãi của tôi</p>
           <h1>Kho Voucher</h1>
         </div>
-        <span>{demoMode ? VOUCHERS.length : vouchers.length} voucher khả dụng</span>
+        <span>{vouchers.length} voucher khả dụng</span>
       </header>
 
-      {!demoMode && loading && <p>Đang tải voucher…</p>}
-      {!demoMode && error && <p role="alert">{error}</p>}
-      {!demoMode && !loading && !error && vouchers.length === 0 && <p>Hiện chưa có voucher khả dụng cho bạn.</p>}
+      {loading && <p>Đang tải voucher…</p>}
+      {error && <p role="alert">{error}</p>}
+      {!loading && !error && vouchers.length === 0 && <p>Hiện chưa có voucher khả dụng cho bạn.</p>}
 
       <ul className="voucher-wallet-grid">
-        {demoMode ? VOUCHERS.map((voucher) => (
-          <li className={`voucher-card${voucher.isShipping ? ' voucher-card--ship' : ''}`} key={voucher.id}>
-            <div className="voucher-card__value">
-              {voucher.isShipping ? (
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7h11v9H3z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><path d="M14 10h4l3 3v3h-7v-6Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><circle cx="7" cy="18" r="1.6" stroke="currentColor" strokeWidth="1.6" /><circle cx="17.5" cy="18" r="1.6" stroke="currentColor" strokeWidth="1.6" /></svg>
-              ) : (
-                <span className="voucher-card__amount">{voucher.amountLabel}</span>
-              )}
-              <span className="voucher-card__condition">{voucher.conditionLabel}</span>
-            </div>
-            <div className="voucher-card__body">
-              <p className="voucher-card__name">{voucher.title}</p>
-              <p className="voucher-card__expiry">{voucher.expiryLabel}</p>
-              <span className="voucher-wallet-ready">Sẵn sàng sử dụng</span>
-            </div>
-          </li>
-        )) : vouchers.map((voucher) => (
+        {vouchers.map((voucher) => (
           <li className="voucher-card" key={voucher.id}>
             <div className="voucher-card__value">
               <span className="voucher-card__amount">{voucher.type === 'percentage' ? `-${voucher.value}%` : `-${formatVnd(voucher.value)}`}</span>

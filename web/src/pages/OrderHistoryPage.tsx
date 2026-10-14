@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
-import { formatVnd } from '../data/sampleProducts'
+import { formatVnd } from '../lib/catalog'
 import { apiFetch, ApiError } from '../lib/api'
 import { useAuth } from '../state/AuthContext'
 

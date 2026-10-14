@@ -1,74 +1,3 @@
-/* P3-DEMO-INTEGRATION-SEAM: isolated styles; remove with web/src/demo. */
-.p3-demo-banner {
-  position: sticky;
-  top: 0;
-  z-index: 1100;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 10px max(16px, calc((100vw - 1200px) / 2));
-  color: #422006;
-  background: #fef3c7;
-  border-bottom: 1px solid #f59e0b;
-  font-size: 13px;
-}
-
-.p3-demo-banner > div {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.p3-demo-banner strong {
-  padding: 3px 7px;
-  color: #fff;
-  background: #b45309;
-  border-radius: 5px;
-  letter-spacing: .04em;
-}
-
-.p3-demo-banner__actions button {
-  border: 1px solid #b45309;
-  border-radius: 6px;
-  padding: 5px 9px;
-  color: #78350f;
-  background: transparent;
-  cursor: pointer;
-}
-
-.p3-demo-banner__actions button:first-child {
-  color: #fff;
-  background: #b45309;
-}
-
-.p3-demo-panel {
-  margin-bottom: var(--space-4);
-  padding: var(--space-4);
-  border: 1px dashed #f59e0b;
-  border-radius: var(--radius-md);
-  background: #fffbeb;
-}
-
-.p3-demo-panel p {
-  margin: 0 0 var(--space-3);
-  color: #78350f;
-  font-size: 13px;
-}
-
-@media (max-width: 760px) {
-  .p3-demo-banner,
-  .p3-demo-banner > div {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .p3-demo-banner__actions {
-    display: grid !important;
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
 /* Site-wide layout/component styles, ported from ../../../styles.css (static
    mockup) into real, reusable CSS classes consumed by React components.
    Design tokens (colors/spacing/fonts) live in ../theme.css — this file only
@@ -524,6 +453,31 @@ input, select, textarea { font: inherit; }
 .qty-stepper input::-webkit-inner-spin-button, .qty-stepper input::-webkit-outer-spin-button { margin: 0; appearance: none; }
 .product-detail__actions { display: flex; gap: var(--space-3); }
 
+/* Product information is intentionally compact: the image and purchase panel
+   should remain scannable on a narrow phone viewport as well as desktop. */
+.product-detail > div:last-child { min-width: 0; max-width: 620px; padding: clamp(18px, 3vw, 32px); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-card); }
+.product-detail__title { font-size: clamp(24px, 2.6vw, 34px); line-height: 1.12; letter-spacing: -.025em; }
+.product-detail__description { max-width: 54ch; font-size: 14px; }
+.product-detail__price-row { padding: 12px 0 16px; border-bottom: 1px solid var(--color-border); }
+.product-detail__price { font-size: clamp(26px, 3vw, 38px); line-height: 1; }
+.product-detail__meta { align-items: center; flex-wrap: wrap; gap: 8px 20px; margin: 16px 0 20px; font-size: 13px; }
+.product-detail__meta span { display: inline-flex; align-items: center; gap: 7px; }
+.product-detail__meta span + span::before { width: 4px; height: 4px; border-radius: 50%; background: var(--color-border); content: ''; }
+.product-detail__variant-picker { border: 0; border-top: 1px solid var(--color-border); border-radius: 0; padding: 18px 0 0; background: transparent; }
+.product-detail__variant-picker legend { padding: 0; color: var(--color-foreground); font-size: 16px; font-weight: 700; }
+.product-detail__variant-option { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); font-size: 14px; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.product-detail__variant-option + .product-detail__variant-option { margin-top: 8px; }
+.product-detail__variant-option:has(input:checked) { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface)); }
+.product-detail__variant-option input { flex: 0 0 auto; accent-color: var(--color-primary); }
+.product-detail__spec-section { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--color-border); }
+.product-detail__spec-section h2 { margin: 0 0 12px; font-size: 17px; line-height: 1.25; }
+.product-detail__spec-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; margin: 0; }
+.product-detail__spec-list > div { display: grid; grid-template-columns: minmax(80px, 1fr) minmax(0, 1.25fr); gap: 8px; padding: 9px 0; border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent); font-size: 13px; }
+.product-detail__spec-list dt { min-width: 0; font-weight: 500; }
+.product-detail__spec-list dd { overflow-wrap: anywhere; }
+.product-detail__qty { margin: 20px 0 14px; font-size: 14px; font-weight: 600; }
+.product-detail__actions .button { min-height: 44px; }
+
 /* ============ Cart page ============ */
 .cart-page { padding-block: var(--space-5); display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-5); align-items: start; }
 .cart-item { display: flex; gap: var(--space-3); align-items: center; background: var(--color-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: var(--space-3); margin-bottom: var(--space-3); }
@@ -850,6 +804,13 @@ input, select, textarea { font: inherit; }
   .profile-tabs { max-width: none; width: 100%; }
   .profile-page__logout { width: 100%; }
   .product-detail__title { font-size: 20px; }
+  .product-detail > div:last-child { padding: 16px; border-radius: var(--radius-md); }
+  .product-detail__description { font-size: 13px; }
+  .product-detail__price { font-size: 28px; }
+  .product-detail__variant-picker { padding-top: 14px; }
+  .product-detail__variant-option { font-size: 13px; }
+  .product-detail__spec-section { margin-top: 16px; padding-top: 14px; }
+  .product-detail__spec-section h2 { font-size: 16px; }
   .product-detail__price-row { gap: var(--space-2); flex-wrap: wrap; }
   .product-detail__price { font-size: 25px; }
   .product-detail__meta { gap: var(--space-2); flex-wrap: wrap; }

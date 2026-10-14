@@ -7,8 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { findProduct, type Product, type ProductType } from '../data/sampleProducts'
-import { demoVariantIdForProduct, isP3DemoMode } from '../demo/p3DemoApi'
+import type { Product, ProductType } from '../data/sampleProducts'
 import { apiFetch, ApiError } from '../lib/api'
 import { useAuth } from './AuthContext'
 
@@ -35,7 +34,7 @@ export interface CartLine {
   isSelected: boolean
   available: boolean
   availableQuantity: number | null
-  source: 'api' | 'sample'
+  source: 'api'
   product: Product
 }
 
@@ -88,20 +87,6 @@ function apiLine(item: CartItemApiResponse): CartLine {
   }
 }
 
-function sampleLine(product: Product, quantity: number): CartLine {
-  return {
-    id: `sample:${product.id}`,
-    productId: product.id,
-    variantId: product.id,
-    quantity,
-    isSelected: true,
-    available: true,
-    availableQuantity: null,
-    source: 'sample',
-    product,
-  }
-}
-
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof ApiError ? error.message : fallback
 }
@@ -109,7 +94,6 @@ function errorMessage(error: unknown, fallback: string) {
 export function CartProvider({ children }: { children: ReactNode }) {
   const { token } = useAuth()
   const [apiLines, setApiLines] = useState<CartLine[]>([])
-  const [sampleLines, setSampleLines] = useState<CartLine[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
@@ -148,35 +132,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addItem = async (variantId: string, quantity = 1) => {
     setError(null)
 
-    // P3-DEMO-INTEGRATION-SEAM: P2's current sample IDs are not UUIDs. Only
-    // demo mode maps them; production keeps requiring a real Catalog variant.
-    const requestVariantId = isP3DemoMode()
-      ? demoVariantIdForProduct(variantId) ?? variantId
-      : variantId
-
-    // Sample cart lines exist only in the explicitly requested P3 demo.
-    if (isP3DemoMode() && (!token || !UUID_PATTERN.test(requestVariantId))) {
-      const product = findProduct(variantId)
-      if (!product) {
-        setError('Không tìm thấy sản phẩm để thêm vào giỏ hàng')
-        return false
-      }
-      setSampleLines((current) => {
-        const existing = current.find((line) => line.variantId === variantId)
-        if (!existing) return [...current, sampleLine(product, quantity)]
-        return current.map((line) =>
-          line.id === existing.id ? { ...line, quantity: line.quantity + quantity } : line,
-        )
-      })
-      return true
-    }
-
     if (!token) {
       setError('Vui lòng đăng nhập trước khi thêm sản phẩm vào giỏ hàng')
       return false
     }
-    if (!UUID_PATTERN.test(requestVariantId)) {
-      setError('Sản phẩm mẫu không thể thêm vào giỏ hàng thật')
+    if (!UUID_PATTERN.test(variantId)) {
+      setError('Biến thể sản phẩm không hợp lệ')
       return false
     }
 
@@ -184,7 +145,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       const item = await apiFetch<CartItemApiResponse>('/cart-items', {
         method: 'POST',
-        body: JSON.stringify({ variantId: requestVariantId, quantity }),
+        body: JSON.stringify({ variantId, quantity }),
       }, token)
       const line = apiLine(item)
       setApiLines((current) => [...current.filter((entry) => entry.id !== line.id), line])
@@ -198,11 +159,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   const removeItem = async (lineId: string) => {
-    const sample = sampleLines.some((line) => line.id === lineId)
-    if (sample) {
-      setSampleLines((current) => current.filter((line) => line.id !== lineId))
-      return
-    }
     if (!token) return
 
     markBusy(lineId, true)
@@ -223,11 +179,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    const sample = sampleLines.some((line) => line.id === lineId)
-    if (sample) {
-      setSampleLines((current) => current.map((line) => line.id === lineId ? { ...line, quantity } : line))
-      return
-    }
     if (!token) return
 
     markBusy(lineId, true)
@@ -247,11 +198,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   const setSelected = async (lineId: string, selected: boolean) => {
-    const sample = sampleLines.some((line) => line.id === lineId)
-    if (sample) {
-      setSampleLines((current) => current.map((line) => line.id === lineId ? { ...line, isSelected: selected } : line))
-      return
-    }
     if (!token) return
 
     markBusy(lineId, true)
@@ -271,14 +217,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   const clearCart = async () => {
-    setSampleLines([])
     if (!token) return
     const ids = apiLines.map((line) => line.id)
     await Promise.all(ids.map((id) => apiFetch(`/cart-items/${id}`, { method: 'DELETE' }, token)))
     setApiLines([])
   }
 
-  const lines = useMemo(() => [...apiLines, ...sampleLines], [apiLines, sampleLines])
+  const lines = useMemo(() => apiLines, [apiLines])
   const totalQuantity = useMemo(() => lines.reduce((sum, line) => sum + line.quantity, 0), [lines])
   const value: CartContextValue = {
     lines,

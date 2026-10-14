@@ -2,14 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ProductThumb from '../components/ProductThumb'
 import { fetchProduct, formatVnd, resolveCatalogImageUrl, type CatalogProduct, type ProductType } from '../lib/catalog'
-import { CONNECTION_LABELS, discountPercent, findProduct, type Product } from '../data/sampleProducts'
 import { useCart } from '../state/CartContext'
 import { useAuth } from '../state/AuthContext'
-import { isP3DemoMode } from '../demo/p3DemoApi'
 
-// The catalog contains deterministic UUID-shaped IDs for demo products. They
-// are accepted by the backend's UUID parser even when they do not carry an
-// RFC version/variant nibble, so validate the textual shape only here.
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function attributesLabel(attributes: Record<string, unknown> | string[] | null) {
@@ -23,12 +18,7 @@ const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
   controller: 'Tay cầm',
   accessory: 'Phụ kiện',
 }
-
-function sampleOrigin(sample: Product | undefined) {
-  if (!sample) return undefined
-  if (sample.originCountry) return sample.originCountry
-  return sample.description?.match(/(?:Xuất xứ|Nơi sản xuất)\s*:\s*([^.;]+)/i)?.[1]?.trim()
-}
+const CONNECTION_LABELS: Record<NonNullable<CatalogProduct['connectionType']>, string> = { wired: 'Có dây', wireless: 'Không dây', bluetooth: 'Bluetooth' }
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -42,7 +32,6 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [isAdding, setIsAdding] = useState(false)
-  const sampleProduct = isP3DemoMode() && id && !UUID_PATTERN.test(id) ? findProduct(id) : undefined
 
   useEffect(() => {
     let active = true
@@ -54,7 +43,7 @@ export default function ProductDetailPage() {
     setActiveImg(0)
     if (!id || !UUID_PATTERN.test(id)) {
       setProduct(null)
-      setError(isP3DemoMode() && id && findProduct(id) ? '' : 'Không tìm thấy sản phẩm.')
+      setError('Không tìm thấy sản phẩm.')
       setLoading(false)
       return () => { active = false }
     }
@@ -74,60 +63,54 @@ export default function ProductDetailPage() {
   }, [id])
 
   const variant = useMemo(() => product?.variants.find((item) => item.id === selectedVariantId) ?? null, [product, selectedVariantId])
-  const gallery = sampleProduct
-    ? sampleProduct.imageUrls?.length ? sampleProduct.imageUrls : sampleProduct.imageUrl ? [sampleProduct.imageUrl] : []
-    : product?.imageUrls?.length ? product.imageUrls : variant?.imageUrl ? [variant.imageUrl] : []
+  const gallery = product?.imageUrls?.length ? product.imageUrls : variant?.imageUrl ? [variant.imageUrl] : []
   const available = variant?.availableQuantity ?? 0
-  const canBuy = sampleProduct ? true : !!variant && available > 0 && qty <= available
-  const name = sampleProduct?.name ?? product?.name ?? ''
-  const description = sampleProduct?.description ?? product?.description
-  const productType = sampleProduct?.productType ?? product?.productType ?? 'accessory'
-  const thumbSeed = sampleProduct?.thumbSeed ?? 0
-  const price = sampleProduct?.price ?? variant?.price ?? null
-  const comparePrice = sampleProduct?.comparePrice ?? variant?.comparePrice ?? null
+  const canBuy = !!variant && available > 0 && qty <= available
+  const name = product?.name ?? ''
+  const description = product?.description
+  const productType = product?.productType ?? 'accessory'
+  const thumbSeed = 0
+  const price = variant?.price ?? null
+  const comparePrice = variant?.comparePrice ?? null
   const pct = price != null && comparePrice != null && comparePrice > price
-    ? sampleProduct ? discountPercent(price, comparePrice) : Math.round((1 - price / comparePrice) * 100)
+    ? Math.round((1 - price / comparePrice) * 100)
     : 0
   const detailRows = [
     { label: 'Loại sản phẩm', value: PRODUCT_TYPE_LABELS[productType] },
     { label: 'Thương hiệu', value: product?.brandName },
-    { label: 'Xuất xứ', value: sampleOrigin(sampleProduct) ?? product?.originCountry },
-    { label: 'Nền tảng', value: sampleProduct?.platforms?.join(', ') ?? product?.platforms?.join(', ') },
+    { label: 'Xuất xứ', value: product?.originCountry },
+    { label: 'Nền tảng', value: product?.platforms?.join(', ') },
     { label: 'Ngày phát hành', value: product?.releaseDate ? new Date(`${product.releaseDate}T00:00:00`).toLocaleDateString('vi-VN') : undefined },
-    { label: 'Nhà phát hành', value: sampleProduct?.publisher ?? product?.publisher },
-    { label: 'Thể loại', value: sampleProduct?.genre ?? product?.genre },
-    { label: 'Độ tuổi', value: sampleProduct?.ageRating ?? product?.ageRating },
+    { label: 'Nhà phát hành', value: product?.publisher },
+    { label: 'Thể loại', value: product?.genre },
+    { label: 'Độ tuổi', value: product?.ageRating },
     {
       label: 'Kết nối',
-      value: sampleProduct?.connectionType
-        ? CONNECTION_LABELS[sampleProduct.connectionType]
-        : product?.connectionType ? CONNECTION_LABELS[product.connectionType] : undefined,
+      value: product?.connectionType ? CONNECTION_LABELS[product.connectionType] : undefined,
     },
     {
       label: 'Bảo hành',
-      value: sampleProduct?.warrantyMonths
-        ? `${sampleProduct.warrantyMonths} tháng`
-        : product?.warrantyMonths != null ? `${product.warrantyMonths} tháng` : undefined,
+      value: product?.warrantyMonths != null ? `${product.warrantyMonths} tháng` : undefined,
     },
   ].filter((row): row is { label: string; value: string } => typeof row.value === 'string' && row.value.trim().length > 0)
 
   const purchase = async (goToCart: boolean) => {
-    if (!token && !isP3DemoMode()) {
+    if (!token) {
       navigate('/dang-nhap', { state: { from: `/san-pham/${id}` } })
       return
     }
-    if (!sampleProduct && (!product || !canBuy || !variant)) return
+    if (!product || !canBuy || !variant) return
     setIsAdding(true)
     try {
-      const added = await addItem(sampleProduct ? sampleProduct.id : variant!.id, qty)
+      const added = await addItem(variant.id, qty)
       if (added && goToCart) navigate('/gio-hang')
     } finally {
       setIsAdding(false)
     }
   }
 
-  if (!sampleProduct && loading) return <div className="container" style={{ padding: 'var(--space-6) 0' }}>Đang tải thông tin sản phẩm…</div>
-  if (!sampleProduct && !product) {
+  if (loading) return <div className="container" style={{ padding: 'var(--space-6) 0' }}>Đang tải thông tin sản phẩm…</div>
+  if (!product) {
     return <div className="container" style={{ padding: 'var(--space-6) 0', textAlign: 'center' }}>
       <p>{error || 'Không tìm thấy sản phẩm.'}</p>
       <Link className="button button--outline" to="/#categories">Xem danh mục sản phẩm</Link>
@@ -157,13 +140,8 @@ export default function ProductDetailPage() {
           </div>
 
           <div className="product-detail__meta">
-            {sampleProduct ? <>
-              <span>{sampleProduct.rating != null ? `⭐ ${sampleProduct.rating}` : 'Chưa có đánh giá'}</span>
-              <span>{sampleProduct.soldLabel || sampleProduct.soldCount != null ? `Đã bán ${sampleProduct.soldLabel ?? sampleProduct.soldCount}` : 'Chưa có dữ liệu lượt bán'}</span>
-            </> : <>
-              <span>{variant ? `Mã: ${variant.sku}` : 'Chưa có SKU'}</span>
-              <span style={{ color: available > 0 ? 'var(--color-trust)' : 'var(--color-urgent)' }}>{available > 0 ? `Còn ${available} sản phẩm` : 'Hết hàng'}</span>
-            </>}
+            <span>{variant ? `Mã: ${variant.sku}` : 'Chưa có SKU'}</span>
+            <span style={{ color: available > 0 ? 'var(--color-trust)' : 'var(--color-urgent)' }}>{available > 0 ? `Còn ${available} sản phẩm` : 'Hết hàng'}</span>
           </div>
 
           <fieldset className="product-detail__specs product-detail__variant-picker">
@@ -186,9 +164,9 @@ export default function ProductDetailPage() {
           <div className="product-detail__qty">
             <span>Số lượng</span>
             <div className="qty-stepper">
-              <button type="button" disabled={(!sampleProduct && !canBuy) || qty <= 1} onClick={() => setQty((value) => Math.max(1, value - 1))} aria-label="Giảm số lượng">−</button>
+              <button type="button" disabled={!canBuy || qty <= 1} onClick={() => setQty((value) => Math.max(1, value - 1))} aria-label="Giảm số lượng">−</button>
               <span>{qty}</span>
-              <button type="button" disabled={sampleProduct ? false : !canBuy || qty >= available} onClick={() => setQty((value) => sampleProduct ? value + 1 : Math.min(available, value + 1))} aria-label="Tăng số lượng">+</button>
+              <button type="button" disabled={!canBuy || qty >= available} onClick={() => setQty((value) => Math.min(available, value + 1))} aria-label="Tăng số lượng">+</button>
             </div>
           </div>
           <div className="product-detail__actions">
@@ -196,7 +174,7 @@ export default function ProductDetailPage() {
             <button className="button button--primary" type="button" disabled={!canBuy || isAdding} onClick={() => void purchase(true)}>Mua ngay</button>
           </div>
           {cartError && <p role="alert" style={{ color: 'var(--color-urgent)', marginTop: 12 }}>{cartError}</p>}
-          {!sampleProduct && !canBuy && <p role="status" style={{ color: 'var(--color-urgent)', marginTop: 12 }}>Sản phẩm/biến thể hiện không đủ tồn kho để mua.</p>}
+          {!canBuy && <p role="status" style={{ color: 'var(--color-urgent)', marginTop: 12 }}>Sản phẩm/biến thể hiện không đủ tồn kho để mua.</p>}
         </div>
       </div>
     </div>

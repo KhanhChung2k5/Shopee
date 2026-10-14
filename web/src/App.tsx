@@ -27,15 +27,12 @@ import { AuthProvider } from './state/AuthContext'
 import ProfilePage from './pages/ProfilePage'
 import RequireStaff from './components/RequireStaff'
 import RequireDepartment from './components/RequireDepartment'
-import P3DemoBanner from './demo/P3DemoBanner'
 import MobileNav from './components/MobileNav'
 
 function CustomerShell() {
   return (
     <CartProvider>
       <a className="skip-link" href="#main-content">Bỏ qua để đến nội dung chính</a>
-      {/* P3-DEMO-INTEGRATION-SEAM: remove together with web/src/demo. */}
-      <P3DemoBanner />
       <Header />
       <main id="main-content">
         <Routes>

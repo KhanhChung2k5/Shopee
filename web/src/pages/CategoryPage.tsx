@@ -2,11 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import CatalogProductGrid from '../components/CatalogProductGrid'
 import { cacheCategories, fetchCategories, fetchProducts, getCachedCategories, type CatalogCategory, type CatalogProductSummary } from '../lib/catalog'
-import ProductGridStatic from '../components/ProductGridStatic'
-import ProductFilterBar from '../components/ProductFilterBar'
-import { CATEGORIES, categorySlug, productsByCategorySlug } from '../data/sampleProducts'
-import { useProductFilters } from '../state/useProductFilters'
-import { isP3DemoMode } from '../demo/p3DemoApi'
 
 const PAGE_SIZE = 12
 const API_PAGE_SIZE = 100
@@ -29,19 +24,6 @@ async function fetchCategoryProducts(categoryId: string) {
   return products
 }
 
-function SampleCategoryPage({ slug, name }: { slug: string; name: string }) {
-  const filters = useProductFilters(productsByCategorySlug(slug))
-  return <div className="container" style={{ paddingBlock: 'var(--space-5)' }}>
-    <nav aria-label="breadcrumb" style={{ fontSize: 13, color: 'var(--color-muted-foreground)', marginBottom: 'var(--space-3)' }}>
-      <Link to="/">Trang chủ</Link> / {name}
-    </nav>
-    <p role="status" style={{ color: 'var(--color-muted-foreground)' }}>Chưa có sản phẩm API cho danh mục này; đang hiển thị dữ liệu mẫu.</p>
-    <h1 className="section-title">{name}</h1>
-    <ProductFilterBar filters={filters} />
-    <ProductGridStatic products={filters.filtered} />
-  </div>
-}
-
 export default function CategoryPage() {
   const { slug } = useParams<{ slug: string }>()
   const [category, setCategory] = useState<CatalogCategory | null>(() =>
@@ -55,7 +37,6 @@ export default function CategoryPage() {
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [usingSampleData, setUsingSampleData] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -63,7 +44,6 @@ export default function CategoryPage() {
     if (cachedCategory) setCategory(cachedCategory)
     setLoading(true)
     setError('')
-    setUsingSampleData(false)
     fetchCategories()
       .then(async (categories) => {
         if (!active) return
@@ -74,27 +54,15 @@ export default function CategoryPage() {
           const categoryProducts = await fetchCategoryProducts(found.id)
           if (!active) return
           setProducts(categoryProducts)
-          const sampleCategory = CATEGORIES.find((item) => categorySlug(item.label) === slug)
-          setUsingSampleData(isP3DemoMode() && categoryProducts.length === 0 && !!sampleCategory)
         } else {
-          const sampleCategory = CATEGORIES.find((item) => categorySlug(item.label) === slug)
-          setCategory(isP3DemoMode() && sampleCategory && slug ? { id: '', name: sampleCategory.label, slug, parentId: null } : null)
+          setCategory(null)
           setProducts([])
-          setUsingSampleData(isP3DemoMode() && !!sampleCategory)
         }
         setPage(0)
       })
       .catch((err: unknown) => {
         if (!active) return
         const cached = getCachedCategories().find((item) => item.slug === slug)
-        const sampleCategory = CATEGORIES.find((item) => categorySlug(item.label) === slug)
-        if (isP3DemoMode() && sampleCategory && slug) {
-          setCategory({ id: '', name: sampleCategory.label, slug, parentId: null })
-          setProducts([])
-          setUsingSampleData(true)
-          setError('API danh mục chưa kết nối; đang hiển thị dữ liệu mẫu.')
-          return
-        }
         if (cached) {
           setCategory(cached)
           setProducts([])
@@ -124,8 +92,6 @@ export default function CategoryPage() {
   }, [products, query, brand, productType, sort])
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const visible = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-
-  if (!loading && usingSampleData && slug && category) return <SampleCategoryPage slug={slug} name={category.name} />
 
   return (
     <div className="container" style={{ paddingBlock: 'var(--space-5)' }}>

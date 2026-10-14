@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
-import { formatVnd } from '../data/sampleProducts'
-import { isP3DemoMode } from '../demo/p3DemoApi'
+import { formatVnd } from '../lib/catalog'
 import { apiFetch, ApiError } from '../lib/api'
 import { useAuth } from '../state/AuthContext'
 
@@ -126,7 +125,6 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
   const [cancelReason, setCancelReason] = useState('')
   const [isCancelling, setIsCancelling] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
-  const [isAdvancingDemo, setIsAdvancingDemo] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -184,19 +182,6 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
     }
   }
 
-  const advanceDemoOrder = async () => {
-    setIsAdvancingDemo(true)
-    setError(null)
-    try {
-      const updated = await apiFetch<OrderDetail>(`/demo/orders/${orderId}/advance`, { method: 'PATCH' }, token)
-      setOrder(updated)
-    } catch (requestError) {
-      setError(requestError instanceof ApiError ? requestError.message : 'Không thể mô phỏng trạng thái tiếp theo')
-    } finally {
-      setIsAdvancingDemo(false)
-    }
-  }
-
   if (isLoading) {
     return <div className="container"><div className="order-detail-state">Đang tải chi tiết đơn hàng…</div></div>
   }
@@ -215,35 +200,9 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
   }
 
   const canCancel = order.status === 'pending' || order.status === 'confirmed'
-  const canAdvanceDemo = order.status === 'pending'
-    || order.status === 'confirmed'
-    || order.status === 'cancel_requested'
-    || order.status === 'shipping'
-
   return (
     <div className="container order-detail-page">
       <Link className="order-detail-back" to="/don-hang">← Lịch sử đơn hàng</Link>
-
-      {/* P3-DEMO-INTEGRATION-SEAM: temporary P2/P5 staff-action simulator. */}
-      {isP3DemoMode() && (
-        <section className="p3-demo-panel">
-          <p>
-            <strong>Điều khiển demo:</strong> mô phỏng nhân viên/kho/vận chuyển để kiểm tra timeline và tracking của P3.
-          </p>
-          <button
-            className="button button--outline button--sm"
-            type="button"
-            disabled={!canAdvanceDemo || isAdvancingDemo}
-            onClick={() => void advanceDemoOrder()}
-          >
-            {isAdvancingDemo
-              ? 'Đang cập nhật…'
-              : order.status === 'cancel_requested'
-                ? 'Mô phỏng nhân viên xác nhận huỷ'
-                : canAdvanceDemo ? 'Mô phỏng bước tiếp theo' : 'Đã đến trạng thái cuối'}
-          </button>
-        </section>
-      )}
 
       <header className="order-detail-heading">
         <div>
