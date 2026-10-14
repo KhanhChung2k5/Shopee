@@ -56,4 +56,9 @@ public class RefundReturn {
     public String getStatus() { return status; }
     public BigDecimal getRefundAmount() { return refundAmount; }
     public OffsetDateTime getRequestedAt() { return requestedAt; }
+
+    public void approve(UUID employeeId, UUID transactionId, BigDecimal amount) {
+        this.employeeId = employeeId; this.walletTransactionId = transactionId; this.refundAmount = amount; this.status = "refunded";
+    }
+    public void reject(UUID employeeId) { this.employeeId = employeeId; this.status = "rejected"; }
 }

@@ -67,6 +67,9 @@ public class SecurityConfig {
                 // CRM "Khách hàng" admin page — admin-only, same as employee management.
                 .requestMatchers("/customers/**").hasAuthority("DEPT_ADMIN")
                 .requestMatchers("/wallet", "/wallet/**").hasAuthority("ROLE_BUYER")
+                .requestMatchers(HttpMethod.POST, "/refund-returns").hasRole("BUYER")
+                .requestMatchers(HttpMethod.GET, "/refund-returns").hasAnyAuthority("DEPT_CS", "DEPT_ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/refund-returns/**").hasAnyAuthority("DEPT_CS", "DEPT_ADMIN")
                 .requestMatchers("/vouchers", "/vouchers/**").hasAuthority("ROLE_BUYER")
                 .requestMatchers("/loyalty", "/loyalty/**").hasAuthority("ROLE_BUYER")
                 .requestMatchers("/marketing", "/marketing/**").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
