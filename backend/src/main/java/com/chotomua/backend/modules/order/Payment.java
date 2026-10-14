@@ -55,6 +55,19 @@ public class Payment {
         return payment;
     }
 
+    public static Payment checkout(UUID orderId, String method, BigDecimal amount, UUID walletTransactionId) {
+        Payment payment = new Payment();
+        payment.id = UUID.randomUUID();
+        payment.orderId = orderId;
+        payment.walletTransactionId = walletTransactionId;
+        payment.purpose = "checkout";
+        payment.method = method;
+        payment.amount = amount;
+        payment.status = "cod".equals(method) ? "pending" : "paid";
+        payment.paidAt = "cod".equals(method) ? null : OffsetDateTime.now();
+        return payment;
+    }
+
     public UUID getId() {
         return id;
     }

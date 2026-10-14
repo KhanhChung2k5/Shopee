@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,7 +43,9 @@ public class OrderService {
     private final WarehouseLookup warehouseLookup;
     private final VoucherQuoteService voucherQuoteService;
     private final VoucherUsageRepository voucherUsageRepository;
+    private final CheckoutPaymentService checkoutPaymentService;
 
+    @Autowired
     public OrderService(
             CartItemRepository cartItemRepository,
             OrderRepository orderRepository,
@@ -53,7 +56,8 @@ public class OrderService {
             ProductVariantLookup productVariantLookup,
             WarehouseLookup warehouseLookup,
             VoucherQuoteService voucherQuoteService,
-            VoucherUsageRepository voucherUsageRepository
+            VoucherUsageRepository voucherUsageRepository,
+            CheckoutPaymentService checkoutPaymentService
     ) {
         this.cartItemRepository = cartItemRepository;
         this.orderRepository = orderRepository;
@@ -65,6 +69,17 @@ public class OrderService {
         this.warehouseLookup = warehouseLookup;
         this.voucherQuoteService = voucherQuoteService;
         this.voucherUsageRepository = voucherUsageRepository;
+        this.checkoutPaymentService = checkoutPaymentService;
+    }
+
+    /** Compatibility constructor for focused unit tests that do not exercise payment persistence. */
+    public OrderService(CartItemRepository cartItemRepository, OrderRepository orderRepository,
+            OrderItemRepository orderItemRepository, OrderStatusHistoryRepository orderStatusHistoryRepository,
+            AddressRepository addressRepository, EmployeeRepository employeeRepository,
+            ProductVariantLookup productVariantLookup, WarehouseLookup warehouseLookup,
+            VoucherQuoteService voucherQuoteService, VoucherUsageRepository voucherUsageRepository) {
+        this(cartItemRepository, orderRepository, orderItemRepository, orderStatusHistoryRepository, addressRepository,
+                employeeRepository, productVariantLookup, warehouseLookup, voucherQuoteService, voucherUsageRepository, null);
     }
 
     /**
@@ -127,6 +142,9 @@ public class OrderService {
         ));
         if (voucherQuote != null) {
             voucherUsageRepository.save(new VoucherUsage(voucherQuote.voucherId(), userId, order.getId()));
+        }
+        if (checkoutPaymentService != null) {
+            checkoutPaymentService.record(userId, order.getId(), request.paymentMethod(), total);
         }
         cartItemRepository.deleteAll(selectedItems);
 

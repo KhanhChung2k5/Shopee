@@ -48,6 +48,14 @@ public class WalletTransaction {
         return new WalletTransaction(userId, null, "topup", amount);
     }
 
+    public static WalletTransaction payment(UUID userId, UUID orderId, BigDecimal amount) {
+        return new WalletTransaction(userId, orderId, "payment", amount);
+    }
+
+    public static WalletTransaction refund(UUID userId, UUID orderId, BigDecimal amount) {
+        return new WalletTransaction(userId, orderId, "refund", amount);
+    }
+
     public UUID getId() {
         return id;
     }
