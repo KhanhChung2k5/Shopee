@@ -6,6 +6,7 @@ import com.chotomua.backend.modules.identity.Employee;
 import com.chotomua.backend.modules.identity.EmployeeRepository;
 import com.chotomua.backend.modules.marketing.VoucherQuoteService;
 import com.chotomua.backend.modules.marketing.LoyaltyAwardService;
+import com.chotomua.backend.modules.marketing.FlashSaleCheckoutService;
 import com.chotomua.backend.modules.marketing.VoucherUsage;
 import com.chotomua.backend.modules.marketing.VoucherUsageRepository;
 import com.chotomua.backend.modules.marketing.dto.VoucherQuoteRequest;
@@ -46,6 +47,7 @@ public class OrderService {
     private final VoucherUsageRepository voucherUsageRepository;
     private final CheckoutPaymentService checkoutPaymentService;
     private final LoyaltyAwardService loyaltyAwardService;
+    private final FlashSaleCheckoutService flashSaleCheckoutService;
 
     @Autowired
     public OrderService(
@@ -59,7 +61,7 @@ public class OrderService {
             WarehouseLookup warehouseLookup,
             VoucherQuoteService voucherQuoteService,
             VoucherUsageRepository voucherUsageRepository,
-            CheckoutPaymentService checkoutPaymentService, LoyaltyAwardService loyaltyAwardService
+            CheckoutPaymentService checkoutPaymentService, LoyaltyAwardService loyaltyAwardService, FlashSaleCheckoutService flashSaleCheckoutService
     ) {
         this.cartItemRepository = cartItemRepository;
         this.orderRepository = orderRepository;
@@ -73,6 +75,7 @@ public class OrderService {
         this.voucherUsageRepository = voucherUsageRepository;
         this.checkoutPaymentService = checkoutPaymentService;
         this.loyaltyAwardService = loyaltyAwardService;
+        this.flashSaleCheckoutService = flashSaleCheckoutService;
     }
 
     /** Compatibility constructor for focused unit tests that do not exercise payment persistence. */
@@ -82,7 +85,7 @@ public class OrderService {
             ProductVariantLookup productVariantLookup, WarehouseLookup warehouseLookup,
             VoucherQuoteService voucherQuoteService, VoucherUsageRepository voucherUsageRepository) {
         this(cartItemRepository, orderRepository, orderItemRepository, orderStatusHistoryRepository, addressRepository,
-                employeeRepository, productVariantLookup, warehouseLookup, voucherQuoteService, voucherUsageRepository, null, null);
+                employeeRepository, productVariantLookup, warehouseLookup, voucherQuoteService, voucherUsageRepository, null, null, null);
     }
 
     /**
@@ -427,6 +430,7 @@ public class OrderService {
                             + variant.availableQuantity() + " sản phẩm: " + variant.productName()
             );
         }
+        if (flashSaleCheckoutService != null) variant = flashSaleCheckoutService.apply(item.getVariantId(), item.getQuantity(), variant);
         BigDecimal lineTotal = variant.unitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
         return new CheckoutLine(variant, item.getQuantity(), lineTotal);
     }
