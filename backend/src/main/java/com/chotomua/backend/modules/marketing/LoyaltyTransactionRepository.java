@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface LoyaltyTransactionRepository extends JpaRepository<LoyaltyTransaction, UUID> {
     List<LoyaltyTransaction> findByUserIdOrderByCreatedAtDescIdDesc(UUID userId);
+    boolean existsByOrderId(UUID orderId);
 }

@@ -34,6 +34,9 @@ public class LoyaltyTransaction {
 
     protected LoyaltyTransaction() {
     }
+    public LoyaltyTransaction(UUID userId, UUID orderId, int points, String reason) {
+        this.userId=userId; this.orderId=orderId; this.points=points; this.reason=reason; this.createdAt=OffsetDateTime.now();
+    }
 
     public UUID getId() { return id; }
     public UUID getOrderId() { return orderId; }

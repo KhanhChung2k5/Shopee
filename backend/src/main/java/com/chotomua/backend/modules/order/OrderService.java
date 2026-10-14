@@ -5,6 +5,7 @@ import com.chotomua.backend.modules.identity.AddressRepository;
 import com.chotomua.backend.modules.identity.Employee;
 import com.chotomua.backend.modules.identity.EmployeeRepository;
 import com.chotomua.backend.modules.marketing.VoucherQuoteService;
+import com.chotomua.backend.modules.marketing.LoyaltyAwardService;
 import com.chotomua.backend.modules.marketing.VoucherUsage;
 import com.chotomua.backend.modules.marketing.VoucherUsageRepository;
 import com.chotomua.backend.modules.marketing.dto.VoucherQuoteRequest;
@@ -44,6 +45,7 @@ public class OrderService {
     private final VoucherQuoteService voucherQuoteService;
     private final VoucherUsageRepository voucherUsageRepository;
     private final CheckoutPaymentService checkoutPaymentService;
+    private final LoyaltyAwardService loyaltyAwardService;
 
     @Autowired
     public OrderService(
@@ -57,7 +59,7 @@ public class OrderService {
             WarehouseLookup warehouseLookup,
             VoucherQuoteService voucherQuoteService,
             VoucherUsageRepository voucherUsageRepository,
-            CheckoutPaymentService checkoutPaymentService
+            CheckoutPaymentService checkoutPaymentService, LoyaltyAwardService loyaltyAwardService
     ) {
         this.cartItemRepository = cartItemRepository;
         this.orderRepository = orderRepository;
@@ -70,6 +72,7 @@ public class OrderService {
         this.voucherQuoteService = voucherQuoteService;
         this.voucherUsageRepository = voucherUsageRepository;
         this.checkoutPaymentService = checkoutPaymentService;
+        this.loyaltyAwardService = loyaltyAwardService;
     }
 
     /** Compatibility constructor for focused unit tests that do not exercise payment persistence. */
@@ -79,7 +82,7 @@ public class OrderService {
             ProductVariantLookup productVariantLookup, WarehouseLookup warehouseLookup,
             VoucherQuoteService voucherQuoteService, VoucherUsageRepository voucherUsageRepository) {
         this(cartItemRepository, orderRepository, orderItemRepository, orderStatusHistoryRepository, addressRepository,
-                employeeRepository, productVariantLookup, warehouseLookup, voucherQuoteService, voucherUsageRepository, null);
+                employeeRepository, productVariantLookup, warehouseLookup, voucherQuoteService, voucherUsageRepository, null, null);
     }
 
     /**
@@ -238,6 +241,7 @@ public class OrderService {
         };
         order.setStatus(nextOrderStatus);
         Order saved = orderRepository.save(order);
+        if ("delivered".equals(nextOrderStatus) && loyaltyAwardService != null) loyaltyAwardService.award(saved);
         orderStatusHistoryRepository.save(new OrderStatusHistory(
                 order.getId(),
                 nextOrderStatus,
