@@ -60,4 +60,5 @@ public class Review {
     public UUID getEmployeeReplyId() { return employeeReplyId; }
     public String getReplyText() { return replyText; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
+    public void reply(UUID employeeId, String text) { this.employeeReplyId = employeeId; this.replyText = text; }
 }
