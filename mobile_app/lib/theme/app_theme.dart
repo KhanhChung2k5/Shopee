@@ -74,7 +74,7 @@ ThemeData buildAppTheme() {
         letterSpacing: -0.2,
       ),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: AppColors.surface,
       elevation: 8,
       shadowColor: const Color(0x14000000),

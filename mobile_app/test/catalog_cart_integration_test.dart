@@ -30,8 +30,17 @@ void main() {
             'availableQuantity': 2,
           },
         ],
-      }), 200);
+      }), 200, headers: {'content-type': 'application/json; charset=utf-8'});
     });
+    // The product image is a full-width square (AspectRatio 1:1), which alone
+    // exceeds the default 600px-tall test surface — without a taller surface,
+    // ListView's sliver never builds the content below the image, and every
+    // find.text() below it silently returns zero results.
+    tester.view.physicalSize = const Size(800, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final service = CatalogService(api: ApiClient(client: client, baseUrl: 'http://catalog.test'));
     final cart = CartState();
     const summary = Product(

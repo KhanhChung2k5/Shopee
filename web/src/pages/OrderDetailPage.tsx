@@ -51,6 +51,14 @@ interface StatusUpdateResponse {
   change: StatusHistoryEntry
 }
 
+interface ReviewResponse {
+  id: string
+  orderItemId: string
+  rating: number
+  comment: string | null
+  replyText: string | null
+}
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -221,20 +229,25 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
               {order.items.map((item, index) => {
                 const attributes = formatAttributes(item.variantAttributesSnapshot)
                 return (
-                  <div className="order-detail-item" key={item.id}>
-                    <div className="order-detail-item__thumb">
-                      {item.imageUrl ? (
-                        <img src={item.imageUrl} alt={item.productNameSnapshot} loading="lazy" />
-                      ) : (
-                        <span aria-hidden="true">{index + 1}</span>
-                      )}
+                  <div className="order-detail-item-group" key={item.id}>
+                    <div className="order-detail-item">
+                      <div className="order-detail-item__thumb">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.productNameSnapshot} loading="lazy" />
+                        ) : (
+                          <span aria-hidden="true">{index + 1}</span>
+                        )}
+                      </div>
+                      <div className="order-detail-item__body">
+                        <strong>{item.productNameSnapshot}</strong>
+                        {attributes && <span>{attributes}</span>}
+                        <span>{formatVnd(Number(item.unitPrice))} × {item.quantity}</span>
+                      </div>
+                      <strong className="order-detail-item__total">{formatVnd(Number(item.lineTotal))}</strong>
                     </div>
-                    <div className="order-detail-item__body">
-                      <strong>{item.productNameSnapshot}</strong>
-                      {attributes && <span>{attributes}</span>}
-                      <span>{formatVnd(Number(item.unitPrice))} × {item.quantity}</span>
-                    </div>
-                    <strong className="order-detail-item__total">{formatVnd(Number(item.lineTotal))}</strong>
+                    {order.status === 'delivered' && (
+                      <OrderItemReview orderItemId={item.id} productName={item.productNameSnapshot} token={token} />
+                    )}
                   </div>
                 )
               })}
@@ -317,6 +330,98 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
             </section>
           )}
         </aside>
+      </div>
+    </div>
+  )
+}
+
+/** KAN-234: lets a buyer rate (1-5 stars) and comment on a delivered order item.
+ * There's no GET endpoint for reviews yet, so "already reviewed" is only known
+ * for this session — submitting again shows the backend's own duplicate error. */
+function OrderItemReview({ orderItemId, productName, token }: { orderItemId: string; productName: string; token: string }) {
+  const [open, setOpen] = useState(false)
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState<ReviewResponse | null>(null)
+
+  const submitReview = async () => {
+    if (rating < 1) {
+      setError('Vui lòng chọn số sao đánh giá')
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+    try {
+      const result = await apiFetch<ReviewResponse>('/reviews', {
+        method: 'POST',
+        body: JSON.stringify({ orderItemId, rating, comment: comment.trim() || null }),
+      }, token)
+      setSubmitted(result)
+      setOpen(false)
+    } catch (requestError) {
+      setError(requestError instanceof ApiError ? requestError.message : 'Không gửi được đánh giá')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (submitted) {
+    return (
+      <div className="order-item-review order-item-review--submitted">
+        <span className="order-item-review__stars" aria-label={`Đã đánh giá ${submitted.rating} sao`}>
+          {'★'.repeat(submitted.rating)}{'☆'.repeat(5 - submitted.rating)}
+        </span>
+        {submitted.comment && <p>{submitted.comment}</p>}
+        <span className="order-item-review__thanks">Cảm ơn bạn đã đánh giá {productName}!</span>
+      </div>
+    )
+  }
+
+  if (!open) {
+    return (
+      <div className="order-item-review">
+        <button className="button button--outline button--sm" type="button" onClick={() => setOpen(true)}>
+          Viết đánh giá
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="order-item-review order-item-review--form">
+      <div className="order-item-review__picker" role="radiogroup" aria-label="Chọn số sao">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            className="order-item-review__star"
+            aria-pressed={star <= rating}
+            aria-label={`${star} sao`}
+            onClick={() => setRating(star)}
+            disabled={submitting}
+          >
+            {star <= rating ? '★' : '☆'}
+          </button>
+        ))}
+      </div>
+      <textarea
+        maxLength={2000}
+        rows={3}
+        value={comment}
+        onChange={(event) => setComment(event.target.value)}
+        placeholder="Sản phẩm dùng thế nào? Chia sẻ để người mua sau tham khảo…"
+        disabled={submitting}
+      />
+      {error && <p role="alert">{error}</p>}
+      <div className="order-item-review__actions">
+        <button className="button button--outline button--sm" type="button" disabled={submitting} onClick={() => { setOpen(false); setError(null) }}>
+          Huỷ
+        </button>
+        <button className="button button--primary button--sm" type="button" disabled={submitting} onClick={() => void submitReview()}>
+          {submitting ? 'Đang gửi…' : 'Gửi đánh giá'}
+        </button>
       </div>
     </div>
   )

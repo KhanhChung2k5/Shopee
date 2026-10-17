@@ -13,7 +13,7 @@ void main() {
       expect(request.url.path, '/api/catalog/categories');
       return http.Response(jsonEncode([
         {'id': 'category-1', 'name': 'Tay cầm', 'slug': 'tay-cam', 'parentId': null},
-      ]), 200);
+      ]), 200, headers: {'content-type': 'application/json; charset=utf-8'});
     });
     final service = CatalogService(api: ApiClient(client: client, baseUrl: 'http://catalog.test'));
 

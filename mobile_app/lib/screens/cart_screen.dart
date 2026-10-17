@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import '../services/address_service.dart';
+import '../services/api_client.dart';
+import '../services/order_service.dart';
+import '../state/auth_scope.dart';
 import '../state/cart_scope.dart';
 import '../state/cart_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_thumb.dart';
+import 'addresses_screen.dart';
+import 'login_screen.dart';
+import 'order_detail_screen.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -145,23 +152,82 @@ class CartScreen extends StatelessWidget {
     );
   }
 
-  void _checkout(BuildContext context, CartState cart) {
-    showDialog(
+  /// KAN-280: real checkout — picks/creates a shipping address, asks for a
+  /// payment method, then calls POST /orders. Any cart line without a real
+  /// `variantId` (demo/sample product, not fetched from the catalog API)
+  /// blocks checkout, since the backend has no such variant to sell.
+  Future<void> _checkout(BuildContext context, CartState cart) async {
+    final auth = AuthScope.of(context);
+    if (!auth.isLoggedIn || auth.token == null) {
+      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+    final token = auth.token!;
+
+    final missingVariant = cart.lines.any((line) => line.product.variantId == null);
+    if (missingVariant) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Một số sản phẩm trong giỏ chưa có dữ liệu đặt hàng thật — vui lòng thêm lại từ trang sản phẩm.'),
+      ));
+      return;
+    }
+
+    final address = await Navigator.of(context).push<Address>(
+      MaterialPageRoute(builder: (_) => const AddressesScreen(selectMode: true)),
+    );
+    if (address == null || !context.mounted) return;
+
+    final paymentMethod = await showModalBottomSheet<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Đặt hàng thành công'),
-        content: const Text('Đây là bản demo giao diện — chưa nối với hệ thống thanh toán/đơn hàng thật.'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              cart.clear();
-              Navigator.of(context).pop();
-            },
-            child: const Text('Đóng'),
-          ),
-        ],
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Chọn phương thức thanh toán', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.payments_outlined),
+              title: const Text('Thanh toán khi nhận hàng (COD)'),
+              onTap: () => Navigator.of(context).pop('cod'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance_wallet_outlined),
+              title: const Text('Thanh toán bằng Ví'),
+              onTap: () => Navigator.of(context).pop('wallet'),
+            ),
+          ],
+        ),
       ),
     );
+    if (paymentMethod == null || !context.mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final order = await OrderService().checkout(
+        addressId: address.id,
+        paymentMethod: paymentMethod,
+        token: token,
+      );
+      cart.clear();
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // close loading dialog
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: order.id, initial: order)),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(error is ApiException ? error.message : 'Đặt hàng thất bại, vui lòng thử lại'),
+      ));
+    }
   }
 }
 

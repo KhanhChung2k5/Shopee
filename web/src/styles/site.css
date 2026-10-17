@@ -655,6 +655,21 @@ input, select, textarea { font: inherit; }
 .order-detail-item__body strong { font-size: 13.5px; }
 .order-detail-item__body span { color: var(--color-muted-foreground); font-size: 12px; overflow-wrap: anywhere; }
 .order-detail-item__total { flex-shrink: 0; color: var(--color-primary-dark); font-size: 13.5px; }
+.order-detail-item-group { border-bottom: 1px solid var(--color-border); }
+.order-detail-item-group:last-child { border-bottom: 0; }
+.order-detail-item-group .order-detail-item { border-bottom: 0; }
+.order-item-review { padding: 0 0 var(--space-3) 76px; }
+.order-item-review--submitted { display: grid; gap: 4px; }
+.order-item-review__stars { color: #F5A623; font-size: 15px; letter-spacing: 1px; }
+.order-item-review__thanks { color: var(--color-muted-foreground); font-size: 12px; }
+.order-item-review--form { display: grid; gap: var(--space-2); max-width: 420px; }
+.order-item-review__picker { display: flex; gap: 2px; }
+.order-item-review__star { background: none; border: 0; padding: 2px; font-size: 22px; line-height: 1; color: #F5A623; cursor: pointer; }
+.order-item-review__star:disabled { cursor: not-allowed; opacity: .6; }
+.order-item-review--form textarea { width: 100%; resize: vertical; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-background); color: var(--color-foreground); font: inherit; font-size: 13px; }
+.order-item-review--form textarea:focus { border-color: var(--color-primary); outline: 2px solid color-mix(in srgb, var(--color-primary) 25%, transparent); }
+.order-item-review--form p[role="alert"] { margin: 0; color: var(--color-urgent); font-size: 12.5px; }
+.order-item-review__actions { display: flex; gap: var(--space-2); }
 .order-detail-info { display: grid; gap: var(--space-3); margin: 0; }
 .order-detail-info div { display: grid; gap: 3px; }
 .order-detail-info dt { color: var(--color-muted-foreground); font-size: 11.5px; }

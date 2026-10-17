@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../state/auth_scope.dart';
 import '../theme/app_theme.dart';
+import 'addresses_screen.dart';
 import 'coming_soon_screen.dart';
 import 'login_screen.dart';
 import 'orders_screen.dart';
 import 'vouchers_screen.dart';
+import 'wallet_screen.dart';
 
 class AccountScreen extends StatelessWidget {
   const AccountScreen({super.key});
@@ -67,12 +69,12 @@ class AccountScreen extends StatelessWidget {
           _MenuTile(
             icon: Icons.location_on_outlined,
             label: 'Địa chỉ giao hàng',
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ComingSoonScreen(title: 'Địa chỉ giao hàng'))),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddressesScreen())),
           ),
           _MenuTile(
             icon: Icons.account_balance_wallet_outlined,
             label: 'Ví của tôi',
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ComingSoonScreen(title: 'Ví của tôi'))),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WalletScreen())),
           ),
           _MenuTile(
             icon: Icons.settings_outlined,
