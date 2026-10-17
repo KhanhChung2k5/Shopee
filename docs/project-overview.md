@@ -13,7 +13,7 @@ Thành phần chính:
 - **Web app** (React) — khách hàng mua sắm, trang quản trị (Admin) riêng biệt.
 - **Mobile app** (Flutter) — khách hàng mua sắm trên di động.
 - **Backend API** (Spring Boot) — xử lý nghiệp vụ, kết nối CSDL.
-- **CSDL** (PostgreSQL, 41 bảng, 5 domain nghiệp vụ).
+- **CSDL** (PostgreSQL, 39 bảng, 5 domain nghiệp vụ).
 
 ## 2. Sơ đồ chức năng hệ thống
 
@@ -153,7 +153,7 @@ graph TD
     P4["4.0<br/>Marketing<br/>& khuyến mãi"]
     P5["5.0<br/>CRM & chăm sóc<br/>khách hàng"]
 
-    D1[(User / Employee / Role)]
+    D1[(User / Employee)]
     D2[(Product / ProductVariant<br/>/ InventoryStock)]
     D3[(Order / Payment)]
     D4[(Voucher / PromotionProductDetail)]
@@ -378,7 +378,7 @@ graph LR
     WEB["Web App<br/>(React + Vite)"]
     APP["Mobile App<br/>(Flutter)"]
     API["Backend API<br/>(Spring Boot + JPA)"]
-    DB[("PostgreSQL<br/>41 bảng / 5 domain")]
+    DB[("PostgreSQL<br/>39 bảng / 5 domain")]
 
     WEB -->|REST API| API
     APP -->|REST API| API
@@ -394,13 +394,12 @@ graph LR
 
 | Phần | Trạng thái |
 |---|---|
-| Class diagram + migration CSDL (41 bảng) | ✅ Hoàn thành, đã verify chạy thật |
-| Web — giao diện khách hàng (trang chủ, danh mục, tìm kiếm, chi tiết sản phẩm, giỏ hàng, đăng nhập) | ✅ Hoàn thành (dữ liệu mẫu, chưa nối API thật) |
+| Class diagram + migration CSDL (39 bảng) | ✅ Hoàn thành, đã verify chạy thật |
+| Web — giao diện khách hàng (trang chủ, danh mục, tìm kiếm, chi tiết sản phẩm, giỏ hàng, checkout, đăng nhập) | ✅ Hoàn thành (dữ liệu mẫu, chưa nối API thật) |
 | Web — giao diện Admin (sản phẩm, kho, đơn hàng, marketing, khách hàng, báo cáo, nhân viên) | ✅ Hoàn thành (dữ liệu mẫu, chưa nối API thật) |
 | Mobile app — các màn hình chính | ✅ Hoàn thành (dữ liệu mẫu) |
 | Backend API thật (Entity/Repository/Controller) | ❌ Chưa làm — mới có bộ khung project + `/health` |
 | Kết nối Web/Mobile ↔ Backend thật | ❌ Chưa làm |
 | Test tự động (unit/e2e) cho backend | ❌ Chưa làm |
-| Trang Checkout thật (chọn địa chỉ, phương thức thanh toán) | ⚠️ Chưa có — nút "Tiến hành thanh toán" ở Giỏ hàng hiện là placeholder, chưa dẫn tới luồng thật |
 
 **Việc cần bàn để chốt phương án**: thứ tự triển khai backend thật theo domain nào trước (đề xuất ban đầu: A→B→C→D→E theo đúng thứ tự phụ thuộc), có giữ nguyên phân công theo 5 domain hay không, và mốc thời gian cho từng domain.

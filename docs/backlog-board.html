@@ -1,0 +1,446 @@
+<title>Chợ Tốt Mua Backlog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;600;700;800&family=Rubik:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F5F5F7; --surface:#FFFFFF; --text:#1A1A1A; --muted:#6B7280; --border:#E7E7EA;
+    --primary:#F0562E; --primary-dark:#D6431F; --primary-light:#FFE9E1;
+    --trust:#16A34A; --trust-light:#E7F7ED;
+    --urgent:#E11D48; --urgent-light:#FDECEF;
+    --shadow: 0 1px 2px rgba(20,20,20,.06), 0 4px 14px rgba(20,20,20,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#16181C; --surface:#1F2126; --text:#F2F3F5; --muted:#9AA0AC; --border:#2B2E36;
+      --primary:#FF7A52; --primary-dark:#FFB199; --primary-light:#3A2420;
+      --trust:#4ADE80; --trust-light:#163826;
+      --urgent:#FB7185; --urgent-light:#3A1720;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#16181C; --surface:#1F2126; --text:#F2F3F5; --muted:#9AA0AC; --border:#2B2E36;
+    --primary:#FF7A52; --primary-dark:#FFB199; --primary-light:#3A2420;
+    --trust:#4ADE80; --trust-light:#163826;
+    --urgent:#FB7185; --urgent-light:#3A1720;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"Nunito Sans", system-ui, sans-serif;
+    padding-inline:16px; padding-block:24px 48px;
+  }
+  h1,h2,h3,.num{ font-family:"Rubik", system-ui, sans-serif; }
+  .wrap{ max-width:1080px; margin-inline:auto; }
+  a{color:var(--primary)}
+
+  header.top{ margin-bottom:24px; }
+  header.top h1{ font-size:22px; font-weight:800; margin:0 0 4px; }
+  header.top p{ margin:0; color:var(--muted); font-size:13.5px; }
+
+  .overall{
+    margin-top:16px; background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:16px; box-shadow:var(--shadow);
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  }
+  .overall .ring{ flex-shrink:0; }
+  .overall .stat-label{ font-size:12px; color:var(--muted); }
+  .overall .stat-value{ font-size:20px; font-weight:800; font-family:"Rubik", sans-serif; }
+  .progress-bar{ flex:1; min-width:180px; height:10px; border-radius:999px; background:var(--border); overflow:hidden; }
+  .progress-bar > div{ height:100%; background:var(--primary); border-radius:999px; transition:width .3s ease; }
+
+  nav.tabs{
+    display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:20px;
+    border-bottom:1px solid var(--border);
+  }
+  nav.tabs button{
+    font:inherit; font-weight:700; font-size:13px; white-space:nowrap;
+    background:none; border:none; color:var(--muted); padding:10px 14px;
+    cursor:pointer; border-bottom:2.5px solid transparent; margin-bottom:-1px;
+  }
+  nav.tabs button:hover{ color:var(--text); }
+  nav.tabs button[aria-selected="true"]{ color:var(--primary); border-bottom-color:var(--primary); }
+  nav.tabs button:focus-visible{ outline:2px solid var(--primary); outline-offset:2px; }
+
+  .grid-cards{ display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:12px; margin-bottom:8px; }
+  .p-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:16px; box-shadow:var(--shadow); cursor:pointer; text-align:left; font:inherit; color:inherit;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .p-card:hover{ border-color:var(--primary); }
+  .p-card .name{ font-weight:800; font-size:14px; }
+  .p-card .role{ font-size:12px; color:var(--muted); }
+  .p-card .pct{ font-family:"Rubik",sans-serif; font-weight:800; font-size:22px; color:var(--primary-dark); }
+  .dep-box{
+    background:var(--primary-light); border-radius:12px; padding:12px 14px; font-size:12.5px;
+    color:var(--text); margin-bottom:20px; display:flex; gap:10px; align-items:flex-start;
+  }
+  .dep-box svg{ flex-shrink:0; margin-top:1px; color:var(--primary-dark); }
+
+  section.category{ margin-bottom:24px; }
+  section.category > h3{
+    font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted);
+    margin:0 0 10px; display:flex; align-items:center; gap:8px;
+  }
+  section.category > h3 .count{ font-weight:400; text-transform:none; letter-spacing:0; }
+  ul.tasklist{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+  ul.tasklist li{
+    display:flex; align-items:flex-start; gap:10px; background:var(--surface);
+    border:1px solid var(--border); border-radius:10px; padding:10px 12px;
+  }
+  ul.tasklist li.done{ opacity:.6; }
+  ul.tasklist input[type="checkbox"]{
+    width:20px; height:20px; margin:1px 0 0; accent-color:var(--trust); flex-shrink:0; cursor:pointer;
+  }
+  ul.tasklist label{ flex:1; font-size:13.5px; line-height:1.45; cursor:pointer; }
+  ul.tasklist li.done label{ text-decoration:line-through; }
+  .phase-tag{
+    font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:999px;
+    background:var(--trust-light); color:var(--trust); white-space:nowrap; flex-shrink:0;
+  }
+
+  .empty-note, .offline-note{
+    text-align:center; color:var(--muted); padding:32px 16px; font-size:13px;
+  }
+  .offline-note{ background:var(--urgent-light); color:var(--urgent); border-radius:12px; margin-bottom:16px; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Chợ Tốt Mua — Backlog triển khai</h1>
+    <p>5 domain · 5 người · 7 giai đoạn (Phase 0 → Phase 6). Trạng thái tick lưu chung cho cả nhóm.</p>
+    <div class="overall" id="overall">
+      <div>
+        <div class="stat-label">Tiến độ chung</div>
+        <div class="stat-value" id="overall-value">–</div>
+      </div>
+      <div class="progress-bar"><div id="overall-bar" style="width:0%"></div></div>
+    </div>
+  </header>
+
+  <div id="offline-banner" class="offline-note" hidden>
+    Không kết nối được lưu trữ chung — đang hiển thị danh sách việc ở chế độ chỉ xem (không tick được).
+  </div>
+
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Chọn người phụ trách"></nav>
+  <div id="panel"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var PEOPLE = [
+    { id: "overview", label: "Tổng quan" },
+    { id: "p1", label: "P1 · Identity & Hạ tầng", role: "Domain A (Identity & Company) + hạ tầng dự án" },
+    { id: "p2", label: "P2 · Catalog & Kho", role: "Domain B (Catalog & Inventory)" },
+    { id: "p3", label: "P3 · Giỏ hàng & Đơn hàng", role: "Nửa đầu domain C (Cart → Order → Shipping)" },
+    { id: "p4", label: "P4 · Thanh toán & Marketing", role: "Nửa sau domain C (Payment/Wallet/Refund) + domain D" },
+    { id: "p5", label: "P5 · CRM & Chăm sóc KH", role: "Domain E (CRM & Customer Care)" },
+  ];
+
+  var DEPENDENCY_NOTE = {
+    p1: "Không phụ thuộc ai — làm trước tiên. Mọi người khác cần bảng User/Employee của P1 tồn tại mới tạo được khoá ngoại.",
+    p2: "Cần P1 xong nền tảng Identity trước khi cần Employee (nhân viên bán hàng/kho) thao tác.",
+    p3: "Cần P2 xong Product/ProductVariant trước khi OrderItem lấy giá thật; có thể dựng khung Cart/Order song song sớm.",
+    p4: "Cần P3 xong Order/OrderItem trước khi Payment/Voucher/Loyalty tính toán thật; có thể dựng entity + CRUD riêng sớm.",
+    p5: "Chỉ cần bảng Order (của P3) tồn tại để tham chiếu — không cần logic sâu, có thể làm song song từ sớm.",
+  };
+
+  // Seed reference (also written to the shared store by Claude). Used only
+  // as an offline/read-only fallback when the db capability is unavailable.
+  var SEED_TASKS = [
+    { id:"p1-01", person:"p1", category:"Hạ tầng", phase:"Phase 0", title:"Khởi tạo Spring Boot project (Maven) + cấu trúc package theo domain", done:false },
+    { id:"p1-02", person:"p1", category:"Hạ tầng", phase:"Phase 0", title:"Cấu hình PostgreSQL + application.yml (dev/prod)", done:false },
+    { id:"p1-03", person:"p1", category:"Hạ tầng", phase:"Phase 0", title:"Khởi tạo React project (Vite) + routing khung", done:false },
+    { id:"p1-04", person:"p1", category:"Hạ tầng", phase:"Phase 0", title:"Chuyển token màu/font từ styles.css sang theme React", done:false },
+    { id:"p1-05", person:"p1", category:"Hạ tầng", phase:"Phase 0", title:"Endpoint GET /health + trang web gọi thử /health", done:false },
+    { id:"p1-06", person:"p1", category:"Hạ tầng", phase:"Phase 0", title:"Cấu hình CORS giữa backend và web", done:false },
+    { id:"p1-07", person:"p1", category:"Entity", phase:"Phase 1", title:"Entity User (gồm profile: fullName/avatarUrl/gender/dob, role) + migration", done:false },
+    { id:"p1-08", person:"p1", category:"Entity", phase:"Phase 1", title:"Entity Address (nhiều địa chỉ, 1 mặc định)", done:false },
+    { id:"p1-09", person:"p1", category:"Entity", phase:"Phase 1", title:"Entity Employee (department: sales/warehouse/admin/cs) + migration", done:false },
+    { id:"p1-10", person:"p1", category:"API", phase:"Phase 1", title:"POST /auth/register", done:false },
+    { id:"p1-11", person:"p1", category:"API", phase:"Phase 1", title:"POST /auth/login (JWT)", done:false },
+    { id:"p1-12", person:"p1", category:"API", phase:"Phase 1", title:"Role guard (buyer/admin) + guard theo department cho Employee", done:false },
+    { id:"p1-13", person:"p1", category:"API", phase:"Phase 1", title:"CRUD /addresses", done:false },
+    { id:"p1-14", person:"p1", category:"API", phase:"Phase 1", title:"POST /employees (admin tạo nhân viên nội bộ, gán department)", done:false },
+    { id:"p1-15", person:"p1", category:"API", phase:"Phase 1", title:"PATCH /employees/{id} (đổi department/position)", done:false },
+    { id:"p1-16", person:"p1", category:"Web", phase:"Phase 1", title:"Trang đăng ký / đăng nhập", done:false },
+    { id:"p1-17", person:"p1", category:"Web", phase:"Phase 1", title:"Trang quản lý nhân viên nội bộ (admin)", done:false },
+    { id:"p1-18", person:"p1", category:"Web", phase:"Phase 1", title:"Trang hồ sơ cá nhân + quản lý địa chỉ", done:false },
+    { id:"p1-19", person:"p1", category:"Test", phase:"Phase 1", title:"Unit test AuthService (hash mật khẩu, sinh/verify token)", done:false },
+    { id:"p1-20", person:"p1", category:"Test", phase:"Phase 1", title:"E2E: đăng ký → đăng nhập → gọi route bảo vệ đúng role", done:false },
+    { id:"p1-21", person:"p1", category:"Test", phase:"Phase 1", title:"E2E: admin tạo Employee department \"warehouse\" → chỉ vào được khu vực quản lý kho", done:false },
+    { id:"p2-01", person:"p2", category:"Entity", phase:"Phase 2", title:"Entity Brand", done:false },
+    { id:"p2-02", person:"p2", category:"Entity", phase:"Phase 2", title:"Entity Category (tự quan hệ cây cha-con)", done:false },
+    { id:"p2-03", person:"p2", category:"Entity", phase:"Phase 2", title:"Entity Product (liên kết Category, Brand)", done:false },
+    { id:"p2-04", person:"p2", category:"Entity", phase:"Phase 2", title:"Entity ProductVariant (giá, tồn kho riêng, thuộc tính JSON)", done:false },
+    { id:"p2-05", person:"p2", category:"Entity", phase:"Phase 2", title:"Entity ProductImage", done:false },
+    { id:"p2-06", person:"p2", category:"Entity", phase:"Phase 2", title:"Entity Warehouse", done:false },
+    { id:"p2-07", person:"p2", category:"Entity", phase:"Phase 2", title:"Entity InventoryStock + InventoryMovement", done:false },
+    { id:"p2-08", person:"p2", category:"API", phase:"Phase 2", title:"CRUD Brand (admin)", done:false },
+    { id:"p2-09", person:"p2", category:"API", phase:"Phase 2", title:"CRUD Category (cây phân cấp, kèm slug)", done:false },
+    { id:"p2-10", person:"p2", category:"API", phase:"Phase 2", title:"CRUD Product (nhân viên bán hàng) + upload ProductImage", done:false },
+    { id:"p2-11", person:"p2", category:"API", phase:"Phase 2", title:"CRUD ProductVariant theo Product", done:false },
+    { id:"p2-12", person:"p2", category:"API", phase:"Phase 2", title:"CRUD Warehouse (nhân viên kho)", done:false },
+    { id:"p2-13", person:"p2", category:"API", phase:"Phase 2", title:"API cập nhật InventoryStock (nhập/xuất) → ghi InventoryMovement", done:false },
+    { id:"p2-14", person:"p2", category:"API", phase:"Phase 2", title:"API danh sách sản phẩm public (lọc Category/Brand, tìm kiếm)", done:false },
+    { id:"p2-15", person:"p2", category:"API", phase:"Phase 2", title:"API chi tiết sản phẩm kèm variant + tồn kho", done:false },
+    { id:"p2-16", person:"p2", category:"Web", phase:"Phase 2", title:"Trang danh mục sản phẩm (thay lưới tĩnh index.html)", done:false },
+    { id:"p2-17", person:"p2", category:"Web", phase:"Phase 2", title:"Trang chi tiết sản phẩm (chọn variant, hiển thị tồn kho)", done:false },
+    { id:"p2-18", person:"p2", category:"Web", phase:"Phase 2", title:"Trang quản lý sản phẩm cho nhân viên bán hàng (CRUD)", done:false },
+    { id:"p2-19", person:"p2", category:"Web", phase:"Phase 2", title:"Trang quản lý kho cho nhân viên kho", done:false },
+    { id:"p2-20", person:"p2", category:"Test", phase:"Phase 2", title:"Unit test: tạo Product với 2 ProductVariant giá khác nhau", done:false },
+    { id:"p2-21", person:"p2", category:"Test", phase:"Phase 2", title:"E2E: buyer lọc theo Category ra đúng danh sách sản phẩm", done:false },
+    { id:"p3-01", person:"p3", category:"Entity", phase:"Phase 3", title:"Entity CartItem (isSelected, trỏ thẳng userId)", done:false },
+    { id:"p3-02", person:"p3", category:"Entity", phase:"Phase 3", title:"Entity Order (addressId, subtotal/discount/shippingFee/total)", done:false },
+    { id:"p3-03", person:"p3", category:"Entity", phase:"Phase 3", title:"Entity OrderItem (snapshot tên + thuộc tính)", done:false },
+    { id:"p3-04", person:"p3", category:"Entity", phase:"Phase 3", title:"Entity OrderStatusHistory (changedBy/reason)", done:false },
+    { id:"p3-05", person:"p3", category:"Entity", phase:"Phase 3", title:"Entity ShippingProvider, Shipment, ShipmentItem, ShipmentTracking", done:false },
+    { id:"p3-06", person:"p3", category:"API", phase:"Phase 3", title:"API thêm/sửa/xoá CartItem, toggle isSelected", done:false },
+    { id:"p3-07", person:"p3", category:"API", phase:"Phase 3", title:"POST /orders: tạo Order trực tiếp từ CartItem đã chọn (tính subtotal/discount/shippingFee)", done:false },
+    { id:"p3-08", person:"p3", category:"API", phase:"Phase 3", title:"API xác nhận/huỷ đơn → ghi OrderStatusHistory", done:false },
+    { id:"p3-09", person:"p3", category:"API", phase:"Phase 3", title:"CRUD ShippingProvider (admin)", done:false },
+    { id:"p3-10", person:"p3", category:"API", phase:"Phase 3", title:"API tạo Shipment + ShipmentItem theo Order (hỗ trợ giao nhiều kiện)", done:false },
+    { id:"p3-11", person:"p3", category:"API", phase:"Phase 3", title:"API cập nhật ShipmentTracking", done:false },
+    { id:"p3-12", person:"p3", category:"API", phase:"Phase 3", title:"API lịch sử đơn hàng theo buyer / theo nhân viên xử lý", done:false },
+    { id:"p3-13", person:"p3", category:"Web", phase:"Phase 3", title:"Trang giỏ hàng (chọn item, tính tổng)", done:false },
+    { id:"p3-14", person:"p3", category:"Web", phase:"Phase 3", title:"Trang checkout (chọn địa chỉ giao hàng)", done:false },
+    { id:"p3-15", person:"p3", category:"Web", phase:"Phase 3", title:"Trang lịch sử đơn hàng", done:false },
+    { id:"p3-16", person:"p3", category:"Web", phase:"Phase 3", title:"Trang chi tiết đơn hàng + tracking", done:false },
+    { id:"p3-17", person:"p3", category:"Test", phase:"Phase 3", title:"Unit test: subtotal/shippingFee snapshot đúng trên OrderItem", done:false },
+    { id:"p3-18", person:"p3", category:"Test", phase:"Phase 3", title:"E2E: giỏ hàng nhiều sản phẩm → đặt hàng ra đúng 1 Order (phối hợp P4 cho Payment)", done:false },
+    { id:"p4-01", person:"p4", category:"Entity", phase:"Phase 3", title:"Entity Payment (orderId/walletId, purpose)", done:false },
+    { id:"p4-02", person:"p4", category:"Entity", phase:"Phase 3", title:"Entity Wallet, WalletTransaction", done:false },
+    { id:"p4-03", person:"p4", category:"Entity", phase:"Phase 3", title:"Entity RefundReturn (nối WalletTransaction)", done:false },
+    { id:"p4-04", person:"p4", category:"Entity", phase:"Phase 4", title:"Entity Voucher, VoucherUsage", done:false },
+    { id:"p4-05", person:"p4", category:"Entity", phase:"Phase 4", title:"Entity FlashSale, FlashSaleItem", done:false },
+    { id:"p4-06", person:"p4", category:"Entity", phase:"Phase 4", title:"Entity LoyaltyPoint, LoyaltyTransaction", done:false },
+    { id:"p4-07", person:"p4", category:"Entity", phase:"Phase 4", title:"Entity Review, ReviewReply (employeeId)", done:false },
+    { id:"p4-08", person:"p4", category:"API", phase:"Phase 3", title:"POST /payments (gắn Order hoặc walletId nạp tiền)", done:false },
+    { id:"p4-09", person:"p4", category:"API", phase:"Phase 3", title:"API nạp tiền vào Wallet + tạo WalletTransaction", done:false },
+    { id:"p4-10", person:"p4", category:"API", phase:"Phase 3", title:"API tạo RefundReturn cho 1 OrderItem → hoàn tiền vào Wallet buyer", done:false },
+    { id:"p4-11", person:"p4", category:"API", phase:"Phase 4", title:"CRUD Voucher + áp voucher vào Order (phối hợp P3) → tính discountAmount", done:false },
+    { id:"p4-12", person:"p4", category:"API", phase:"Phase 4", title:"CRUD FlashSale + FlashSaleItem, trừ soldQty, chặn khi hết limitQty", done:false },
+    { id:"p4-13", person:"p4", category:"API", phase:"Phase 4", title:"Hàm cộng LoyaltyPoint khi Order hoàn thành", done:false },
+    { id:"p4-14", person:"p4", category:"API", phase:"Phase 4", title:"POST Review (chỉ khi OrderItem đã giao) + POST ReviewReply (nhân viên CSKH)", done:false },
+    { id:"p4-15", person:"p4", category:"Web", phase:"Phase 3", title:"Trang ví (Wallet) + lịch sử giao dịch", done:false },
+    { id:"p4-16", person:"p4", category:"Web", phase:"Phase 4", title:"Trang quản lý voucher (admin) + ví voucher (buyer)", done:false },
+    { id:"p4-17", person:"p4", category:"Web", phase:"Phase 4", title:"Trang Flash Sale (danh sách + đếm ngược)", done:false },
+    { id:"p4-18", person:"p4", category:"Web", phase:"Phase 4", title:"Khung đánh giá sản phẩm ở trang đơn hàng đã giao", done:false },
+    { id:"p4-19", person:"p4", category:"Test", phase:"Phase 3", title:"E2E: refund 1 OrderItem → Wallet buyer tăng đúng số tiền", done:false },
+    { id:"p4-20", person:"p4", category:"Test", phase:"Phase 4", title:"Unit test: áp voucher → discountAmount đúng trên Order", done:false },
+    { id:"p4-21", person:"p4", category:"Test", phase:"Phase 4", title:"Unit test: mua hết limitQty flash sale → API báo hết hàng", done:false },
+    { id:"p5-01", person:"p5", category:"Entity", phase:"Phase 5", title:"Entity CustomerProfileCRM (ltv, totalOrders, rfmSegment)", done:false },
+    { id:"p5-02", person:"p5", category:"Entity", phase:"Phase 5", title:"Entity CustomerSegment, SegmentMember", done:false },
+    { id:"p5-03", person:"p5", category:"Entity", phase:"Phase 5", title:"Entity Campaign, CampaignTarget", done:false },
+    { id:"p5-04", person:"p5", category:"Entity", phase:"Phase 5", title:"(Đã gộp vào Conversation — xem p5-06) Entity SupportTicket, TicketMessage", done:false },
+    { id:"p5-05", person:"p5", category:"Entity", phase:"Phase 5", title:"Entity AgentAssignment (liên kết Employee ở domain A, dùng conversationId)", done:false },
+    { id:"p5-06", person:"p5", category:"Entity", phase:"Phase 5", title:"Entity Conversation, ConversationMessage (gộp SupportTicket/TicketMessage: +type/+orderId/+status/+priority/+channel)", done:false },
+    { id:"p5-07", person:"p5", category:"Entity", phase:"Phase 5", title:"(Đã tách: InteractionLog bị xoá; FeedbackSurvey gộp vào SurveyResponse — xem p5-24) Entity InteractionLog, FeedbackSurvey", done:false },
+    { id:"p5-08", person:"p5", category:"Entity", phase:"Phase 5", title:"Entity Notification (referenceType/referenceId)", done:false },
+    { id:"p5-09", person:"p5", category:"API", phase:"Phase 5", title:"Hàm tính lại CustomerProfileCRM khi Order hoàn thành", done:false },
+    { id:"p5-10", person:"p5", category:"API", phase:"Phase 5", title:"CRUD CustomerSegment + hàm rule matching → SegmentMember", done:false },
+    { id:"p5-11", person:"p5", category:"API", phase:"Phase 5", title:"CRUD Campaign + API gửi campaign tới segment → sinh Notification", done:false },
+    { id:"p5-12", person:"p5", category:"API", phase:"Phase 5", title:"API mở Conversation (type=ticket) + gửi ConversationMessage", done:false },
+    { id:"p5-13", person:"p5", category:"API", phase:"Phase 5", title:"API assign/escalate Employee (CS) cho ticket (giữ lịch sử AgentAssignment)", done:false },
+    { id:"p5-14", person:"p5", category:"API", phase:"Phase 5", title:"API Conversation + ConversationMessage (chat buyer-công ty)", done:false },
+    { id:"p5-15", person:"p5", category:"API", phase:"Phase 5", title:"API tạo SurveyResponse (NPS) gắn với Order", done:false },
+    { id:"p5-16", person:"p5", category:"API", phase:"Phase 5", title:"API danh sách Notification theo user (đánh dấu đã đọc)", done:false },
+    { id:"p5-17", person:"p5", category:"Web", phase:"Phase 5", title:"Trang hỗ trợ: danh sách ticket, tạo ticket, xem hội thoại với nhân viên CS", done:false },
+    { id:"p5-18", person:"p5", category:"Web", phase:"Phase 5", title:"Khung chat buyer-công ty", done:false },
+    { id:"p5-19", person:"p5", category:"Web", phase:"Phase 5", title:"Trung tâm thông báo", done:false },
+    { id:"p5-20", person:"p5", category:"Web", phase:"Phase 5", title:"Trang admin CRM: xem segment, tạo/gửi campaign (nếu kịp)", done:false },
+    { id:"p5-21", person:"p5", category:"Test", phase:"Phase 5", title:"E2E: mở ticket → nhân viên CS assign → escalate sang nhân viên khác, lịch sử vẫn còn", done:false },
+    { id:"p5-22", person:"p5", category:"Test", phase:"Phase 5", title:"Unit test: rule tính CustomerSegment mẫu ra đúng danh sách", done:false },
+    { id:"p5-23", person:"p5", category:"Entity", phase:"Phase 5", title:"Entity Survey, SurveyQuestion", done:false },
+    { id:"p5-24", person:"p5", category:"Entity", phase:"Phase 5", title:"Entity SurveyResponse, SurveyAnswer (gộp FeedbackSurvey: +orderId cho khảo sát NPS theo đơn hàng)", done:false },
+    { id:"p5-25", person:"p5", category:"API", phase:"Phase 5", title:"API tạo Survey + câu hỏi (admin/CRM)", done:false },
+    { id:"p5-26", person:"p5", category:"API", phase:"Phase 5", title:"API gửi Survey tới CustomerSegment (qua Campaign) → sinh Notification", done:false },
+    { id:"p5-27", person:"p5", category:"API", phase:"Phase 5", title:"API khách hàng nộp SurveyResponse + SurveyAnswer", done:false },
+    { id:"p5-28", person:"p5", category:"API", phase:"Phase 5", title:"API thống kê kết quả Survey theo từng câu hỏi", done:false },
+    { id:"p5-29", person:"p5", category:"API", phase:"Phase 5", title:"API quản lý khách hàng: thêm mới / khóa-mở / xóa mềm (User.status)", done:false },
+    { id:"p5-30", person:"p5", category:"API", phase:"Phase 5", title:"API báo cáo demographic khách hàng (độ tuổi, giới tính, ngành hàng ưa thích)", done:false },
+    { id:"p5-31", person:"p5", category:"Web", phase:"Phase 5", title:"Trang tạo/quản lý Survey + xem thống kê (admin)", done:false },
+    { id:"p5-32", person:"p5", category:"Web", phase:"Phase 5", title:"Trang khách hàng thực hiện khảo sát", done:false },
+    { id:"p5-33", person:"p5", category:"Web", phase:"Phase 5", title:"Trang quản lý khách hàng (admin): danh sách, thêm/khóa/xóa mềm + báo cáo demographic", done:false },
+    { id:"p5-34", person:"p5", category:"Test", phase:"Phase 5", title:"Unit test: xóa mềm chỉ đổi status, dữ liệu và lịch sử đơn hàng vẫn còn nguyên", done:false },
+    { id:"p5-35", person:"p5", category:"Test", phase:"Phase 5", title:"E2E: tạo survey → gửi tới segment → khách trả lời → thống kê đúng số liệu", done:false },
+
+    { id:"p1-22", person:"p1", category:"API", phase:"Phase 6", title:"Bảo mật & validate input cho toàn bộ API domain Identity, rate-limit /auth/login", done:false },
+    { id:"p1-23", person:"p1", category:"Hạ tầng", phase:"Phase 6", title:"Đóng gói backend: Dockerfile + biến môi trường production", done:false },
+    { id:"p1-24", person:"p1", category:"Mobile", phase:"Phase 6", title:"Nối mobile: màn đăng ký/đăng nhập/hồ sơ cá nhân dùng API thật", done:false },
+    { id:"p2-22", person:"p2", category:"API", phase:"Phase 6", title:"Bảo mật & validate input cho API domain Catalog", done:false },
+    { id:"p2-23", person:"p2", category:"Mobile", phase:"Phase 6", title:"Nối mobile: trang chủ (danh mục, sản phẩm) + trang chi tiết sản phẩm dùng API thật", done:false },
+    { id:"p2-24", person:"p2", category:"Test", phase:"Phase 6", title:"Test tích hợp: Catalog → Cart (thêm sản phẩm thật vào giỏ hàng)", done:false },
+    { id:"p3-19", person:"p3", category:"API", phase:"Phase 6", title:"Bảo mật & validate input cho API domain Order", done:false },
+    { id:"p3-20", person:"p3", category:"Mobile", phase:"Phase 6", title:"Nối mobile: giỏ hàng, checkout, lịch sử đơn hàng dùng API thật", done:false },
+    { id:"p3-21", person:"p3", category:"Test", phase:"Phase 6", title:"Test tích hợp: Cart → Order → Shipment end-to-end thật", done:false },
+    { id:"p4-22", person:"p4", category:"API", phase:"Phase 6", title:"Bảo mật & validate input cho API domain Payment/Marketing", done:false },
+    { id:"p4-23", person:"p4", category:"Mobile", phase:"Phase 6", title:"Nối mobile: ví, voucher, flash sale, đánh giá sản phẩm dùng API thật", done:false },
+    { id:"p4-24", person:"p4", category:"Test", phase:"Phase 6", title:"Test tích hợp: Order → Payment → Refund end-to-end thật", done:false },
+    { id:"p5-36", person:"p5", category:"API", phase:"Phase 6", title:"Bảo mật & validate input cho API domain CRM", done:false },
+    { id:"p5-37", person:"p5", category:"Mobile", phase:"Phase 6", title:"Nối mobile: hỗ trợ, tin nhắn, thông báo dùng API thật", done:false },
+    { id:"p5-38", person:"p5", category:"Test", phase:"Phase 6", title:"Test tích hợp: Order → Conversation(ticket)/SurveyResponse(NPS), Campaign → Notification", done:false }
+  ];
+
+  var CATEGORY_ORDER = ["Hạ tầng", "Entity", "API", "Web", "Mobile", "Test"];
+
+  var state = { tasks: null, offline: false, current: "overview" };
+  var db = null;
+
+  function byId(id){ return document.getElementById(id); }
+
+  function computeProgress(tasks, personId){
+    var list = personId ? tasks.filter(function(t){ return t.person === personId; }) : tasks;
+    var done = list.filter(function(t){ return t.done; }).length;
+    return { done: done, total: list.length, pct: list.length ? Math.round(done / list.length * 100) : 0 };
+  }
+
+  function renderTabs(){
+    var nav = byId("tabs");
+    nav.innerHTML = "";
+    PEOPLE.forEach(function(p){
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", String(p.id === state.current));
+      btn.textContent = p.label;
+      btn.addEventListener("click", function(){ state.current = p.id; render(); });
+      nav.appendChild(btn);
+    });
+  }
+
+  function svgInfo(){
+    return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 8h.01M11 11h1v6h1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+
+  function renderOverview(tasks){
+    var panel = byId("panel");
+    var html = '<div class="grid-cards">';
+    PEOPLE.slice(1).forEach(function(p){
+      var prog = computeProgress(tasks, p.id);
+      html += '<button class="p-card" type="button" data-goto="' + p.id + '">' +
+        '<div class="name">' + p.label + '</div>' +
+        '<div class="role">' + p.role + '</div>' +
+        '<div class="pct">' + prog.pct + '%</div>' +
+        '<div class="progress-bar"><div style="width:' + prog.pct + '%"></div></div>' +
+        '<div class="role">' + prog.done + '/' + prog.total + ' việc</div>' +
+        '</button>';
+    });
+    html += '</div>';
+    panel.innerHTML = html;
+    panel.querySelectorAll('[data-goto]').forEach(function(el){
+      el.addEventListener('click', function(){ state.current = el.getAttribute('data-goto'); render(); });
+    });
+  }
+
+  function renderPerson(tasks, personId){
+    var panel = byId("panel");
+    var personTasks = tasks.filter(function(t){ return t.person === personId; });
+    var html = '';
+
+    if (DEPENDENCY_NOTE[personId]) {
+      html += '<div class="dep-box">' + svgInfo() + '<div>' + DEPENDENCY_NOTE[personId] + '</div></div>';
+    }
+
+    CATEGORY_ORDER.forEach(function(cat){
+      var items = personTasks.filter(function(t){ return t.category === cat; });
+      if (!items.length) return;
+      var doneCount = items.filter(function(t){ return t.done; }).length;
+      html += '<section class="category">';
+      html += '<h3>' + cat + ' <span class="count">(' + doneCount + '/' + items.length + ')</span></h3>';
+      html += '<ul class="tasklist">';
+      items.forEach(function(t){
+        html += '<li class="' + (t.done ? 'done' : '') + '" data-id="' + t.id + '">' +
+          '<input type="checkbox" id="chk-' + t.id + '" ' + (t.done ? 'checked' : '') + (state.offline ? ' disabled' : '') + '>' +
+          '<label for="chk-' + t.id + '">' + t.title + '</label>' +
+          '<span class="phase-tag">' + t.phase + '</span>' +
+          '</li>';
+      });
+      html += '</ul></section>';
+    });
+
+    panel.innerHTML = html || '<p class="empty-note">Chưa có việc nào.</p>';
+
+    panel.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
+      cb.addEventListener('change', function(){
+        var li = cb.closest('li');
+        var id = li.getAttribute('data-id');
+        toggleTask(id, cb.checked, li);
+      });
+    });
+  }
+
+  function toggleTask(id, nextDone, liEl){
+    liEl.classList.toggle('done', nextDone);
+    if (!db) return;
+    db.doc('tasks/' + id).update({ done: nextDone }).catch(function(){
+      // No write permission or transient error: revert the visual state.
+      liEl.classList.toggle('done', !nextDone);
+      var cb = liEl.querySelector('input[type="checkbox"]');
+      if (cb) cb.checked = !nextDone;
+    });
+  }
+
+  function render(){
+    renderTabs();
+    var tasks = state.tasks || SEED_TASKS;
+    if (state.current === 'overview') {
+      renderOverview(tasks);
+    } else {
+      renderPerson(tasks, state.current);
+    }
+    var overall = computeProgress(tasks, null);
+    byId('overall-value').textContent = overall.done + ' / ' + overall.total + ' việc (' + overall.pct + '%)';
+    byId('overall-bar').style.width = overall.pct + '%';
+  }
+
+  function boot(){
+    render();
+    if (!window.claude || !window.claude.use) {
+      state.offline = true;
+      byId('offline-banner').hidden = false;
+      render();
+      return;
+    }
+    window.claude.use('db').then(function(handle){
+      if (!handle) {
+        state.offline = true;
+        byId('offline-banner').hidden = false;
+        render();
+        return;
+      }
+      db = handle;
+      db.collection('tasks').onSnapshot(function(snap){
+        var list = snap.docs.map(function(d){
+          var data = d.data() || {};
+          return {
+            id: d.id,
+            person: data.person,
+            category: data.category,
+            phase: data.phase,
+            title: data.title,
+            done: !!data.done,
+          };
+        });
+        if (list.length) state.tasks = list;
+        render();
+      }, function(){
+        state.offline = true;
+        byId('offline-banner').hidden = false;
+        render();
+      });
+    }).catch(function(){
+      state.offline = true;
+      byId('offline-banner').hidden = false;
+      render();
+    });
+  }
+
+  boot();
+})();
+</script>

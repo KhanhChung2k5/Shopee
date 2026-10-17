@@ -1,0 +1,101 @@
+/* Design tokens ported from ../styles.css (web mockup) to keep the same
+   brand identity — see docs/backlog-board.html and crm-ecommerce-class-diagram.md.
+   Heading font upgraded from Rubik to Be Vietnam Pro here; styles.css was
+   updated to match, so this is the official token set going forward. */
+:root {
+  color-scheme: light;
+  --color-primary: #F0562E;
+  --color-primary-dark: #D6431F;
+  --color-primary-light: #FFE9E1;
+  --color-on-primary: #FFFFFF;
+
+  --color-trust: #16A34A;
+  --color-trust-light: #E7F7ED;
+  --color-urgent: #E11D48;
+  --color-urgent-light: #FDECEF;
+
+  /* Aurora accent — complementary electric blue paired with the orange
+     primary (classic blue-orange duotone), used sparingly for highlights:
+     active/focus accents, the flash-sale timer, glow accents. */
+  --color-accent: #0EA5E9;
+  --color-accent-light: #E0F4FE;
+
+  --color-background: #F5F5F7;
+  --color-surface: #FFFFFF;
+  --color-foreground: #1A1A1A;
+  --color-muted-foreground: #6B7280;
+  --color-border: #E7E7EA;
+  --color-ring: #F0562E;
+
+  --glass-bg: rgba(20, 20, 20, 0.05);
+  --glass-border: rgba(20, 20, 20, 0.08);
+
+  --font-heading: "Be Vietnam Pro", system-ui, sans-serif;
+  --font-body: "Nunito Sans", system-ui, sans-serif;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+  --space-7: 64px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  --shadow-card: 0 1px 2px rgba(20, 20, 20, .06), 0 4px 12px rgba(20, 20, 20, .05);
+  --shadow-card-hover: 0 8px 24px rgba(20, 20, 20, .12);
+
+  --container-w: 1240px;
+
+  /* Bold signature gradient (orange → hot pink) — used sparingly on the
+     highest-impact elements (primary CTA, hero numbers, Flash Sale title)
+     so the brand reads as vivid rather than a single flat hue everywhere. */
+  --gradient-brand: linear-gradient(135deg, var(--color-primary) 0%, #FF2E92 100%);
+  --gradient-fire: linear-gradient(90deg, var(--color-urgent) 0%, var(--color-primary) 100%);
+}
+
+/* Dark theme — default for this gaming-peripherals storefront (Steam/PS
+   Store/Discord all default dark for this audience). Toggle persists via
+   ThemeToggle + localStorage; see main.tsx for the initial data-theme set. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-primary: #FF7A52;
+  --color-primary-dark: #FFB199;
+  --color-primary-light: #3A2420;
+  --color-on-primary: #1A1A1A;
+
+  --color-trust: #4ADE80;
+  --color-trust-light: #163826;
+  --color-urgent: #FB7185;
+  --color-urgent-light: #3A1720;
+
+  --color-accent: #38BDF8;
+  --color-accent-light: #123246;
+
+  --color-background: #16181C;
+  --color-surface: #1F2126;
+  --color-foreground: #F2F3F5;
+  --color-muted-foreground: #9AA0AC;
+  --color-border: #2B2E36;
+  --color-ring: #FF7A52;
+
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.12);
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .35);
+  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, .5);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3 { font-family: var(--font-heading); font-weight: 800; letter-spacing: -.01em; }
