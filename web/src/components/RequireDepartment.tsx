@@ -2,6 +2,7 @@ import { type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../state/AuthContext'
 import { canAccessSection, type Department } from '../admin/access'
+import { EmptyState } from './ui'
 
 /**
  * Wraps a single /admin/* page. Reads allowed departments for the CURRENT
@@ -18,10 +19,13 @@ export default function RequireDepartment({ children }: { children: ReactNode })
 
   if (!allowed) {
     return (
-      <p>
-        Bạn không có quyền xem mục này — chỉ nhân viên thuộc bộ phận phù hợp mới truy cập được. Vui lòng liên hệ quản trị viên
-        nếu bạn cần quyền truy cập.
-      </p>
+      <div className="bg-surface-container-lowest rounded-xl shadow-sm">
+        <EmptyState
+          icon="lock"
+          title="Bạn không có quyền xem mục này"
+          description="Chỉ nhân viên thuộc bộ phận phù hợp mới truy cập được. Vui lòng liên hệ quản trị viên nếu bạn cần quyền truy cập."
+        />
+      </div>
     )
   }
 

@@ -32,9 +32,14 @@ import MobileNav from './components/MobileNav'
 function CustomerShell() {
   return (
     <CartProvider>
-      <a className="skip-link" href="#main-content">Bỏ qua để đến nội dung chính</a>
+      <a
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-space-md focus:py-2 focus:rounded-lg focus:bg-primary focus:text-on-primary focus:font-title-md"
+        href="#main-content"
+      >
+        Bỏ qua để đến nội dung chính
+      </a>
       <Header />
-      <main id="main-content">
+      <main id="main-content" className="w-full pt-[108px] md:pt-[156px] bg-surface min-h-[calc(100vh-156px)]">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/san-pham/:id" element={<ProductDetailPage />} />
@@ -51,6 +56,8 @@ function CustomerShell() {
         </Routes>
       </main>
       <Footer />
+      {/* Keeps the footer clear of the fixed bottom nav on phones. */}
+      <div className="h-16 md:hidden" aria-hidden="true" />
       <MobileNav />
     </CartProvider>
   )
@@ -60,10 +67,6 @@ function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* Admin area: deliberately separate layout (no customer Header/Footer),
-            per the HTTTDN requirement for a distinct Admin interface. Gated by
-            RequireStaff — only role=staff accounts get past this, regardless
-            of which URL is typed directly into the browser. */}
         <Route
           path="/admin"
           element={
@@ -72,10 +75,6 @@ function App() {
             </RequireStaff>
           }
         >
-          {/* Each page is wrapped in RequireDepartment, which reads the allowed
-              departments for its own path from admin/access.ts — the same map
-              the sidebar uses. Adding a new admin page: add the route here AND
-              one line in access.ts, nothing else. */}
           <Route index element={<RequireDepartment><AdminDashboardPage /></RequireDepartment>} />
           <Route path="san-pham" element={<RequireDepartment><AdminProductsPage /></RequireDepartment>} />
           <Route path="kho" element={<RequireDepartment><AdminInventoryPage /></RequireDepartment>} />

@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Admin-only read/status-management view over buyer accounts (CRM "Khách hàng" page). */
+/** CS/admin read/status-management view over buyer accounts (CRM "Khách hàng" page). */
 @RestController
 @RequestMapping("/customers")
 public class CustomerController {

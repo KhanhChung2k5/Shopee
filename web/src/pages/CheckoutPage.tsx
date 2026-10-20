@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import ProductThumb from '../components/ProductThumb'
+import { Alert, Badge, Button, ButtonLink, Card, CardTitle, EmptyState, Loading, Modal, Page, PageHeader, RadioCard, SummaryRow } from '../components/ui'
 import { formatVnd } from '../lib/catalog'
 import { apiFetch, ApiError } from '../lib/api'
 import type { AvailableVoucher, VoucherQuote } from '../lib/vouchers'
@@ -10,9 +11,15 @@ import { useCart } from '../state/CartContext'
 interface Address { id: string; recipientName: string; phone: string; fullAddress: string; isDefault: boolean }
 interface CreatedOrder { id: string; discountAmount: number; totalAmount: number }
 
+const PAYMENT_METHODS = [
+  ['cod', 'Thanh toán khi nhận hàng', 'Thanh toán cho đơn vị vận chuyển khi nhận hàng.', 'local_shipping'],
+  ['bank_transfer', 'Chuyển khoản mô phỏng', 'Xác nhận thanh toán ngay trong môi trường thử nghiệm.', 'account_balance'],
+  ['wallet', 'Ví Chợ Tốt Mua', 'Trừ trực tiếp từ số dư ví nếu số dư đủ.', 'account_balance_wallet'],
+] as const
+
 export default function CheckoutPage() {
   const { token, isAuthenticated, isReady } = useAuth()
-  if (!isReady) return <div className="container"><div className="cart-empty">Đang kiểm tra đăng nhập…</div></div>
+  if (!isReady) return <Page><Loading>Đang kiểm tra đăng nhập…</Loading></Page>
   if (!isAuthenticated || !token) return <Navigate to="/dang-nhap" replace state={{ from: '/thanh-toan' }} />
   return <CheckoutContent token={token} />
 }
@@ -81,16 +88,165 @@ function CheckoutContent({ token }: { token: string }) {
     } catch (reason) { setError(reason instanceof ApiError ? reason.message : 'Đặt hàng thất bại, vui lòng thử lại') } finally { setIsSubmitting(false) }
   }
 
-  if (createdOrder) return <div className="container"><div className="checkout-success"><div className="checkout-success__icon" aria-hidden="true">✓</div><h1 className="section-title">Đặt hàng thành công</h1><p>Đơn hàng đã được ghi nhận và đang chờ nhân viên xác nhận.</p><div className="checkout-success__details"><span>Mã đơn</span><strong>{createdOrder.id}</strong>{createdOrder.discountAmount > 0 && <><span>Voucher giảm</span><strong>-{formatVnd(Number(createdOrder.discountAmount))}</strong></>}<span>Tổng thanh toán</span><strong>{formatVnd(Number(createdOrder.totalAmount))}</strong></div><div className="checkout-success__actions"><Link className="button button--outline" to="/gio-hang">Về giỏ hàng</Link><Link className="button button--primary" to={`/don-hang/${createdOrder.id}`}>Xem đơn hàng</Link></div></div></div>
-  if (isCartLoading && lines.length === 0) return <div className="container"><div className="cart-empty">Đang tải sản phẩm thanh toán…</div></div>
-  if (selectedLines.length === 0) return <div className="container"><div className="cart-empty"><p>Bạn chưa chọn sản phẩm nào để thanh toán.</p><Link className="button button--primary" to="/gio-hang">Quay lại giỏ hàng</Link></div></div>
+  if (createdOrder) {
+    return (
+      <Page narrow>
+        <Card className="text-center space-y-space-md">
+          <span className="mx-auto w-16 h-16 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center" aria-hidden="true">
+            <span className="material-symbols-outlined text-3xl">check</span>
+          </span>
+          <h1 className="font-headline-lg text-headline-lg text-on-surface">Đặt hàng thành công</h1>
+          <p className="font-body-lg text-body-lg text-on-surface-variant">Đơn hàng đã được ghi nhận và đang chờ nhân viên xác nhận.</p>
+          <div className="text-left rounded-lg bg-surface-container-low p-space-md space-y-space-xs">
+            <SummaryRow label="Mã đơn" value={<span className="font-mono text-label-md break-all">{createdOrder.id}</span>} />
+            {createdOrder.discountAmount > 0 && <SummaryRow label="Voucher giảm" value={<span className="text-secondary">-{formatVnd(Number(createdOrder.discountAmount))}</span>} />}
+            <SummaryRow strong label="Tổng thanh toán" value={formatVnd(Number(createdOrder.totalAmount))} />
+          </div>
+          <div className="flex flex-wrap justify-center gap-space-sm">
+            <ButtonLink variant="outline" to="/gio-hang">Về giỏ hàng</ButtonLink>
+            <ButtonLink to={`/don-hang/${createdOrder.id}`} icon="receipt_long">Xem đơn hàng</ButtonLink>
+          </div>
+        </Card>
+      </Page>
+    )
+  }
+  if (isCartLoading && lines.length === 0) return <Page><Loading>Đang tải sản phẩm thanh toán…</Loading></Page>
+  if (selectedLines.length === 0) {
+    return (
+      <Page narrow>
+        <Card>
+          <EmptyState icon="shopping_cart" title="Bạn chưa chọn sản phẩm nào để thanh toán" action={<ButtonLink to="/gio-hang">Quay lại giỏ hàng</ButtonLink>} />
+        </Card>
+      </Page>
+    )
+  }
 
   const cannotSubmit = isSubmitting || isAddressLoading || !addressId || (!!voucherCode && !currentQuote)
-  return <><div className="container"><div className="checkout-page"><div><h1 className="section-title">Xác nhận đơn hàng</h1>{error && <p className="checkout-notice checkout-notice--error" role="alert">{error}</p>}
-    <section className="checkout-section"><p className="checkout-section__title"><span>Địa chỉ giao hàng</span><Link className="checkout-section__link" to="/ho-so">Quản lý địa chỉ</Link></p>{isAddressLoading && <p className="checkout-muted">Đang tải địa chỉ…</p>}{!isAddressLoading && addresses.length === 0 && <div className="checkout-empty-address"><p>Bạn chưa có địa chỉ giao hàng.</p><Link className="button button--outline" to="/ho-so">Thêm địa chỉ</Link></div>}{addresses.map((address) => <label key={address.id} className={`radio-card${addressId === address.id ? ' radio-card--selected' : ''}`}><input type="radio" name="address" checked={addressId === address.id} onChange={() => setAddressId(address.id)} /><span><span className="radio-card__title">{address.recipientName} · {address.phone}{address.isDefault && <span className="checkout-default-badge">Mặc định</span>}</span><span className="radio-card__desc checkout-address-text">{address.fullAddress}</span></span></label>)}</section>
-    <section className="checkout-section"><p className="checkout-section__title"><span>Voucher</span><button className="checkout-section__link checkout-section__link-button" type="button" disabled={voucherLoading || availableVouchers.length === 0} onClick={() => { setDraftVoucherCode(voucherCode); setIsVoucherModalOpen(true) }}>Chọn Voucher</button></p><div className="checkout-voucher-selection"><div><strong>{voucherCode ? `Mã ${voucherCode}` : 'Chưa chọn voucher'}</strong><span>{voucherLoading ? 'Đang tải voucher…' : voucherError ?? (availableVouchers.length === 0 ? 'Hiện chưa có voucher khả dụng.' : 'Có thể chọn một voucher giảm giá cho đơn hàng.')}</span>{quoting && <span>Đang kiểm tra mức giảm…</span>}{quoteError && <span role="alert" style={{ color: 'var(--color-urgent)' }}>{quoteError}</span>}</div>{discountAmount > 0 && <strong className="checkout-discount">-{formatVnd(discountAmount)}</strong>}</div></section>
-    <section className="checkout-section"><p className="checkout-section__title">Phương thức thanh toán</p>{([['cod', 'Thanh toán khi nhận hàng', 'Thanh toán cho đơn vị vận chuyển khi nhận hàng.'], ['bank_transfer', 'Chuyển khoản mô phỏng', 'Xác nhận thanh toán ngay trong môi trường thử nghiệm.'], ['wallet', 'Ví Chợ Tốt Mua', 'Trừ trực tiếp từ số dư ví nếu số dư đủ.']] as const).map(([value, title, description]) => <label key={value} className={`radio-card${paymentMethod === value ? ' radio-card--selected' : ''}`}><input type="radio" name="payment" checked={paymentMethod === value} onChange={() => setPaymentMethod(value)} /><span><span className="radio-card__title">{title}</span><span className="radio-card__desc checkout-address-text">{description}</span></span></label>)}</section>
-    <section className="checkout-section"><p className="checkout-section__title">Sản phẩm đã chọn ({selectedLines.length})</p>{selectedLines.map((line) => <div className="checkout-line" key={line.id}><div className="checkout-line__media"><ProductThumb seed={line.product.thumbSeed} productType={line.product.productType} imageUrl={line.product.imageUrl} /></div><div className="checkout-line__body"><p className="checkout-line__name">{line.product.name}</p><p className="checkout-line__qty">Số lượng: {line.quantity}</p></div><strong className="checkout-line__total">{formatVnd(line.product.price * line.quantity)}</strong></div>)}</section>
-  </div><aside className="cart-summary"><div className="cart-summary__row"><span>Tạm tính</span><span>{formatVnd(subtotal)}</span></div><div className="cart-summary__row"><span>Giảm giá</span><span className={discountAmount > 0 ? 'checkout-discount' : undefined}>{discountAmount > 0 ? `-${formatVnd(discountAmount)}` : formatVnd(0)}</span></div><div className="cart-summary__row"><span>Phí vận chuyển</span><span>{formatVnd(0)}</span></div><div className="cart-summary__row cart-summary__total"><span>Tổng thanh toán</span><span>{formatVnd(totalAmount)}</span></div><button className="button button--primary" type="button" onClick={() => void placeOrder()} disabled={cannotSubmit} style={{ width: '100%', marginTop: 'var(--space-3)' }}>{isSubmitting ? 'Đang tạo đơn…' : 'Đặt hàng'}</button><p className="checkout-summary-note">Giá cuối cùng được backend xác nhận tại thời điểm tạo đơn.</p></aside></div></div>
-  {isVoucherModalOpen && <div className="voucher-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsVoucherModalOpen(false) }}><section className="voucher-modal" role="dialog" aria-modal="true" aria-labelledby="voucher-modal-title"><header className="voucher-modal__header"><div><p>Chợ Tốt Mua Voucher</p><h2 id="voucher-modal-title">Chọn Voucher</h2></div><button type="button" aria-label="Đóng cửa sổ chọn voucher" onClick={() => setIsVoucherModalOpen(false)}>×</button></header><div className="voucher-modal__body"><p className="voucher-modal__hint">Chọn một voucher. Mức giảm được backend kiểm tra theo giá trị đơn hàng hiện tại.</p>{availableVouchers.map((voucher) => <label key={voucher.id} className={`radio-card voucher-option${draftVoucherCode === voucher.code ? ' radio-card--selected' : ''}`}><input type="radio" name="voucher" checked={draftVoucherCode === voucher.code} onChange={() => setDraftVoucherCode(voucher.code)} /><span className="voucher-option__ticket">{voucher.type === 'percentage' ? `-${voucher.value}%` : `-${formatVnd(voucher.value)}`}</span><span className="voucher-option__body"><span className="radio-card__title">{voucher.programName}</span><span className="radio-card__desc checkout-address-text">Mã: {voucher.code} · Hết hạn: {new Date(voucher.endsAt).toLocaleString('vi-VN')}</span></span></label>)}</div><footer className="voucher-modal__footer"><button className="button button--outline" type="button" onClick={() => setDraftVoucherCode('')}>Bỏ chọn voucher</button><div><button className="button button--outline" type="button" onClick={() => setIsVoucherModalOpen(false)}>Trở lại</button><button className="button button--primary" type="button" onClick={() => { setVoucherCode(draftVoucherCode); setIsVoucherModalOpen(false) }}>Đồng ý</button></div></footer></section></div>}</>
+  const linkClass = 'font-title-md text-title-md text-primary hover:underline cursor-pointer disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed'
+
+  return (
+    <>
+      <Page>
+        <PageHeader breadcrumb={[{ label: 'Giỏ hàng', to: '/gio-hang' }, { label: 'Thanh toán' }]} title="Xác nhận đơn hàng" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop items-start">
+          <div className="lg:col-span-8 space-y-space-md">
+            {error && <Alert>{error}</Alert>}
+
+            <Card as="section">
+              <CardTitle icon="location_on" actions={<Link className={linkClass} to="/ho-so">Quản lý địa chỉ</Link>}>Địa chỉ giao hàng</CardTitle>
+              <div className="space-y-space-sm">
+                {isAddressLoading && <Loading>Đang tải địa chỉ…</Loading>}
+                {!isAddressLoading && addresses.length === 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-space-sm rounded-lg border border-dashed border-line p-space-md">
+                    <p className="font-body-md text-body-md text-on-surface-variant">Bạn chưa có địa chỉ giao hàng.</p>
+                    <ButtonLink variant="outline" size="sm" icon="add" to="/ho-so">Thêm địa chỉ</ButtonLink>
+                  </div>
+                )}
+                {addresses.map((address) => (
+                  <RadioCard key={address.id} name="address" checked={addressId === address.id} onChange={() => setAddressId(address.id)}>
+                    <span className="flex flex-wrap items-center gap-space-xs font-title-md text-title-md text-on-surface">
+                      {address.recipientName} · {address.phone}
+                      {address.isDefault && <Badge tone="primary">Mặc định</Badge>}
+                    </span>
+                    <span className="block font-body-md text-body-md text-on-surface-variant mt-0.5">{address.fullAddress}</span>
+                  </RadioCard>
+                ))}
+              </div>
+            </Card>
+
+            <Card as="section">
+              <CardTitle
+                icon="confirmation_number"
+                actions={<button className={linkClass} type="button" disabled={voucherLoading || availableVouchers.length === 0} onClick={() => { setDraftVoucherCode(voucherCode); setIsVoucherModalOpen(true) }}>Chọn Voucher</button>}
+              >
+                Voucher
+              </CardTitle>
+              <div className="flex items-start justify-between gap-space-md rounded-lg bg-surface-container-low p-space-md">
+                <div className="space-y-0.5 font-body-md text-body-md text-on-surface-variant">
+                  <strong className="block font-title-md text-title-md text-on-surface">{voucherCode ? `Mã ${voucherCode}` : 'Chưa chọn voucher'}</strong>
+                  <span className="block">{voucherLoading ? 'Đang tải voucher…' : voucherError ?? (availableVouchers.length === 0 ? 'Hiện chưa có voucher khả dụng.' : 'Có thể chọn một voucher giảm giá cho đơn hàng.')}</span>
+                  {quoting && <span className="block">Đang kiểm tra mức giảm…</span>}
+                  {quoteError && <span role="alert" className="block text-error">{quoteError}</span>}
+                </div>
+                {discountAmount > 0 && <strong className="font-price-md text-price-md text-secondary whitespace-nowrap">-{formatVnd(discountAmount)}</strong>}
+              </div>
+            </Card>
+
+            <Card as="section">
+              <CardTitle icon="payments">Phương thức thanh toán</CardTitle>
+              <div className="space-y-space-sm">
+                {PAYMENT_METHODS.map(([value, title, description, icon]) => (
+                  <RadioCard key={value} name="payment" checked={paymentMethod === value} onChange={() => setPaymentMethod(value)} aside={<span className="material-symbols-outlined text-on-surface-variant">{icon}</span>}>
+                    <span className="block font-title-md text-title-md text-on-surface">{title}</span>
+                    <span className="block font-body-md text-body-md text-on-surface-variant mt-0.5">{description}</span>
+                  </RadioCard>
+                ))}
+              </div>
+            </Card>
+
+            <Card as="section">
+              <CardTitle icon="inventory_2">Sản phẩm đã chọn ({selectedLines.length})</CardTitle>
+              <div className="divide-y divide-line">
+                {selectedLines.map((line) => (
+                  <div className="flex items-center gap-space-md py-space-sm" key={line.id}>
+                    <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-surface-container-low">
+                      <ProductThumb seed={line.product.thumbSeed} productType={line.product.productType} imageUrl={line.product.imageUrl} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-title-md text-title-md text-on-surface line-clamp-2">{line.product.name}</p>
+                      <p className="font-body-md text-body-md text-on-surface-variant">Số lượng: {line.quantity}</p>
+                    </div>
+                    <strong className="font-price-md text-price-md text-on-surface whitespace-nowrap">{formatVnd(line.product.price * line.quantity)}</strong>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          <Card as="aside" className="lg:col-span-4 lg:sticky lg:top-44 space-y-space-sm">
+            <h2 className="font-headline-md text-headline-md text-on-surface">Thanh toán</h2>
+            <SummaryRow label="Tạm tính" value={formatVnd(subtotal)} />
+            <SummaryRow label="Giảm giá" value={<span className={discountAmount > 0 ? 'text-secondary' : undefined}>{discountAmount > 0 ? `-${formatVnd(discountAmount)}` : formatVnd(0)}</span>} />
+            <SummaryRow label="Phí vận chuyển" value={formatVnd(0)} />
+            <SummaryRow strong label="Tổng thanh toán" value={formatVnd(totalAmount)} />
+            <Button size="lg" className="w-full mt-space-sm" icon="check_circle" onClick={() => void placeOrder()} disabled={cannotSubmit}>
+              {isSubmitting ? 'Đang tạo đơn…' : 'Đặt hàng'}
+            </Button>
+            <p className="font-label-md text-label-md text-on-surface-variant text-center">Giá cuối cùng được backend xác nhận tại thời điểm tạo đơn.</p>
+          </Card>
+        </div>
+      </Page>
+
+      {isVoucherModalOpen && (
+        <Modal
+          eyebrow="Chợ Tốt Mua Voucher"
+          title="Chọn Voucher"
+          onClose={() => setIsVoucherModalOpen(false)}
+          footer={<>
+            <Button variant="ghost" onClick={() => setDraftVoucherCode('')}>Bỏ chọn voucher</Button>
+            <div className="flex gap-space-sm">
+              <Button variant="outline" onClick={() => setIsVoucherModalOpen(false)}>Trở lại</Button>
+              <Button onClick={() => { setVoucherCode(draftVoucherCode); setIsVoucherModalOpen(false) }}>Đồng ý</Button>
+            </div>
+          </>}
+        >
+          <p className="font-body-md text-body-md text-on-surface-variant">Chọn một voucher. Mức giảm được backend kiểm tra theo giá trị đơn hàng hiện tại.</p>
+          {availableVouchers.map((voucher) => (
+            <RadioCard
+              key={voucher.id}
+              name="voucher"
+              checked={draftVoucherCode === voucher.code}
+              onChange={() => setDraftVoucherCode(voucher.code)}
+              aside={<span className="self-center rounded-lg bg-primary text-on-primary px-space-sm py-space-xs font-title-md text-title-md whitespace-nowrap">
+                {voucher.type === 'percentage' ? `-${voucher.value}%` : `-${formatVnd(voucher.value)}`}
+              </span>}
+            >
+              <span className="block font-title-md text-title-md text-on-surface">{voucher.programName}</span>
+              <span className="block font-body-md text-body-md text-on-surface-variant mt-0.5">Mã: {voucher.code} · Hết hạn: {new Date(voucher.endsAt).toLocaleString('vi-VN')}</span>
+            </RadioCard>
+          ))}
+        </Modal>
+      )}
+    </>
+  )
 }

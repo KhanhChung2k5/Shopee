@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ProductThumb from '../components/ProductThumb'
+import { Alert, Badge, Button, ButtonLink, Card, CardTitle, EmptyState, Loading, Page, QtyStepper } from '../components/ui'
 import { fetchProduct, formatVnd, resolveCatalogImageUrl, type CatalogProduct, type ProductType } from '../lib/catalog'
 import { useCart } from '../state/CartContext'
 import { useAuth } from '../state/AuthContext'
@@ -109,74 +110,125 @@ export default function ProductDetailPage() {
     }
   }
 
-  if (loading) return <div className="container" style={{ padding: 'var(--space-6) 0' }}>Đang tải thông tin sản phẩm…</div>
+  if (loading) return <Page><Loading>Đang tải thông tin sản phẩm…</Loading></Page>
   if (!product) {
-    return <div className="container" style={{ padding: 'var(--space-6) 0', textAlign: 'center' }}>
-      <p>{error || 'Không tìm thấy sản phẩm.'}</p>
-      <Link className="button button--outline" to="/#categories">Xem danh mục sản phẩm</Link>
-    </div>
+    return (
+      <Page narrow>
+        <Card>
+          <EmptyState
+            icon="search_off"
+            title={error || 'Không tìm thấy sản phẩm.'}
+            action={<ButtonLink to="/#danh-muc" variant="outline">Xem danh mục sản phẩm</ButtonLink>}
+          />
+        </Card>
+      </Page>
+    )
   }
 
   return (
-    <div className="container">
-      <div className="product-detail">
-        <div>
-          <div className="product-detail__media">
+    <Page>
+      <nav aria-label="breadcrumb" className="flex flex-wrap items-center gap-1 font-label-md text-label-md text-on-surface-variant">
+        <Link className="hover:text-primary" to="/">Trang chủ</Link>
+        <span className="material-symbols-outlined text-sm">chevron_right</span>
+        <span>{PRODUCT_TYPE_LABELS[productType]}</span>
+        <span className="material-symbols-outlined text-sm">chevron_right</span>
+        <span className="text-on-surface truncate max-w-xs">{name}</span>
+      </nav>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop items-start">
+        <Card className="lg:col-span-5 space-y-space-sm">
+          <div className="aspect-square rounded-lg overflow-hidden bg-surface-container-low">
             <ProductThumb seed={thumbSeed} productType={productType} imageUrl={gallery[activeImg]} appearance="detail" />
           </div>
-          {gallery.length > 1 && <div className="product-detail__gallery" role="list" aria-label="Ảnh sản phẩm khác">
-            {gallery.map((url, index) => <button key={url} type="button" role="listitem" className={`product-detail__gallery-item${index === activeImg ? ' product-detail__gallery-item--active' : ''}`} onClick={() => setActiveImg(index)} aria-label={`Xem ảnh ${index + 1}`} aria-current={index === activeImg}>
-              <img src={resolveCatalogImageUrl(url)} alt="" loading="lazy" />
-            </button>)}
+          {gallery.length > 1 && <div className="grid grid-cols-5 gap-space-xs" role="list" aria-label="Ảnh sản phẩm khác">
+            {gallery.map((url, index) => (
+              <button
+                key={url}
+                type="button"
+                role="listitem"
+                className={`aspect-square rounded-lg overflow-hidden border-2 cursor-pointer transition-colors ${index === activeImg ? 'border-primary' : 'border-transparent hover:border-line'}`}
+                onClick={() => setActiveImg(index)}
+                aria-label={`Xem ảnh ${index + 1}`}
+                aria-current={index === activeImg}
+              >
+                <img className="w-full h-full object-cover" src={resolveCatalogImageUrl(url, 200)} alt="" loading="lazy" />
+              </button>
+            ))}
           </div>}
-        </div>
-        <div>
-          <h1 className="product-detail__title">{name}</h1>
-          {description && <p className="product-detail__description">{description}</p>}
-          <div className="product-detail__price-row">
-            {pct > 0 && <span className="product-detail__badge">-{pct}%</span>}
-            <span className="product-detail__price">{formatVnd(price)}</span>
-            {pct > 0 && <span className="product-detail__compare">{formatVnd(comparePrice)}</span>}
-          </div>
+        </Card>
 
-          <div className="product-detail__meta">
-            <span>{variant ? `Mã: ${variant.sku}` : 'Chưa có SKU'}</span>
-            <span style={{ color: available > 0 ? 'var(--color-trust)' : 'var(--color-urgent)' }}>{available > 0 ? `Còn ${available} sản phẩm` : 'Hết hàng'}</span>
-          </div>
-
-          <fieldset className="product-detail__specs product-detail__variant-picker">
-            <legend>Tùy chọn sản phẩm</legend>
-            {product?.variants.length ? product.variants.map((item) => <label key={item.id} className="product-detail__variant-option">
-              <input type="radio" name="variant" value={item.id} checked={selectedVariantId === item.id} onChange={() => { setSelectedVariantId(item.id); setQty(1) }} />
-              <span>{attributesLabel(item.attributes) || 'Mặc định'} · {formatVnd(item.price)} · {item.availableQuantity > 0 ? `Còn ${item.availableQuantity}` : 'Hết hàng'}</span>
-            </label>) : <p className="product-detail__variant-empty">Sản phẩm không có lựa chọn biến thể.</p>}
-          </fieldset>
-
-          <section className="product-detail__spec-section" aria-labelledby="product-specs-title">
-            <h2 id="product-specs-title">Thông số sản phẩm</h2>
-            {detailRows.length > 0
-              ? <dl className="product-detail__spec-list">
-                {detailRows.map((row) => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}
-              </dl>
-              : <p className="product-detail__spec-empty">Thông số sản phẩm đang được cập nhật.</p>}
-          </section>
-
-          <div className="product-detail__qty">
-            <span>Số lượng</span>
-            <div className="qty-stepper">
-              <button type="button" disabled={!canBuy || qty <= 1} onClick={() => setQty((value) => Math.max(1, value - 1))} aria-label="Giảm số lượng">−</button>
-              <span>{qty}</span>
-              <button type="button" disabled={!canBuy || qty >= available} onClick={() => setQty((value) => Math.min(available, value + 1))} aria-label="Tăng số lượng">+</button>
+        <div className="lg:col-span-7 space-y-space-md">
+          <Card className="space-y-space-md">
+            <div className="flex flex-wrap items-center gap-space-xs">
+              <Badge tone="success">Chính Hãng</Badge>
+              <Badge tone="info">{PRODUCT_TYPE_LABELS[productType]}</Badge>
+              {product.platforms?.map((platform) => <Badge key={platform}>{platform}</Badge>)}
             </div>
-          </div>
-          <div className="product-detail__actions">
-            <button className="button button--outline" type="button" disabled={!canBuy || isAdding} onClick={() => void purchase(false)}>Thêm vào giỏ hàng</button>
-            <button className="button button--primary" type="button" disabled={!canBuy || isAdding} onClick={() => void purchase(true)}>Mua ngay</button>
-          </div>
-          {cartError && <p role="alert" style={{ color: 'var(--color-urgent)', marginTop: 12 }}>{cartError}</p>}
-          {!canBuy && <p role="status" style={{ color: 'var(--color-urgent)', marginTop: 12 }}>Sản phẩm/biến thể hiện không đủ tồn kho để mua.</p>}
+            <h1 className="font-headline-lg text-headline-lg text-on-surface">{name}</h1>
+            {description && <p className="font-body-lg text-body-lg text-on-surface-variant whitespace-pre-line">{description}</p>}
+
+            <div className="flex flex-wrap items-baseline gap-space-sm rounded-lg bg-surface-container-low px-space-md py-space-sm">
+              <span className="font-headline-lg text-headline-lg text-primary">{formatVnd(price)}</span>
+              {pct > 0 && <>
+                <span className="font-body-lg text-body-lg text-outline line-through">{formatVnd(comparePrice)}</span>
+                <Badge tone="primary" className="font-bold">-{pct}%</Badge>
+              </>}
+            </div>
+
+            <div className="flex flex-wrap gap-space-md font-body-md text-body-md text-on-surface-variant">
+              <span>{variant ? `Mã: ${variant.sku}` : 'Chưa có SKU'}</span>
+              <span className={available > 0 ? 'text-secondary font-semibold' : 'text-error font-semibold'}>{available > 0 ? `Còn ${available} sản phẩm` : 'Hết hàng'}</span>
+            </div>
+
+            <fieldset className="space-y-space-xs">
+              <legend className="font-title-md text-title-md text-on-surface mb-space-xs">Tùy chọn sản phẩm</legend>
+              {product.variants.length ? <div className="flex flex-wrap gap-space-xs">
+                {product.variants.map((item) => {
+                  const checked = selectedVariantId === item.id
+                  return (
+                    <label key={item.id} className={`flex items-center gap-space-xs rounded-lg border px-space-md py-2 cursor-pointer transition-colors font-body-md text-body-md has-focus-visible:ring-2 has-focus-visible:ring-primary ${checked ? 'border-primary bg-primary-fixed text-on-primary-fixed' : 'border-line text-on-surface hover:border-primary'}`}>
+                      <input className="sr-only" type="radio" name="variant" value={item.id} checked={checked} onChange={() => { setSelectedVariantId(item.id); setQty(1) }} />
+                      <span>{attributesLabel(item.attributes) || 'Mặc định'} · {formatVnd(item.price)} · {item.availableQuantity > 0 ? `Còn ${item.availableQuantity}` : 'Hết hàng'}</span>
+                    </label>
+                  )
+                })}
+              </div> : <p className="font-body-md text-body-md text-on-surface-variant">Sản phẩm không có lựa chọn biến thể.</p>}
+            </fieldset>
+
+            <div className="flex items-center gap-space-md">
+              <span className="font-title-md text-title-md text-on-surface">Số lượng</span>
+              <QtyStepper
+                value={qty}
+                decreaseDisabled={!canBuy || qty <= 1}
+                increaseDisabled={!canBuy || qty >= available}
+                onDecrease={() => setQty((value) => Math.max(1, value - 1))}
+                onIncrease={() => setQty((value) => Math.min(available, value + 1))}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
+              <Button variant="secondary" size="lg" icon="add_shopping_cart" disabled={!canBuy || isAdding} onClick={() => void purchase(false)}>Thêm vào giỏ hàng</Button>
+              <Button size="lg" icon="shopping_bag" disabled={!canBuy || isAdding} onClick={() => void purchase(true)}>Mua ngay</Button>
+            </div>
+            {cartError && <Alert>{cartError}</Alert>}
+            {!canBuy && <Alert tone="info">Sản phẩm/biến thể hiện không đủ tồn kho để mua.</Alert>}
+          </Card>
+
+          <Card as="section" aria-labelledby="product-specs-title">
+            <CardTitle icon="list_alt"><span id="product-specs-title">Thông số sản phẩm</span></CardTitle>
+            {detailRows.length > 0
+              ? <dl className="divide-y divide-line">
+                {detailRows.map((row) => (
+                  <div key={row.label} className="grid grid-cols-3 gap-space-md py-2 font-body-md text-body-md">
+                    <dt className="text-on-surface-variant">{row.label}</dt>
+                    <dd className="col-span-2 text-on-surface">{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              : <p className="font-body-md text-body-md text-on-surface-variant">Thông số sản phẩm đang được cập nhật.</p>}
+          </Card>
         </div>
       </div>
-    </div>
+    </Page>
   )
 }

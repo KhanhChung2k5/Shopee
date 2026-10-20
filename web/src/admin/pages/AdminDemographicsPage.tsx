@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { age, type Customer } from '../types/customer'
 import { useAuth } from '../../state/AuthContext'
 import { apiFetch } from '../../lib/api'
+import { a } from '../adminUi'
 
 const AGE_BUCKETS: [string, (a: number) => boolean][] = [
   ['Dưới 18', (a) => a < 18],
@@ -13,14 +14,14 @@ const AGE_BUCKETS: [string, (a: number) => boolean][] = [
 function BarChart({ rows }: { rows: { label: string; count: number }[] }) {
   const max = Math.max(1, ...rows.map((r) => r.count))
   return (
-    <div className="admin-bar-chart">
+    <div className="flex flex-col gap-2.5">
       {rows.map((r) => (
-        <div className="admin-bar-row" key={r.label}>
+        <div className="grid grid-cols-[140px_1fr_40px] items-center gap-2.5 font-body-md text-body-md text-on-surface" key={r.label}>
           <span>{r.label}</span>
-          <div className="admin-bar-track">
-            <div className="admin-bar-fill" style={{ width: `${(r.count / max) * 100}%` }} />
+          <div className="h-3 rounded-full bg-surface-container-high overflow-hidden">
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(r.count / max) * 100}%` }} />
           </div>
-          <span>{r.count}</span>
+          <span className="text-right font-bold">{r.count}</span>
         </div>
       ))}
     </div>
@@ -54,23 +55,23 @@ export default function AdminDemographicsPage() {
   return (
     <div>
       <h1>Báo cáo nhân khẩu học khách hàng</h1>
-      <p style={{ color: 'var(--color-muted-foreground)', fontSize: 13.5, marginBottom: 'var(--space-5)' }}>
+      <p className="font-body-md text-body-md text-on-surface-variant mb-space-xl">
         Tính trên {activeCustomers.length} khách hàng đang hoạt động/khoá (không tính tài khoản đã xoá mềm). Dữ liệu thật từ{' '}
-        <code>GET /customers</code> — tuổi/giới tính có thể trống nếu khách chưa cập nhật hồ sơ.
+        <code className="font-mono">GET /customers</code> — tuổi/giới tính có thể trống nếu khách chưa cập nhật hồ sơ.
       </p>
 
-      <div className="admin-stat-row" style={{ gridTemplateColumns: '1fr 1fr' }}>
-        <div className="admin-stat-card">
-          <div className="admin-stat-card__label" style={{ marginBottom: 'var(--space-3)' }}>Phân bố độ tuổi</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md mb-space-lg">
+        <div className={a.card}>
+          <div className={`${a.statLabel} !mb-space-md`}>Phân bố độ tuổi</div>
           <BarChart rows={ageRows} />
         </div>
-        <div className="admin-stat-card">
-          <div className="admin-stat-card__label" style={{ marginBottom: 'var(--space-3)' }}>Phân bố giới tính</div>
+        <div className={a.card}>
+          <div className={`${a.statLabel} !mb-space-md`}>Phân bố giới tính</div>
           <BarChart rows={genderRows} />
         </div>
       </div>
 
-      <p style={{ color: 'var(--color-muted-foreground)', fontSize: 13.5 }}>
+      <p className="font-body-md text-body-md text-on-surface-variant">
         Báo cáo "Ngành hàng ưa thích" cần dữ liệu đơn hàng thật — sẽ bật lại khi module Order được xây dựng.
       </p>
     </div>

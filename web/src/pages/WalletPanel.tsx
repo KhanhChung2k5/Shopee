@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Alert, Button, Card, CardTitle, Field, Loading, cx, inputClass } from '../components/ui'
 import { apiFetch, ApiError } from '../lib/api'
 
 interface WalletBalance {
@@ -28,6 +29,12 @@ const transactionNames: Record<WalletTransaction['type'], string> = {
   topup: 'Nạp ví',
   refund: 'Hoàn tiền',
   payment: 'Thanh toán đơn hàng',
+}
+
+const transactionIcons: Record<WalletTransaction['type'], string> = {
+  topup: 'add_card',
+  refund: 'currency_exchange',
+  payment: 'shopping_bag',
 }
 
 export default function WalletPanel({ token }: { token: string }) {
@@ -93,53 +100,62 @@ export default function WalletPanel({ token }: { token: string }) {
 
   return (
     <>
-      <section className="checkout-section">
-        <h2 className="checkout-section__title">Ví của tôi</h2>
-        {loading ? <p>Đang tải ví...</p> : <p style={{ fontSize: 24, fontWeight: 800, marginBlock: 'var(--space-3)' }}>{balance === null ? '—' : money.format(balance)}</p>}
-        <p style={{ color: 'var(--color-muted-foreground)', fontSize: 13 }}>
-          Chức năng nạp tiền đang giả lập để thử nghiệm. Không chuyển khoản hoặc sử dụng tiền thật.
-        </p>
-        <form onSubmit={topUp} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
-            Số tiền nạp giả lập
-            <input
-              className="search__input"
-              type="number"
-              min="0.01"
-              max="9999999999.99"
-              step="0.01"
-              required
-              value={amount}
-              onChange={(event) => {
-                pendingRequestId.current = null
-                setAmount(event.target.value)
-              }}
-              style={{ paddingInline: 16, position: 'static' }}
-            />
-          </label>
-          {error && <p role="alert" style={{ color: 'var(--color-urgent)', margin: 0 }}>{error}</p>}
-          {success && <p role="status" style={{ color: 'var(--color-trust)', margin: 0 }}>{success}</p>}
-          <button className="button button--primary" type="submit" disabled={loading || submitting} style={{ alignSelf: 'flex-start' }}>
-            {submitting ? 'Đang nạp...' : 'Nạp ví giả lập'}
-          </button>
-        </form>
-      </section>
-
-      <section className="checkout-section">
-        <h2 className="checkout-section__title">Lịch sử ví</h2>
-        {!loading && transactions.length === 0 && <p style={{ color: 'var(--color-muted-foreground)' }}>Chưa có giao dịch nào.</p>}
-        {transactions.map((transaction) => (
-          <div key={transaction.id} className="radio-card" style={{ justifyContent: 'space-between' }}>
-            <div>
-              <p className="radio-card__title">{transactionNames[transaction.type] ?? transaction.type}</p>
-              <p className="radio-card__desc">{dateTime.format(new Date(transaction.createdAt))}</p>
-            </div>
-            <strong style={{ color: transaction.type === 'payment' ? 'var(--color-foreground)' : 'var(--color-trust)' }}>
-              {transaction.type === 'payment' ? '−' : '+'}{money.format(transaction.amount)}
-            </strong>
+      <Card as="section" className="!p-0 overflow-hidden">
+        <div className="bg-gradient-to-r from-primary via-primary-container to-primary text-on-primary p-space-lg space-y-space-xs">
+          <p className="flex items-center gap-space-xs font-title-md text-title-md opacity-90">
+            <span className="material-symbols-outlined">account_balance_wallet</span>
+            Số dư ví Chợ Tốt Mua
+          </p>
+          <p className="font-headline-xl text-headline-xl">{loading ? '…' : balance === null ? '—' : money.format(balance)}</p>
+        </div>
+        <form onSubmit={topUp} className="p-space-lg space-y-space-sm">
+          <Alert tone="info">Chức năng nạp tiền đang giả lập để thử nghiệm. Không chuyển khoản hoặc sử dụng tiền thật.</Alert>
+          <div className="flex flex-wrap items-end gap-space-sm">
+            <Field label="Số tiền nạp giả lập" className="flex-1 min-w-[200px]">
+              <input
+                className={inputClass}
+                type="number"
+                min="0.01"
+                max="9999999999.99"
+                step="0.01"
+                required
+                value={amount}
+                onChange={(event) => {
+                  pendingRequestId.current = null
+                  setAmount(event.target.value)
+                }}
+              />
+            </Field>
+            <Button type="submit" icon="add" disabled={loading || submitting}>
+              {submitting ? 'Đang nạp...' : 'Nạp ví giả lập'}
+            </Button>
           </div>
-        ))}
-      </section>
+          {error && <Alert>{error}</Alert>}
+          {success && <Alert tone="success">{success}</Alert>}
+        </form>
+      </Card>
+
+      <Card as="section">
+        <CardTitle icon="history">Lịch sử ví</CardTitle>
+        {loading && <Loading />}
+        {!loading && transactions.length === 0 && <p className="font-body-md text-body-md text-on-surface-variant">Chưa có giao dịch nào.</p>}
+        <div className="divide-y divide-line">
+          {transactions.map((transaction) => (
+            <div key={transaction.id} className="flex items-center gap-space-md py-space-sm">
+              <span className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant">
+                <span className="material-symbols-outlined text-xl">{transactionIcons[transaction.type] ?? 'payments'}</span>
+              </span>
+              <div className="flex-1">
+                <p className="font-title-md text-title-md text-on-surface">{transactionNames[transaction.type] ?? transaction.type}</p>
+                <p className="font-label-md text-label-md text-on-surface-variant">{dateTime.format(new Date(transaction.createdAt))}</p>
+              </div>
+              <strong className={cx('font-price-md text-price-md', transaction.type === 'payment' ? 'text-on-surface' : 'text-secondary')}>
+                {transaction.type === 'payment' ? '−' : '+'}{money.format(transaction.amount)}
+              </strong>
+            </div>
+          ))}
+        </div>
+      </Card>
     </>
   )
 }

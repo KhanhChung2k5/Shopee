@@ -1,133 +1,426 @@
-import { useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart } from '../state/CartContext'
 import { useTheme } from '../state/useTheme'
 import { useAuth } from '../state/AuthContext'
+import { cacheCategories, fetchCategories, getCachedCategories, type CatalogCategory } from '../lib/catalog'
+
+const CATEGORY_ICONS: Record<string, string> = {
+  'tay-cam': 'sports_esports',
+  'dia-game': 'album',
+  'phu-kien': 'cable',
+  'tai-nghe': 'headphones',
+  'may-choi-game': 'videogame_asset',
+  'ban-phim': 'keyboard',
+}
 
 export default function Header() {
   const { totalQuantity } = useCart()
   const { isAuthenticated, user, logout } = useAuth()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
-  const accountMenuRef = useRef<HTMLDetailsElement>(null)
+  const [category, setCategory] = useState('all')
   const { theme, toggle } = useTheme()
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false)
+  const [categories, setCategories] = useState<CatalogCategory[]>(() => getCachedCategories().filter((c) => c.parentId === null))
 
-  const closeAccountMenu = () => accountMenuRef.current?.removeAttribute('open')
+  useEffect(() => {
+    let active = true
+    fetchCategories()
+      .then((items) => {
+        if (!active) return
+        cacheCategories(items)
+        setCategories(items.filter((c) => c.parentId === null))
+      })
+      .catch(() => { /* keep the cached list */ })
+    return () => { active = false }
+  }, [])
 
-  const goSearch = (q: string) => {
-    if (!q.trim()) return
-    navigate(`/tim-kiem?q=${encodeURIComponent(q.trim())}`)
+  const handleNavFilter = (tab: 'controller' | 'game_disc' | 'accessory', platform?: string) => {
+    if (window.location.pathname === '/') {
+      const next = new URLSearchParams(window.location.search)
+      next.set('tab', tab)
+      if (platform) next.set('platform', platform)
+      else next.delete('platform')
+      navigate(`/?${next.toString()}#goi-y`, { replace: true })
+      const el = document.getElementById('goi-y')
+      if (el) el.scrollIntoView({ behavior: 'smooth' })
+    } else {
+      navigate(`/?tab=${tab}${platform ? `&platform=${platform}` : ''}#goi-y`)
+    }
+  }
+
+  const scrollToSection = (sectionId: string) => {
+    if (window.location.pathname === '/') {
+      const el = document.getElementById(sectionId)
+      if (el) el.scrollIntoView({ behavior: 'smooth' })
+    } else {
+      navigate(`/#${sectionId}`)
+    }
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = query.trim()
+    if (!trimmed && category === 'all') return
+
+    if (!trimmed && category !== 'all') {
+      const tabMap: Record<string, 'controller' | 'game_disc' | 'accessory'> = {
+        'tay-cam': 'controller',
+        'dia-game': 'game_disc',
+        'phu-kien': 'accessory',
+      }
+      if (tabMap[category]) {
+        handleNavFilter(tabMap[category])
+        return
+      }
+      navigate(`/danh-muc/${category}`)
+      return
+    }
+
+    const params = new URLSearchParams()
+    if (trimmed) params.set('q', trimmed)
+    if (category !== 'all') {
+      const typeMap: Record<string, string> = {
+        'tay-cam': 'controller',
+        'dia-game': 'game_disc',
+        'phu-kien': 'accessory',
+      }
+      if (typeMap[category]) params.set('type', typeMap[category])
+    }
+    navigate(`/tim-kiem?${params.toString()}`)
+  }
+
+  const goSearch = (keyword: string) => {
+    setQuery(keyword)
+    navigate(`/tim-kiem?q=${encodeURIComponent(keyword)}`)
   }
 
   return (
-    <header className="site-header">
-      <div className="topbar">
-        <div className="container topbar__inner">
-          <ul className="topbar__links">
-            <li><a href="#">Kênh Người Bán</a></li>
-            <li><a href="#">Tải ứng dụng</a></li>
-            <li><a href="#">Kết nối</a></li>
-          </ul>
-          <ul className="topbar__links topbar__links--right">
-            <li><a href="#">Trợ giúp</a></li>
-            <li><a href="#">Thông báo</a></li>
-          </ul>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-surface shadow-[0_1px_8px_rgba(0,0,0,0.06)]">
+      {/* 1. Top Bar */}
+      <div className="hidden md:block bg-inverse-surface text-inverse-on-surface text-label-sm font-label-sm">
+        <div className="max-w-[1280px] mx-auto px-margin-desktop h-8 flex items-center justify-between">
+          <div className="flex items-center gap-space-lg">
+            <span>
+              Hotline: <strong className="text-primary-fixed">1900 6868</strong>
+            </span>
+            <a className="hover:text-primary-fixed transition-colors" href="#">
+              Tải ứng dụng
+            </a>
+            <a className="hover:text-primary-fixed transition-colors" href="#">
+              Kết nối cộng đồng game thủ
+            </a>
+          </div>
+          <div className="flex items-center gap-space-lg">
+            <Link className="hover:text-primary-fixed transition-colors" to="/don-hang">
+              Tra cứu đơn hàng
+            </Link>
+            <a className="hover:text-primary-fixed transition-colors" href="#">
+              Thông báo
+            </a>
+            <a className="hover:text-primary-fixed transition-colors" href="#">
+              Hỗ trợ 24/7
+            </a>
+            <button
+              id="theme-toggle"
+              className="flex items-center gap-space-xs px-space-xs py-0.5 rounded bg-surface-container-highest/20 hover:bg-surface-container-highest/30 transition-colors cursor-pointer text-inverse-on-surface"
+              type="button"
+              onClick={toggle}
+              title="Chuyển chế độ Sáng / Tối"
+            >
+              <span className="material-symbols-outlined text-sm">
+                {theme === 'dark' ? 'dark_mode' : 'light_mode'}
+              </span>
+              <span>{theme === 'dark' ? 'Tối' : 'Sáng'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="main-header">
-        <div className="container main-header__inner">
-          <Link className="logo" to="/" aria-label="Chợ Tốt Mua – Trang chủ">
-            <svg className="logo__mark" width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true">
-              <rect width="34" height="34" rx="9" fill="var(--color-primary)" />
-              <path d="M9 14.5C9 12 11 10 13.5 10H20.5C23 10 25 12 25 14.5V15" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-              <path d="M8 15H26L24.7 24.4C24.5 25.9 23.2 27 21.7 27H12.3C10.8 27 9.5 25.9 9.3 24.4L8 15Z" fill="#fff" />
-              <circle cx="14.5" cy="20.5" r="1.6" fill="var(--color-primary)" />
-              <circle cx="19.5" cy="20.5" r="1.6" fill="var(--color-primary)" />
-            </svg>
-            <span className="logo__text">Chợ Tốt Mua</span>
+      {/* 2. Main Search & Brand Bar */}
+      <div className="bg-surface-container-lowest">
+        <div className="max-w-[1280px] mx-auto px-margin md:px-margin-desktop py-2 md:py-0 md:h-20 flex flex-wrap md:flex-nowrap items-center gap-x-space-lg gap-y-2">
+          {/* Logo */}
+          <Link className="flex items-center gap-space-sm flex-shrink-0" to="/" aria-label="Chợ Tốt Mua">
+            <span className="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center" aria-hidden="true">
+              <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>sports_esports</span>
+            </span>
+            <div className="flex flex-col">
+              <span className="font-title-lg text-title-lg md:font-headline-md md:text-headline-md text-primary tracking-tight leading-none uppercase whitespace-nowrap">
+                CHỢ TỐT MUA
+              </span>
+              <span className="hidden sm:block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
+                Gaming Gear &amp; Discs
+              </span>
+            </div>
           </Link>
 
-          <form
-            className="search"
-            role="search"
-            onSubmit={(e) => {
-              e.preventDefault()
-              goSearch(query)
-            }}
-          >
-            <label className="sr-only" htmlFor="search-input">Tìm kiếm sản phẩm</label>
-            <input
-              id="search-input"
-              className="search__input"
-              type="search"
-              name="q"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Tìm tay cầm, đĩa game theo nền tảng..."
-            />
-            <button className="search__button" type="submit" aria-label="Tìm kiếm">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" /><path d="M20 20L16.5 16.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
-            </button>
-            <div className="search__hints">
-              <span>Gợi ý:</span>
-              <button type="button" onClick={() => goSearch('DualSense')}>Tay cầm DualSense</button>
-              <button type="button" onClick={() => goSearch('Horizon')}>Đĩa game Horizon</button>
-              <button type="button" onClick={() => goSearch('Ốp bọc')}>Ốp bọc PS5</button>
-            </div>
-          </form>
+          {/* Search Box */}
+          <div className="order-last md:order-none w-full md:w-auto md:flex-1 flex flex-col justify-center max-w-3xl">
+            <form onSubmit={handleSearch} className="flex items-center h-11 bg-surface-container-low rounded-lg overflow-hidden shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+              <select
+                aria-label="Chọn danh mục"
+                className="hidden md:block h-full px-space-md bg-surface-container text-on-surface font-label-md text-label-md border-0 focus:ring-0 cursor-pointer outline-none"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option value="all">Tất cả danh mục</option>
+                <option value="tay-cam">Tay cầm PS5 / Xbox</option>
+                <option value="dia-game">Đĩa game PS5 / Switch</option>
+                <option value="phu-kien">Phụ kiện &amp; Bọc cần</option>
+              </select>
+              <div className="hidden md:block h-5 w-px bg-outline-variant"></div>
+              <input
+                className="flex-1 min-w-0 h-full px-space-md bg-transparent text-on-surface placeholder:text-on-surface-variant font-body-md text-body-md border-0 focus:ring-0 outline-none"
+                placeholder="Tìm kiếm tay cầm DualSense, đĩa game PS5, Zelda, Xbox controller..."
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <button
+                aria-label="Tìm kiếm"
+                className="h-full px-space-md md:px-space-xl bg-primary hover:bg-primary-container text-on-primary font-title-md text-title-md flex items-center gap-space-xs transition-colors cursor-pointer"
+                type="submit"
+              >
+                <span className="material-symbols-outlined text-xl">search</span>
+                <span className="hidden sm:inline">Tìm kiếm</span>
+              </button>
+            </form>
 
-          <div className="header-actions">
+            {/* Trending Keywords */}
+            <div className="hidden md:flex items-center gap-space-sm mt-1 overflow-hidden whitespace-nowrap text-label-sm font-label-sm">
+              <span className="text-on-surface-variant">Xu hướng:</span>
+              <button
+                type="button"
+                onClick={() => goSearch('Tay cầm PS5')}
+                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+              >
+                Tay cầm PS5
+              </button>
+              <span className="text-outline-variant">•</span>
+              <button
+                type="button"
+                onClick={() => goSearch('FC 25')}
+                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+              >
+                FC 25
+              </button>
+              <span className="text-outline-variant">•</span>
+              <button
+                type="button"
+                onClick={() => goSearch('Black Myth Wukong')}
+                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+              >
+                Black Myth Wukong
+              </button>
+              <span className="text-outline-variant">•</span>
+              <button
+                type="button"
+                onClick={() => goSearch('DualSense Edge')}
+                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+              >
+                DualSense Edge
+              </button>
+              <span className="text-outline-variant">•</span>
+              <button
+                type="button"
+                onClick={() => goSearch('Joy-Con OLED')}
+                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+              >
+                Joy-Con OLED
+              </button>
+              <span className="text-outline-variant">•</span>
+              <button
+                type="button"
+                onClick={() => goSearch('Xbox Series X Controller')}
+                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+              >
+                Xbox Series X Controller
+              </button>
+            </div>
+          </div>
+
+          {/* Action Links */}
+          <div className="flex items-center gap-space-sm md:gap-space-lg ml-auto flex-shrink-0">
+            {/* Theme toggle lives in the top bar on desktop; phones hide that bar. */}
             <button
-              className="icon-button"
               type="button"
-              aria-label={theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
               onClick={toggle}
+              className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container cursor-pointer"
+              title="Chuyển chế độ Sáng / Tối"
+              aria-label="Chuyển chế độ Sáng / Tối"
             >
-              {theme === 'dark' ? (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="1.7" /><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
-              ) : (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /></svg>
-              )}
+              <span className="material-symbols-outlined text-xl">{theme === 'dark' ? 'dark_mode' : 'light_mode'}</span>
             </button>
-            <button className="icon-button" type="button" aria-label="Thông báo (3 thông báo mới)">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 10a6 6 0 1 1 12 0v4.5l1.6 2.4a1 1 0 0 1-.83 1.6H5.23a1 1 0 0 1-.83-1.6L6 14.5V10Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M9.5 19a2.5 2.5 0 0 0 5 0" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
-              <span className="icon-button__badge">3</span>
-            </button>
-            <Link className="icon-button" to="/gio-hang" aria-label={`Giỏ hàng, ${totalQuantity} sản phẩm`}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h2l1.6 10.6a2 2 0 0 0 2 1.7h7.6a2 2 0 0 0 2-1.6L20.5 9H7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /><circle cx="10" cy="21" r="1.4" fill="currentColor" /><circle cx="17.5" cy="21" r="1.4" fill="currentColor" /></svg>
-              {totalQuantity > 0 && <span className="icon-button__badge">{totalQuantity}</span>}
+            {/* Wishlist */}
+            <a
+              className="relative hidden md:flex flex-col items-center text-on-surface hover:text-primary transition-colors p-space-xs"
+              href="#goi-y"
+              title="Danh sách yêu thích"
+            >
+              <span className="material-symbols-outlined text-2xl">favorite</span>
+              <span className="font-label-sm text-label-sm mt-0.5">Yêu thích</span>
+            </a>
+
+            {/* Cart */}
+            <Link
+              className="relative flex flex-col items-center text-on-surface hover:text-primary transition-colors p-space-xs"
+              to="/gio-hang"
+              title="Giỏ hàng"
+            >
+              <span className="material-symbols-outlined text-2xl">shopping_cart</span>
+              <span className="hidden md:block font-label-sm text-label-sm mt-0.5">Giỏ hàng</span>
+              <span className="absolute top-0 right-2 w-4 h-4 bg-primary text-on-primary font-label-sm text-label-sm rounded-full flex items-center justify-center font-bold transition-transform duration-200">
+                {totalQuantity}
+              </span>
             </Link>
-            {isAuthenticated ? (
-              <details className="account-menu" ref={accountMenuRef}>
-                <summary className="account-link" aria-label="Mở menu tài khoản">
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8.5" r="3.4" stroke="currentColor" strokeWidth="1.7" /><path d="M5 20c1.1-3.4 4-5.2 7-5.2s5.9 1.8 7 5.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
-                  <span>{user?.fullName ?? 'Tài khoản'}</span>
-                  <svg className="account-menu__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                </summary>
-                <nav className="account-menu__dropdown" aria-label="Menu tài khoản">
-                  <Link to="/ho-so" onClick={closeAccountMenu}>Tài khoản của tôi</Link>
-                  <Link to="/don-hang" onClick={closeAccountMenu}>Đơn mua</Link>
-                  <Link to="/kho-voucher" onClick={closeAccountMenu}>Kho Voucher</Link>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      closeAccountMenu()
-                      logout()
-                      navigate('/')
-                    }}
-                  >
-                    Đăng xuất
-                  </button>
-                </nav>
-              </details>
+
+            <div className="hidden md:block h-8 w-px bg-surface-container-high"></div>
+
+            {/* User Account */}
+            {isAuthenticated && user ? (
+              <div className="relative group">
+                <Link to="/ho-so" className="flex items-center gap-space-sm pl-space-xs cursor-pointer">
+                  <div className="relative">
+                    <span className="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center font-title-md text-title-md" aria-hidden="true">
+                      {(user.fullName || '?').charAt(0).toUpperCase()}
+                    </span>
+                    <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-secondary rounded-full ring-2 ring-surface-container-lowest"></span>
+                  </div>
+                  <div className="hidden lg:flex flex-col">
+                    <div className="flex items-center gap-1">
+                      <span className="font-title-md text-title-md text-on-surface leading-tight max-w-[100px] truncate">
+                        {user.fullName || 'Tài khoản'}
+                      </span>
+                    </div>
+                    <span className="font-label-sm text-label-sm text-on-surface-variant">
+                      Tài khoản &amp; Đơn mua
+                    </span>
+                  </div>
+                </Link>
+                <div className="absolute right-0 top-full pt-2 hidden group-hover:block z-50">
+                  <div className="bg-surface-container-lowest rounded-xl shadow-lg border border-outline-variant/30 py-2 w-48 text-on-surface">
+                    <Link to="/ho-so" className="block px-4 py-2 hover:bg-surface-container text-title-md">
+                      Hồ sơ cá nhân
+                    </Link>
+                    <Link to="/don-hang" className="block px-4 py-2 hover:bg-surface-container text-title-md">
+                      Đơn hàng của tôi
+                    </Link>
+                    <Link to="/kho-voucher" className="block px-4 py-2 hover:bg-surface-container text-title-md">
+                      Kho voucher
+                    </Link>
+                    {user.role === 'staff' && (
+                      <Link to="/admin" className="block px-4 py-2 text-primary hover:bg-surface-container text-title-md font-bold">
+                        Trang quản trị (Admin)
+                      </Link>
+                    )}
+                    <div className="border-t border-surface-container my-1"></div>
+                    <button
+                      type="button"
+                      onClick={() => logout()}
+                      className="w-full text-left px-4 py-2 hover:bg-surface-container text-primary text-title-md cursor-pointer"
+                    >
+                      Đăng xuất
+                    </button>
+                  </div>
+                </div>
+              </div>
             ) : (
-              <Link className="account-link" to="/dang-nhap">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8.5" r="3.4" stroke="currentColor" strokeWidth="1.7" /><path d="M5 20c1.1-3.4 4-5.2 7-5.2s5.9 1.8 7 5.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
-                <span>Đăng nhập</span>
+              <Link
+                to="/dang-nhap"
+                className="flex items-center gap-space-sm pl-space-xs hover:text-primary transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface">
+                  <span className="material-symbols-outlined text-lg">person</span>
+                </div>
+                <div className="hidden lg:flex flex-col">
+                  <span className="font-title-md text-title-md text-on-surface leading-tight">Đăng nhập</span>
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">Tài khoản &amp; Đơn hàng</span>
+                </div>
               </Link>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* 3. Category & Navigation Bar */}
+      <div className="hidden md:block bg-surface-container-lowest">
+        <div className="max-w-[1280px] mx-auto px-margin-desktop h-11 flex items-center justify-between gap-space-md">
+          <div className="relative">
+            <button
+              className="flex items-center gap-space-sm px-space-md py-1.5 whitespace-nowrap bg-primary text-on-primary font-title-md text-title-md rounded-lg hover:bg-primary-container transition-colors shadow-[0_1px_3px_rgba(15,23,42,0.05)] cursor-pointer"
+              type="button"
+              onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+            >
+              <span className="material-symbols-outlined text-lg">sports_esports</span>
+              <span>Danh mục sản phẩm</span>
+              <span className="material-symbols-outlined text-base">
+                {isCategoryOpen ? 'expand_less' : 'expand_more'}
+              </span>
+            </button>
+            {isCategoryOpen && (
+              <div className="absolute left-0 top-full mt-2 w-64 bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/30 py-2 z-50">
+                {categories.map((cat) => (
+                  <Link
+                    key={cat.id}
+                    to={`/danh-muc/${cat.slug}`}
+                    onClick={() => setIsCategoryOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-on-surface hover:bg-surface-container hover:text-primary text-title-md"
+                  >
+                    <span className="material-symbols-outlined text-xl">{CATEGORY_ICONS[cat.slug] ?? 'category'}</span>
+                    <span>{cat.name}</span>
+                  </Link>
+                ))}
+
+              </div>
+            )}
+          </div>
+
+          <nav className="flex items-center gap-1 min-w-0 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => scrollToSection('flash-sale')}
+              className="px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
+            >
+              🔥 Flash Sale Giờ Vàng
+            </button>
+            <button
+              type="button"
+              onClick={() => handleNavFilter('controller')}
+              className="px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
+            >
+              🎮 Tay Cầm Gaming
+            </button>
+            <button
+              type="button"
+              onClick={() => handleNavFilter('game_disc')}
+              className="px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
+            >
+              💿 Đĩa Game Bản Quyền
+            </button>
+            <button
+              type="button"
+              onClick={() => handleNavFilter('accessory')}
+              className="px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
+            >
+              🛡️ Phụ Kiện Console
+            </button>
+            <Link
+              to="/kho-voucher"
+              className="px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
+            >
+              🎁 Mã Giảm Giá
+            </Link>
+            <button
+              type="button"
+              onClick={() => scrollToSection('cam-ket')}
+              className="px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
+            >
+              🛡️ Bảo Hành 1 Đổi 1
+            </button>
+
+          </nav>
         </div>
       </div>
     </header>

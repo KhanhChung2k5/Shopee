@@ -1,68 +1,110 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { cacheCategories, fetchCategories, getCachedCategories, type CatalogCategory } from '../lib/catalog'
-import { useRevealOnScroll } from '../state/useRevealOnScroll'
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 
-const ICONS: Record<string, string> = {
-  gamepad: 'M8 9h1.5m-.75-.75v1.5M14.5 10h.01M16.5 8h.01M6 6h12a3 3 0 0 1 3 3.4l-.9 6.3a2.3 2.3 0 0 1-4-1L15.5 13h-7L7.4 14.7a2.3 2.3 0 0 1-4 1L2.5 9.4A3 3 0 0 1 6 6Z',
-  disc: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
-  accessory: 'M6 12a6 6 0 1 1 12 0 6 6 0 0 1-12 0ZM12 8v4l2.5 1.5',
-  headset: 'M4 13v-1a8 8 0 0 1 16 0v1M4 13v5a2 2 0 0 0 2 2h1v-7H5a1 1 0 0 0-1 1ZM20 13v5a2 2 0 0 1-2 2h-1v-7h2a1 1 0 0 1 1 1Z',
+interface Hub {
+  name: string
+  icon: string
+  tab: 'controller' | 'game_disc' | 'accessory'
+  platform?: string
+  isSecondary?: boolean
 }
 
-export default function CategoryGrid() {
-  const revealRef = useRevealOnScroll<HTMLUListElement>()
-  const [categories, setCategories] = useState<CatalogCategory[]>(getCachedCategories)
-  const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState('')
-  const [retryKey, setRetryKey] = useState(0)
+const CATEGORY_HUBS: Hub[] = [
+  { name: 'Tay Cầm PS5 DualSense', icon: 'sports_esports', tab: 'controller', platform: 'PS5' },
+  { name: 'Tay Cầm Xbox Wireless', icon: 'gamepad', tab: 'controller', platform: 'Xbox' },
+  { name: 'Tay Joy-Con Switch', icon: 'videogame_asset', tab: 'controller', platform: 'Switch' },
+  { name: 'Tay Cầm Hall Effect', icon: 'tune', tab: 'controller' },
+  { name: 'Đĩa Game PS5 Mới', icon: 'album', tab: 'game_disc', platform: 'PS5' },
+  { name: 'Băng Game Switch', icon: 'sd_card', tab: 'game_disc', platform: 'Switch' },
+  { name: 'Đĩa Xbox Series X', icon: 'disc_full', tab: 'game_disc', platform: 'Xbox' },
+  { name: 'Phụ Kiện & Bọc Cần', icon: 'extension', tab: 'accessory', isSecondary: true },
+]
 
-  useEffect(() => {
-    let active = true
-    fetchCategories()
-      .then((items) => {
-        if (!active) return
-        setCategories(items)
-        cacheCategories(items)
-        setMessage(items.length === 0 ? 'Database hiện chưa có danh mục.' : '')
-      })
-      .catch(() => {
-        if (!active) return
-        const cached = getCachedCategories()
-        setCategories(cached)
-        setMessage(cached.length > 0
-          ? 'API đang mất kết nối; đang giữ danh mục đã tải gần nhất.'
-          : 'Không tải được danh mục. Hãy kiểm tra backend rồi thử tải lại.')
-      })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
-  }, [retryKey])
+export default function CategoryGrid() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const handleHubClick = (hub: Hub) => {
+    if (location.pathname === '/') {
+      const next = new URLSearchParams(searchParams)
+      next.set('tab', hub.tab)
+      if (hub.platform) {
+        next.set('platform', hub.platform)
+      } else {
+        next.delete('platform')
+      }
+      setSearchParams(next, { replace: true })
+
+      const el = document.getElementById('goi-y')
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' })
+      }
+    } else {
+      navigate(`/?tab=${hub.tab}${hub.platform ? `&platform=${hub.platform}` : ''}#goi-y`)
+    }
+  }
+
+  const handleViewAll = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (location.pathname === '/') {
+      const next = new URLSearchParams(searchParams)
+      next.delete('tab')
+      next.delete('platform')
+      setSearchParams(next, { replace: true })
+      const el = document.getElementById('goi-y')
+      if (el) el.scrollIntoView({ behavior: 'smooth' })
+    } else {
+      navigate('/#goi-y')
+    }
+  }
 
   return (
-    <section id="categories" className="section" aria-labelledby="categories-heading">
-      <div className="container">
-        <h2 id="categories-heading" className="section-title section-title--plain">Danh mục nổi bật</h2>
-        {loading && <p aria-live="polite">Đang tải danh mục…</p>}
-        {message && <p role="status" style={{ color: 'var(--color-muted-foreground)' }}>
-          {message}{' '}
-          <button className="button button--outline" type="button" onClick={() => { setLoading(true); setRetryKey((value) => value + 1) }}>Thử tải lại</button>
-        </p>}
-        <ul className="category-grid reveal-grid" ref={revealRef}>
-          {categories.map((cat) => {
-            const iconKey = /đĩa|game/i.test(cat.name) ? 'disc' : /tay cầm|controller/i.test(cat.name) ? 'gamepad' : 'accessory'
-            return <li key={cat.id}>
-              <Link to={`/danh-muc/${cat.slug}`}>
-                <span className="category-icon">
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d={ICONS[iconKey]} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-                {cat.name}
-              </Link>
-            </li>
-          })}
-        </ul>
-        {!loading && !message && categories.length === 0 && <p role="status">Chưa có danh mục để hiển thị.</p>}
+    <section id="danh-muc" className="space-y-space-md">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-headline-lg text-headline-lg text-on-surface">Danh Mục Nổi Bật</h2>
+          <p className="font-body-md text-body-md text-on-surface-variant">
+            Lựa chọn nền tảng và phụ kiện bạn đang tìm kiếm
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleViewAll}
+          className="font-title-md text-title-md text-primary flex items-center gap-1 hover:underline cursor-pointer"
+        >
+          <span>Xem tất cả danh mục</span>
+          <span className="material-symbols-outlined text-base">arrow_forward</span>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-4 md:grid-cols-8 gap-space-md">
+        {CATEGORY_HUBS.map((hub) => {
+          return (
+            <button
+              key={hub.name}
+              type="button"
+              onClick={() => handleHubClick(hub)}
+              className="bg-surface-container-lowest p-space-md rounded-xl flex flex-col items-center text-center gap-space-sm hover:shadow-md hover:-translate-y-1 transition-all group cursor-pointer border border-outline-variant/10 text-left w-full"
+            >
+              <div
+                className={`w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center transition-colors ${
+                  hub.isSecondary
+                    ? 'text-secondary group-hover:bg-secondary group-hover:text-on-secondary'
+                    : 'text-primary group-hover:bg-primary group-hover:text-on-primary'
+                }`}
+              >
+                <span className="material-symbols-outlined text-3xl">{hub.icon}</span>
+              </div>
+              <span
+                className={`font-title-md text-title-md text-on-surface leading-tight transition-colors ${
+                  hub.isSecondary ? 'group-hover:text-secondary' : 'group-hover:text-primary'
+                }`}
+              >
+                {hub.name}
+              </span>
+            </button>
+          )
+        })}
       </div>
     </section>
   )

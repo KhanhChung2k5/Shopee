@@ -10,15 +10,19 @@ function readInitialTheme(): Theme {
   } catch {
     // localStorage unavailable (private mode, etc.) — fall through to default.
   }
-  // Default dark: this storefront's audience (gamers) expects a dark-first UI.
-  return 'dark'
+  // Default light: matches the retail-marketplace design system (Stitch redesign,
+  // 2026-10) — high deal-visibility light mode, same as Shopee/Tiki. Dark mode
+  // stays available via the header toggle for users who prefer it.
+  return 'light'
 }
 
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(readInitialTheme)
 
   useEffect(() => {
+    // data-theme drives theme.css tokens; the `dark` class drives Tailwind's palette + dark: variant.
     document.documentElement.dataset.theme = theme
+    document.documentElement.classList.toggle('dark', theme === 'dark')
     try {
       localStorage.setItem(STORAGE_KEY, theme)
     } catch {

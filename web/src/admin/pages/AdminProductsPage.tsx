@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ApiError, apiFetch } from '../../lib/api'
-import { fetchCategories, formatVnd, type CatalogCategory, type ProductType } from '../../lib/catalog'
+import { fetchCategories, formatVnd, typeLabel, type CatalogCategory, type ProductType } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
+import { a, statusPillClass } from '../adminUi'
+import { buttonClass } from '../../components/ui'
 
 interface AdminProduct {
   id: string
@@ -166,16 +168,16 @@ export default function AdminProductsPage() {
   }
 
   return <div>
-    <div className="admin-toolbar">
-      <h1 style={{ margin: 0 }}>Sản phẩm ({filtered.length}/{products.length})</h1>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <input className="search__input" style={{ position: 'static', maxWidth: 280 }} type="search" placeholder="Tìm tên hoặc thương hiệu..." value={query} onChange={(event) => setQuery(event.target.value)} />
-        <button type="button" className="button button--primary" onClick={startCreate}>+ Thêm sản phẩm</button>
+    <div className={a.toolbar}>
+      <h1 className="!mb-0">Sản phẩm ({filtered.length}/{products.length})</h1>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <input className={`${a.input} !w-72`} type="search" placeholder="Tìm tên hoặc thương hiệu..." value={query} onChange={(event) => setQuery(event.target.value)} />
+        <button type="button" className={buttonClass('primary')} onClick={startCreate}>+ Thêm sản phẩm</button>
       </div>
     </div>
-    {error && <p role="alert" style={{ color: 'var(--color-urgent)' }}>{error}</p>}
-    {showForm && <form className="catalog-form" onSubmit={save}>
-      <div className="catalog-form__heading"><h2>{editing ? 'Sửa sản phẩm' : 'Tạo sản phẩm'}</h2><button className="button button--outline" type="button" onClick={() => setShowForm(false)}>Đóng</button></div>
+    {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
+    {showForm && <form className={a.catalogForm} onSubmit={save}>
+      <div className={a.formHeading}><h2>{editing ? 'Sửa sản phẩm' : 'Tạo sản phẩm'}</h2><button className={buttonClass('outline')} type="button" onClick={() => setShowForm(false)}>Đóng</button></div>
       <label>Tên sản phẩm<input required maxLength={255} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
       <label>Danh mục<select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}><option value="">Chưa phân loại</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
       <label>Thương hiệu<input maxLength={255} value={form.brandName} onChange={(e) => setForm({ ...form, brandName: e.target.value })} /></label>
@@ -192,20 +194,20 @@ export default function AdminProductsPage() {
       <label>Giá bán<input required type="number" min="0" step="1000" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></label>
       <label>Giá so sánh<input type="number" min="0" step="1000" value={form.comparePrice} onChange={(e) => setForm({ ...form, comparePrice: e.target.value })} /></label>
       <label>Thuộc tính biến thể (JSON)<input placeholder='{"màu":"Đen"}' value={form.attributes} onChange={(e) => setForm({ ...form, attributes: e.target.value })} /></label>
-      <label className="catalog-form__wide">Mô tả<textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
-      <label className="catalog-form__wide">Ảnh sản phẩm<input type="file" accept="image/*" multiple onChange={(e) => setFiles(e.target.files)} /><small>Ảnh được tải lên sau khi lưu thông tin sản phẩm.</small></label>
-      <div className="catalog-form__actions"><button className="button button--primary" disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu sản phẩm'}</button></div>
+      <label className={a.formWide}>Mô tả<textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
+      <label className={a.formWide}>Ảnh sản phẩm<input type="file" accept="image/*" multiple onChange={(e) => setFiles(e.target.files)} /><small>Ảnh được tải lên sau khi lưu thông tin sản phẩm.</small></label>
+      <div className={a.formActions}><button className={buttonClass('primary')} disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu sản phẩm'}</button></div>
     </form>}
-    {loading ? <p>Đang tải sản phẩm…</p> : <div className="admin-table-wrap"><table className="admin-table">
+    {loading ? <p>Đang tải sản phẩm…</p> : <div className={a.tableWrap}><table className={a.table}>
       <thead><tr><th>Tên</th><th>Danh mục</th><th>Thương hiệu / loại</th><th>SKU / giá</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
       <tbody>{filtered.map((product) => {
         const variant = variants.find((item) => item.productId === product.id)
         const categoryName = categories.find((item) => item.id === product.categoryId)?.name ?? '—'
         return <tr key={product.id}>
-          <td>{product.name}</td><td>{categoryName}</td><td>{product.brandName ?? '—'} · {product.productType}</td>
+          <td>{product.name}</td><td>{categoryName}</td><td>{product.brandName ?? '—'} · {typeLabel[product.productType] ?? product.productType}</td>
           <td>{variant ? <>{variant.sku}<br />{formatVnd(variant.price)}</> : 'Chưa có biến thể'}</td>
-          <td><span className={`status-pill status-pill--${product.status === 'published' ? 'active' : 'locked'}`}>{product.status === 'published' ? 'Đang bán' : 'Bản nháp'}</span></td>
-          <td><div className="admin-row-actions"><button type="button" className="button button--outline" onClick={() => startEdit(product)}>Sửa</button><button type="button" className="button button--outline" onClick={() => void remove(product)}>Xoá</button></div></td>
+          <td><span className={statusPillClass(product.status === 'published' ? 'active' : 'locked')}>{product.status === 'published' ? 'Đang bán' : 'Bản nháp'}</span></td>
+          <td><div className={a.rowActions}><button type="button" className={buttonClass('outline')} onClick={() => startEdit(product)}>Sửa</button><button type="button" className={buttonClass('outline')} onClick={() => void remove(product)}>Xoá</button></div></td>
         </tr>
       })}</tbody>
     </table></div>}

@@ -32,7 +32,7 @@ class PublicProductControllerHttpTest {
         variants = mock(ProductVariantRepository.class);
         categories = mock(CategoryRepository.class);
         InventoryStockRepository stocks = mock(InventoryStockRepository.class);
-        PublicProductController controller = new PublicProductController(products, variants, stocks, categories);
+        PublicProductController controller = new PublicProductController(products, variants, stocks, categories, mock(jakarta.persistence.EntityManager.class));
         mvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 

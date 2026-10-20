@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiError, apiFetch } from '../../lib/api'
 import type { InventoryMovement, InventoryStock } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
+import { a, chipClass } from '../adminUi'
+import { buttonClass } from '../../components/ui'
 
 interface Warehouse { id: string; name: string; address: string | null }
 const movementLabel: Record<InventoryMovement['type'], string> = { import: 'Nhập hàng', export: 'Xuất hàng', adjust: 'Điều chỉnh' }
@@ -88,29 +90,29 @@ export default function AdminInventoryPage() {
   }
 
   return <div>
-    <div className="admin-toolbar">
-      <h1 style={{ margin: 0 }}>Tồn kho ({filtered.length})</h1>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <input className="search__input" style={{ position: 'static', maxWidth: 250 }} type="search" placeholder="Tìm SKU hoặc kho..." value={query} onChange={(e) => setQuery(e.target.value)} />
-        <select className="filter-chip" aria-label="Lọc theo kho" value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)}>
+    <div className={a.toolbar}>
+      <h1 className="!mb-0">Tồn kho ({filtered.length})</h1>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <input className={`${a.input} !w-64`} type="search" placeholder="Tìm SKU hoặc kho..." value={query} onChange={(e) => setQuery(e.target.value)} />
+        <select className={chipClass(false)} aria-label="Lọc theo kho" value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)}>
           <option value="">Tất cả kho</option>{warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
         </select>
       </div>
     </div>
-    {error && <p role="alert" style={{ color: 'var(--color-urgent)' }}>{error}</p>}
-    {lowStock > 0 && <div className="admin-bulk-bar" style={{ background: 'var(--color-urgent-light)', borderColor: 'var(--color-urgent)' }}>⚠ {lowStock} biến thể sắp hết hàng (khả dụng dưới 30)</div>}
-    {loading ? <p>Đang tải tồn kho…</p> : <div className="admin-table-wrap"><table className="admin-table">
+    {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
+    {lowStock > 0 && <div className={`${a.bulkBar} !bg-error-container !border-error !text-on-error-container`}>⚠ {lowStock} biến thể sắp hết hàng (khả dụng dưới 30)</div>}
+    {loading ? <p>Đang tải tồn kho…</p> : <div className={a.tableWrap}><table className={a.table}>
       <thead><tr><th>SKU / biến thể</th><th>Kho</th><th>Tồn thực tế</th><th>Đã giữ</th><th>Khả dụng</th><th>Thao tác</th></tr></thead>
       <tbody>{filtered.map((stock) => <tr key={stock.id} className={selected?.id === stock.id ? 'is-selected' : ''}>
-        <td><button className="admin-link-button" type="button" onClick={() => setSelected(stock)}>{stock.sku}</button></td>
+        <td><button className={a.linkButton} type="button" onClick={() => setSelected(stock)}>{stock.sku}</button></td>
         <td>{stock.warehouseName}</td><td>{stock.quantity}</td><td>{stock.reservedQuantity}</td>
-        <td style={{ color: stock.availableQuantity < 30 ? 'var(--color-urgent)' : undefined, fontWeight: stock.availableQuantity < 30 ? 700 : 400 }}>{stock.availableQuantity}</td>
-        <td><div className="admin-row-actions"><button type="button" className="button button--outline" onClick={() => void adjust(stock)}>Điều chỉnh</button><button type="button" className="button button--outline" disabled={stock.availableQuantity < 1} onClick={() => void exportStock(stock)}>Xuất kho</button></div></td>
+        <td className={stock.availableQuantity < 30 ? 'text-error font-bold' : undefined}>{stock.availableQuantity}</td>
+        <td><div className={a.rowActions}><button type="button" className={buttonClass('outline')} onClick={() => void adjust(stock)}>Điều chỉnh</button><button type="button" className={buttonClass('outline')} disabled={stock.availableQuantity < 1} onClick={() => void exportStock(stock)}>Xuất kho</button></div></td>
       </tr>)}</tbody>
-    </table>{filtered.length === 0 && <p className="admin-empty">Chưa có dữ liệu tồn kho.</p>}</div>}
-    {selected && <section className="admin-receipt-history">
-      <div className="admin-toolbar"><h2 style={{ margin: 0 }}>Lịch sử · {selected.sku} / {selected.warehouseName}</h2><button className="button button--outline" type="button" onClick={() => setSelected(null)}>Đóng</button></div>
-      {movements.length === 0 ? <p>Chưa có biến động tồn kho.</p> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Thời gian</th><th>Loại</th><th>Số lượng thay đổi</th><th>Tham chiếu</th></tr></thead><tbody>
+    </table>{filtered.length === 0 && <p className={a.empty}>Chưa có dữ liệu tồn kho.</p>}</div>}
+    {selected && <section className="mt-space-xl">
+      <div className={a.toolbar}><h2 className="font-headline-md text-headline-md text-on-surface">Lịch sử · {selected.sku} / {selected.warehouseName}</h2><button className={buttonClass('outline')} type="button" onClick={() => setSelected(null)}>Đóng</button></div>
+      {movements.length === 0 ? <p>Chưa có biến động tồn kho.</p> : <div className={a.tableWrap}><table className={a.table}><thead><tr><th>Thời gian</th><th>Loại</th><th>Số lượng thay đổi</th><th>Tham chiếu</th></tr></thead><tbody>
         {movements.map((movement) => <tr key={movement.id}><td>{new Date(movement.occurredAt).toLocaleString('vi-VN')}</td><td>{movementLabel[movement.type]}</td><td>{movement.quantity > 0 ? '+' : ''}{movement.quantity}</td><td>{movement.goodsReceiptId ?? movement.orderId ?? (movement.type === 'export' ? 'Xuất kho thủ công' : 'Điều chỉnh thủ công')}</td></tr>)}
       </tbody></table></div>}
     </section>}
