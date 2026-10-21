@@ -10,6 +10,7 @@ import com.chototmua.crm.application.exception.InvalidConversationException;
 import com.chototmua.crm.application.exception.InvalidCustomerStatusException;
 import com.chototmua.crm.application.exception.InvalidSegmentRuleException;
 import com.chototmua.crm.application.exception.InvalidSurveyException;
+import com.chototmua.crm.application.exception.NotificationNotFoundException;
 import com.chototmua.crm.application.exception.SegmentLockedException;
 import com.chototmua.crm.application.exception.SegmentNotFoundException;
 import com.chototmua.crm.application.exception.SurveyNotFoundException;
@@ -70,6 +71,11 @@ public class CrmExceptionHandler {
 
     @ExceptionHandler(CampaignNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> campaignNotFound(CampaignNotFoundException exception) {
+        return json(HttpStatus.NOT_FOUND, "NOT_FOUND", exception.getMessage());
+    }
+
+    @ExceptionHandler(NotificationNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> notificationNotFound(NotificationNotFoundException exception) {
         return json(HttpStatus.NOT_FOUND, "NOT_FOUND", exception.getMessage());
     }
 

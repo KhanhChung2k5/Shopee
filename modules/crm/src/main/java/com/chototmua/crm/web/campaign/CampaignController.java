@@ -68,7 +68,9 @@ public class CampaignController {
                 request.content(),
                 request.surveyId(),
                 request.startAt(),
-                request.endAt());
+                request.endAt(),
+                request.productIds(),
+                request.filter());
         return ResponseEntity.created(ResourceLocation.of("/api/campaigns/" + created.id())).body(created);
     }
 

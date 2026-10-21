@@ -1,20 +1,27 @@
 package com.chototmua.crm.application.campaign;
 
 import com.chototmua.crm.application.exception.CampaignNotFoundException;
+import com.chototmua.crm.application.exception.CrmForbiddenException;
 import com.chototmua.crm.application.exception.CustomerNotFoundException;
 import com.chototmua.crm.application.exception.InvalidCampaignException;
+import com.chototmua.crm.application.exception.NotificationNotFoundException;
 import com.chototmua.crm.application.exception.SegmentNotFoundException;
 import com.chototmua.crm.application.notification.NotificationStore;
 import com.chototmua.crm.application.segment.SegmentStore;
 import com.chototmua.crm.application.survey.SurveyStore;
 import com.chototmua.crm.domain.campaign.Campaign;
+import com.chototmua.crm.domain.campaign.CampaignProductTarget;
 import com.chototmua.crm.domain.campaign.CampaignTarget;
 import com.chototmua.crm.domain.notification.AppNotification;
 import com.chototmua.crm.domain.segment.SegmentMember;
 import com.chototmua.crm.domain.survey.Survey;
 import com.chototmua.crm.port.IdentityPort;
+import com.chototmua.crm.port.OrderPort;
+import com.chototmua.crm.port.ProductPort;
 import com.chototmua.crm.port.dto.CustomerStatus;
 import com.chototmua.crm.port.dto.CustomerView;
+import com.chototmua.crm.port.dto.ProductFilter;
+import com.chototmua.crm.port.dto.ProductView;
 import com.chototmua.crm.web.dto.CampaignListResponse;
 import com.chototmua.crm.web.dto.CampaignRecipientListResponse;
 import com.chototmua.crm.web.dto.CampaignRecipientResponse;
@@ -47,41 +54,54 @@ public class CampaignService {
     public static final String REFERENCE_CAMPAIGN = "campaign";
     public static final String REFERENCE_SURVEY = "survey";
     public static final String STATUS_SENT = "sent";
+    public static final String STATUS_READ = "read";
     public static final String STATUS_SCHEDULED = "scheduled";
     public static final String DELIVERY_SENT = "sent";
     public static final String DELIVERY_SCHEDULED = "scheduled";
 
     private final IdentityPort identity;
+    private final OrderPort orders;
+    private final ProductPort products;
     private final SegmentStore segments;
     private final CampaignStore campaigns;
+    private final CampaignProductTargetStore productTargets;
     private final NotificationStore notifications;
     private final SurveyStore surveys;
     private final Clock clock;
 
-    /** Spring tiêm cổng danh tính, kho phân khúc / chiến dịch / thông báo / khảo sát. */
+    /** Spring tiêm cổng danh tính / đơn / sản phẩm và các kho in-app. */
     @Autowired
     public CampaignService(
             IdentityPort identity,
+            OrderPort orders,
+            ProductPort products,
             SegmentStore segments,
             CampaignStore campaigns,
+            CampaignProductTargetStore productTargets,
             NotificationStore notifications,
             SurveyStore surveys
     ) {
-        this(identity, segments, campaigns, notifications, surveys, Clock.systemDefaultZone());
+        this(identity, orders, products, segments, campaigns, productTargets, notifications, surveys, Clock.systemDefaultZone());
     }
 
     /** Cho phép kiểm thử gắn {@link Clock} cố định. */
     CampaignService(
             IdentityPort identity,
+            OrderPort orders,
+            ProductPort products,
             SegmentStore segments,
             CampaignStore campaigns,
+            CampaignProductTargetStore productTargets,
             NotificationStore notifications,
             SurveyStore surveys,
             Clock clock
     ) {
         this.identity = identity;
+        this.orders = orders;
+        this.products = products;
         this.segments = segments;
         this.campaigns = campaigns;
+        this.productTargets = productTargets;
         this.notifications = notifications;
         this.surveys = surveys;
         this.clock = clock;
@@ -123,7 +143,7 @@ public class CampaignService {
     }
 
     /**
-     * Tạo chiến dịch in-app tới thành viên phân khúc.
+     * Tạo chiến dịch in-app tới thành viên phân khúc hợp người đã mua sản phẩm mục tiêu.
      * {@code startAt} trong tương lai thì thư ở trạng thái lên lịch; khách không {@code active} bị bỏ qua.
      */
     public CampaignResponse send(
@@ -133,7 +153,9 @@ public class CampaignService {
             String content,
             UUID surveyId,
             Instant startAt,
-            Instant endAt
+            Instant endAt,
+            List<UUID> productIds,
+            ProductFilter filter
     ) {
         identity.requireCrmStaff(actorId);
         Instant now = Instant.now(clock);
@@ -141,11 +163,17 @@ public class CampaignService {
         if (endAt != null && endAt.isBefore(start)) {
             throw new InvalidCampaignException("Thời điểm kết thúc phải sau thời điểm bắt đầu.");
         }
-        List<UUID> uniqueSegments = distinct(segmentIds);
+        List<UUID> uniqueSegments = distinctSegments(segmentIds);
         for (UUID segmentId : uniqueSegments) {
             if (segments.find(segmentId).isEmpty()) {
                 throw new SegmentNotFoundException(segmentId);
             }
+        }
+        List<UUID> uniqueProducts = uniqueActiveProducts(productIds);
+        ProductFilter storedFilter = emptyToNull(filter);
+        boolean hasProductTarget = !uniqueProducts.isEmpty() || storedFilter != null;
+        if (uniqueSegments.isEmpty() && !hasProductTarget) {
+            throw new InvalidCampaignException("Chiến dịch cần ít nhất một phân khúc hoặc một sản phẩm mục tiêu.");
         }
         if (surveyId != null) {
             surveys.find(surveyId).ifPresent(survey -> {
@@ -170,7 +198,8 @@ public class CampaignService {
                 .toList();
 
         boolean later = start.isAfter(now);
-        Map<UUID, CustomerView> audience = audience(uniqueSegments);
+        Set<UUID> resolvedProducts = resolveProductIds(uniqueProducts, storedFilter);
+        Map<UUID, CustomerView> audience = audience(uniqueSegments, resolvedProducts);
         List<AppNotification> created = new ArrayList<>();
         List<SkippedRecipientResponse> skipped = new ArrayList<>();
         for (CustomerView customer : audience.values()) {
@@ -189,6 +218,9 @@ public class CampaignService {
                     later ? start : now));
         }
         campaigns.save(campaign, targets);
+        if (hasProductTarget) {
+            productTargets.save(new CampaignProductTarget(campaignId, uniqueProducts, storedFilter));
+        }
         notifications.append(created);
         if (!created.isEmpty()) {
             markSurveySent(surveyId);
@@ -251,6 +283,7 @@ public class CampaignService {
         Campaign current = require(campaignId);
         Reference reference = referenceOf(current);
         notifications.deleteByReference(reference.type(), reference.id());
+        productTargets.delete(campaignId);
         campaigns.delete(campaignId);
     }
 
@@ -265,10 +298,30 @@ public class CampaignService {
             identity.requireCrmStaff(actorId);
         }
         List<NotificationResponse> rows = notifications.findByUser(target).stream()
-                .filter(row -> STATUS_SENT.equals(row.status()) || "read".equals(row.status()))
+                .filter(row -> STATUS_SENT.equals(row.status()) || STATUS_READ.equals(row.status()))
                 .map(CampaignService::toNotification)
                 .toList();
         return new NotificationListResponse(rows);
+    }
+
+    /**
+     * Khách mở thư của chính mình: {@code sent} thành {@code read}.
+     * Thư đã đọc giữ nguyên. Nhân viên CRM không đánh dấu hộp thư khách.
+     */
+    public NotificationResponse markRead(UUID actorId, UUID notificationId) {
+        AppNotification note = notifications.find(notificationId)
+                .orElseThrow(() -> new NotificationNotFoundException(notificationId));
+        if (!actorId.equals(note.userId())) {
+            throw new CrmForbiddenException("Bạn không được mở thư của người khác.");
+        }
+        if (STATUS_SCHEDULED.equals(note.status())) {
+            throw new InvalidCampaignException("Thư chưa được phát vào hộp thư.");
+        }
+        if (!STATUS_READ.equals(note.status())) {
+            notifications.markRead(note.id());
+            note = notifications.find(note.id()).orElseThrow(() -> new NotificationNotFoundException(notificationId));
+        }
+        return toNotification(note);
     }
 
     /** Phát các thư đã đến giờ. Khách vừa khóa hoặc xóa thì bỏ, không đưa vào hộp thư. */
@@ -283,31 +336,76 @@ public class CampaignService {
         }
     }
 
-    /** Gộp khách từ các phân khúc, mỗi người một lần; bỏ thành viên không còn trên cổng danh tính. */
-    private Map<UUID, CustomerView> audience(List<UUID> segmentIds) {
+    /**
+     * Audience = thành viên phân khúc ∪ người đã mua sản phẩm mục tiêu.
+     * Mỗi người một lần; bỏ hồ sơ không còn trên cổng danh tính.
+     */
+    private Map<UUID, CustomerView> audience(List<UUID> segmentIds, Set<UUID> productIds) {
         Map<UUID, CustomerView> people = new LinkedHashMap<>();
         for (UUID segmentId : segmentIds) {
             for (SegmentMember member : segments.membersOf(segmentId)) {
-                if (people.containsKey(member.userId())) {
-                    continue;
-                }
-                try {
-                    people.put(member.userId(), identity.getCustomer(member.userId()));
-                } catch (CustomerNotFoundException ignored) {
-                    // Thành viên cũ không còn trên cổng danh tính — bỏ qua, không gửi.
-                }
+                putCustomer(people, member.userId());
+            }
+        }
+        if (!productIds.isEmpty()) {
+            for (UUID buyerId : orders.findBuyersOfProducts(productIds)) {
+                putCustomer(people, buyerId);
             }
         }
         return people;
     }
 
-    /** Loại trùng phân khúc; thiếu ít nhất một phân khúc thì 422. */
-    private static List<UUID> distinct(List<UUID> segmentIds) {
-        Set<UUID> unique = new LinkedHashSet<>(segmentIds);
-        if (unique.isEmpty()) {
-            throw new InvalidCampaignException("Chiến dịch cần ít nhất một phân khúc.");
+    private void putCustomer(Map<UUID, CustomerView> people, UUID userId) {
+        if (people.containsKey(userId)) {
+            return;
+        }
+        try {
+            people.put(userId, identity.getCustomer(userId));
+        } catch (CustomerNotFoundException ignored) {
+            // Thành viên / người mua không còn trên cổng danh tính — bỏ qua, không gửi.
+        }
+    }
+
+    /** Loại trùng phân khúc; danh sách trống thì không dùng segment. */
+    private static List<UUID> distinctSegments(List<UUID> segmentIds) {
+        if (segmentIds == null || segmentIds.isEmpty()) {
+            return List.of();
+        }
+        return List.copyOf(new LinkedHashSet<>(segmentIds));
+    }
+
+    private List<UUID> uniqueActiveProducts(List<UUID> productIds) {
+        if (productIds == null || productIds.isEmpty()) {
+            return List.of();
+        }
+        Set<UUID> unique = new LinkedHashSet<>();
+        for (UUID productId : productIds) {
+            if (productId == null) {
+                continue;
+            }
+            if (!products.existsActive(productId)) {
+                throw new InvalidCampaignException("Sản phẩm không tồn tại hoặc đã ngừng bán: " + productId);
+            }
+            unique.add(productId);
         }
         return List.copyOf(unique);
+    }
+
+    private Set<UUID> resolveProductIds(List<UUID> productIds, ProductFilter filter) {
+        Set<UUID> ids = new LinkedHashSet<>(productIds);
+        if (filter != null && !filter.isUnconstrained()) {
+            for (ProductView product : products.search(filter)) {
+                ids.add(product.id());
+            }
+        }
+        return ids;
+    }
+
+    private static ProductFilter emptyToNull(ProductFilter filter) {
+        if (filter == null || filter.isUnconstrained()) {
+            return null;
+        }
+        return filter;
     }
 
     /** Lấy chiến dịch hoặc ném 404. */
@@ -328,6 +426,7 @@ public class CampaignService {
                 .map(CampaignTarget::segmentId)
                 .toList();
         Reference reference = referenceOf(campaign);
+        CampaignProductTarget productTarget = productTargets.find(campaign.id()).orElse(null);
         return new CampaignResponse(
                 campaign.id(),
                 campaign.name(),
@@ -338,11 +437,14 @@ public class CampaignService {
                 reference.type(),
                 reference.id(),
                 sentCount,
+                notifications.countStatus(reference.type(), reference.id(), STATUS_READ),
                 List.copyOf(skipped),
                 notifications.contentOf(reference.type(), reference.id()),
                 notifications.countStatus(reference.type(), reference.id(), STATUS_SCHEDULED) > 0
                         ? DELIVERY_SCHEDULED
-                        : DELIVERY_SENT);
+                        : DELIVERY_SENT,
+                productTarget == null ? List.of() : productTarget.productIds(),
+                productTarget == null ? null : productTarget.filter());
     }
 
     /** Tên khách trên cổng danh tính; mất hồ sơ thì hiện “Không rõ”. */

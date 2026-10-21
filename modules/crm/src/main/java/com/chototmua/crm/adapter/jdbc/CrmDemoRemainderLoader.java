@@ -35,18 +35,39 @@ public class CrmDemoRemainderLoader {
     }
 
     public void load() {
-        if (count("SELECT COUNT(*) FROM goods_receipts WHERE id = ?", UUID.fromString(DONE_MARKER)) > 0) {
-            return;
+        if (count("SELECT COUNT(*) FROM goods_receipts WHERE id = ?", UUID.fromString(DONE_MARKER)) == 0) {
+            String sql = adapt(readSeed());
+            for (String statement : statements(sql)) {
+                String trimmed = statement.strip();
+                if (trimmed.isEmpty() || !trimmed.regionMatches(true, 0, "INSERT", 0, 6)) {
+                    continue;
+                }
+                executeInsert(trimmed);
+            }
+            refreshDemoProfiles();
         }
-        String sql = adapt(readSeed());
+        loadRecommendationCoverage();
+    }
+
+    /** Đĩa cùng thể loại + đơn máy/tay cầm để 5 quy tắc gợi ý đều có khách. */
+    private void loadRecommendationCoverage() {
+        String sql = readCoverageSeed();
         for (String statement : statements(sql)) {
             String trimmed = statement.strip();
-            if (trimmed.isEmpty() || !trimmed.regionMatches(true, 0, "INSERT", 0, 6)) {
+            if (trimmed.isEmpty()) {
                 continue;
             }
-            executeInsert(trimmed);
+            try {
+                if (trimmed.regionMatches(true, 0, "INSERT", 0, 6)) {
+                    jdbc.update(withConflict(trimmed));
+                } else {
+                    jdbc.update(trimmed);
+                }
+            } catch (DataAccessException ignored) {
+                // DB nhóm thiếu cột/kho thì bỏ qua dòng đó, các INSERT còn lại vẫn vào.
+            }
         }
-        refreshDemoProfiles();
+        refreshCoverageProfiles();
     }
 
     private String adapt(String sql) {
@@ -191,7 +212,8 @@ public class CrmDemoRemainderLoader {
                         'dddd4444-4444-4444-4444-444444444444'::uuid,
                         'eeee5555-5555-5555-5555-555555555555'::uuid,
                         'ffff6666-6666-6666-6666-666666666666'::uuid,
-                        '77777777-7777-7777-7777-777777777777'::uuid
+                        '77777777-7777-7777-7777-777777777777'::uuid,
+                        'c1000001-0000-4000-8000-000000000034'::uuid
                     )
                   )
                 """, (rs, rowNum) -> rs.getObject("id", UUID.class));
@@ -289,6 +311,24 @@ public class CrmDemoRemainderLoader {
         return sql.substring(0, start) + sql.substring(end + endToken.length());
     }
 
+    private void refreshCoverageProfiles() {
+        List<UUID> ids = List.of(
+                UUID.fromString("c1000001-0000-4000-8000-000000000015"),
+                UUID.fromString("c1000001-0000-4000-8000-000000000028"),
+                UUID.fromString("c1000001-0000-4000-8000-000000000031"),
+                UUID.fromString("c1000001-0000-4000-8000-000000000034"));
+        for (UUID id : ids) {
+            if (count("SELECT COUNT(*) FROM users WHERE id = ?", id) == 0) {
+                continue;
+            }
+            try {
+                profiles.recalculate(id);
+            } catch (RuntimeException ignored) {
+                // Khách chưa đủ dữ liệu danh tính thì bỏ qua.
+            }
+        }
+    }
+
     private static String readSeed() {
         try {
             return new String(
@@ -296,6 +336,16 @@ public class CrmDemoRemainderLoader {
                     StandardCharsets.UTF_8);
         } catch (IOException exception) {
             throw new IllegalStateException("Không đọc được file seed demo.", exception);
+        }
+    }
+
+    private static String readCoverageSeed() {
+        try {
+            return new String(
+                    new ClassPathResource("db/seed/crm-recommendation-demo.sql").getInputStream().readAllBytes(),
+                    StandardCharsets.UTF_8);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Không đọc được file seed gợi ý.", exception);
         }
     }
 

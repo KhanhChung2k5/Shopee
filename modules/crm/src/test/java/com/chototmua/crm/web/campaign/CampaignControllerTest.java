@@ -2,6 +2,9 @@ package com.chototmua.crm.web.campaign;
 
 import com.chototmua.crm.CrmApplication;
 import com.chototmua.crm.adapter.fake.FakeIdentityPort;
+import com.chototmua.crm.adapter.fake.FakeOrderPort;
+import com.chototmua.crm.adapter.fake.FakeProductPort;
+import com.chototmua.crm.application.campaign.InMemoryCampaignProductTargetStore;
 import com.chototmua.crm.application.campaign.InMemoryCampaignStore;
 import com.chototmua.crm.application.notification.InMemoryNotificationStore;
 import com.chototmua.crm.application.segment.InMemorySegmentStore;
@@ -9,6 +12,9 @@ import com.chototmua.crm.domain.segment.CustomerSegment;
 import com.chototmua.crm.domain.segment.SegmentMember;
 import com.chototmua.crm.port.dto.CustomerStatus;
 import com.chototmua.crm.port.dto.CustomerView;
+import com.chototmua.crm.port.dto.DeliveredOrderLine;
+import com.chototmua.crm.port.dto.DeliveredOrderView;
+import com.chototmua.crm.port.dto.ProductView;
 import com.chototmua.crm.port.dto.StaffDepartment;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +27,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -52,6 +59,8 @@ class CampaignControllerTest {
     private static final String SALES_ID = "55555555-5555-5555-5555-555555555555";
     private static final String ACTIVE_ID = "aaaa1111-1111-1111-1111-111111111111";
     private static final String OTHER_ID = "bbbb2222-2222-2222-2222-222222222222";
+    private static final UUID PRODUCT_DUALSENSE = UUID.fromString("02020202-0000-0000-0000-000000000001");
+    private static final UUID CATEGORY_PAD = UUID.fromString("01010101-0000-0000-0000-000000000001");
 
     @Autowired
     private MockMvc mockMvc;
@@ -68,6 +77,15 @@ class CampaignControllerTest {
     @Autowired
     private InMemoryNotificationStore notifications;
 
+    @Autowired
+    private FakeOrderPort orders;
+
+    @Autowired
+    private FakeProductPort products;
+
+    @Autowired
+    private InMemoryCampaignProductTargetStore productTargets;
+
     private UUID segmentId;
 
     @BeforeEach
@@ -76,9 +94,16 @@ class CampaignControllerTest {
         segments.clear();
         campaigns.clear();
         notifications.clear();
+        orders.reset();
+        products.reset();
+        productTargets.clear();
         identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
         identity.seedStaff(UUID.fromString(CS_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
+        products.seed(new ProductView(
+                PRODUCT_DUALSENSE, "Tay cầm DualSense", "Sony", "controller",
+                CATEGORY_PAD, "Tay cầm", null, List.of("PS5"),
+                new BigDecimal("1890000"), "published"));
     }
 
     @Test
@@ -165,6 +190,47 @@ class CampaignControllerTest {
 
         mockMvc.perform(get("/api/customers").with(httpBasic("binh", "binh")))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void customerMarksOwnLetterReadAndCannotOpenSomeoneElse() throws Exception {
+        UUID ownId = UUID.fromString("0a0a0a0a-0000-4000-8000-000000000001");
+        UUID otherId = UUID.fromString("0a0a0a0a-0000-4000-8000-000000000002");
+        notifications.append(List.of(new com.chototmua.crm.domain.notification.AppNotification(
+                ownId,
+                UUID.fromString(OTHER_ID),
+                "campaign",
+                UUID.randomUUID(),
+                "in_app",
+                "Ưu đãi cho Bình",
+                "sent",
+                Instant.parse("2026-09-24T04:00:00Z"))));
+        notifications.append(List.of(new com.chototmua.crm.domain.notification.AppNotification(
+                otherId,
+                UUID.fromString(ACTIVE_ID),
+                "campaign",
+                UUID.randomUUID(),
+                "in_app",
+                "Ưu đãi cho An",
+                "sent",
+                Instant.parse("2026-09-24T04:00:00Z"))));
+
+        mockMvc.perform(post("/api/notifications/" + ownId + "/read").with(httpBasic("binh", "binh")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(ownId.toString()))
+                .andExpect(jsonPath("$.status").value("read"));
+
+        mockMvc.perform(post("/api/notifications/" + ownId + "/read").with(httpBasic("binh", "binh")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("read"));
+
+        mockMvc.perform(post("/api/notifications/" + otherId + "/read").with(httpBasic("binh", "binh")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.message", containsString("người khác")));
+
+        mockMvc.perform(get("/api/notifications").with(httpBasic("binh", "binh")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications[0].status").value("read"));
     }
 
     @Test
@@ -287,6 +353,74 @@ class CampaignControllerTest {
     }
 
     @Test
+    @WithMockUser(username = ADMIN_ID, authorities = "admin")
+    void sendUnionsSegmentMembersAndProductBuyers() throws Exception {
+        LocalDate young = LocalDate.now().minusYears(20);
+        LocalDate older = LocalDate.now().minusYears(40);
+        CustomerView inSegment = identity.seedCustomer(
+                UUID.fromString(ACTIVE_ID), "An", "an@seed.local", "0901111111", "male", young, CustomerStatus.ACTIVE);
+        CustomerView buyer = identity.seedCustomer(
+                UUID.fromString(OTHER_ID), "Binh", "binh@seed.local", "0902222222", "female", older, CustomerStatus.ACTIVE);
+        CustomerView lockedBuyer = identity.seedCustomer("Khoa", "male", older, CustomerStatus.LOCKED);
+        segmentId = createAgeSegment();
+        seedDelivered(buyer.id());
+        seedDelivered(lockedBuyer.id());
+
+        mockMvc.perform(post("/api/campaigns")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Tay cầm","segmentIds":["%s"],"content":"Ưu đãi DualSense",
+                                 "productIds":["02020202-0000-0000-0000-000000000001"]}
+                                """.formatted(segmentId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.sentCount").value(2))
+                .andExpect(jsonPath("$.productIds[0]").value(PRODUCT_DUALSENSE.toString()))
+                .andExpect(jsonPath("$.skipped", hasSize(1)))
+                .andExpect(jsonPath("$.skipped[0].status").value("locked"));
+
+        mockMvc.perform(get("/api/notifications").param("userId", inSegment.id().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications", hasSize(1)));
+        mockMvc.perform(get("/api/notifications").param("userId", buyer.id().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications", hasSize(1)));
+        mockMvc.perform(get("/api/notifications").param("userId", lockedBuyer.id().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications", hasSize(0)));
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_ID, authorities = "admin")
+    void sendWithProductTargetOnlyDoesNotRequireSegment() throws Exception {
+        LocalDate young = LocalDate.now().minusYears(20);
+        CustomerView buyer = identity.seedCustomer(
+                UUID.fromString(ACTIVE_ID), "An", "an@seed.local", "0901111111", "male", young, CustomerStatus.ACTIVE);
+        seedDelivered(buyer.id());
+
+        mockMvc.perform(post("/api/campaigns")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Người đã mua","segmentIds":[],"content":"Cảm ơn",
+                                 "productIds":["02020202-0000-0000-0000-000000000001"]}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.sentCount").value(1))
+                .andExpect(jsonPath("$.segmentIds", hasSize(0)));
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_ID, authorities = "admin")
+    void sendWithoutSegmentOrProductIsRejected() throws Exception {
+        mockMvc.perform(post("/api/campaigns")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Trống","segmentIds":[],"content":"Không ai"}
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.message", containsString("phân khúc hoặc một sản phẩm")));
+    }
+
+    @Test
     @WithMockUser(username = SALES_ID, authorities = "sales")
     void salesStaffCannotSend() throws Exception {
         mockMvc.perform(post("/api/campaigns")
@@ -325,5 +459,15 @@ class CampaignControllerTest {
         return """
                 {"name":"Chăm sóc 18–24","segmentIds":["%s"],"content":"%s"%s}
                 """.formatted(currentSegmentId, content, surveyField);
+    }
+
+    private void seedDelivered(UUID userId) {
+        orders.seedDeliveredOrder(new DeliveredOrderView(
+                UUID.randomUUID(),
+                userId,
+                new BigDecimal("1890000"),
+                Instant.parse("2026-09-01T10:00:00Z"),
+                List.of(new DeliveredOrderLine(
+                        PRODUCT_DUALSENSE, CATEGORY_PAD, "Tay cầm", new BigDecimal("1890000")))));
     }
 }

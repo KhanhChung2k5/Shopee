@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,6 +38,11 @@ public class InMemoryNotificationStore implements NotificationStore {
                 .filter(row -> userId.equals(row.userId()))
                 .sorted(Comparator.comparing(AppNotification::sentAt).reversed())
                 .toList();
+    }
+
+    @Override
+    public synchronized Optional<AppNotification> find(UUID id) {
+        return rows.stream().filter(row -> id.equals(row.id())).findFirst();
     }
 
     @Override
@@ -139,6 +145,20 @@ public class InMemoryNotificationStore implements NotificationStore {
     @Override
     public synchronized void markSent(UUID id, Instant sentAt) {
         replace(id, sentAt, "sent");
+    }
+
+    @Override
+    public synchronized void markRead(UUID id) {
+        for (int index = 0; index < rows.size(); index++) {
+            AppNotification row = rows.get(index);
+            if (!id.equals(row.id())) {
+                continue;
+            }
+            if ("sent".equals(row.status()) || "read".equals(row.status())) {
+                rows.set(index, copy(row, row.sentAt(), "read"));
+            }
+            return;
+        }
     }
 
     @Override

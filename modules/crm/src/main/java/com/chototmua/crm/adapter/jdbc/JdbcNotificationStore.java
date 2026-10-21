@@ -11,6 +11,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -43,6 +44,24 @@ public class JdbcNotificationStore implements NotificationStore {
                     row.status(),
                     Timestamp.from(row.sentAt()));
         }
+    }
+
+    @Override
+    public Optional<AppNotification> find(UUID id) {
+        List<AppNotification> rows = jdbc.query("""
+                SELECT id, user_id, reference_type, reference_id, channel, content, status, sent_at
+                FROM notifications
+                WHERE id = ?
+                """, (rs, rowNum) -> new AppNotification(
+                rs.getObject("id", UUID.class),
+                rs.getObject("user_id", UUID.class),
+                rs.getString("reference_type"),
+                rs.getObject("reference_id", UUID.class),
+                rs.getString("channel"),
+                rs.getString("content"),
+                rs.getString("status"),
+                rs.getTimestamp("sent_at").toInstant()), id);
+        return rows.stream().findFirst();
     }
 
     @Override
@@ -168,6 +187,11 @@ public class JdbcNotificationStore implements NotificationStore {
     @Override
     public void markSent(UUID id, Instant sentAt) {
         jdbc.update("UPDATE notifications SET status = 'sent', sent_at = ? WHERE id = ?", Timestamp.from(sentAt), id);
+    }
+
+    @Override
+    public void markRead(UUID id) {
+        jdbc.update("UPDATE notifications SET status = 'read' WHERE id = ? AND status IN ('sent', 'read')", id);
     }
 
     @Override

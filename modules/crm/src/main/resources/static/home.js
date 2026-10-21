@@ -41,11 +41,13 @@ const DEMO_SURVEYS = [
 ];
 
 const state = {
-  login: sessionStorage.getItem("crmLogin") || "",
+  login: sessionStorage.getItem("crmLogin") || window.CrmAuth?.current()?.login || "",
   onShift: sessionStorage.getItem("crmOnShift") !== "0",
   queue: [],
   agents: [],
   surveys: [],
+  campaigns: [],
+  profiles: [],
   searchTimer: 0
 };
 
@@ -54,8 +56,7 @@ const whoEl = document.getElementById("who");
 const rolesEl = document.getElementById("roles");
 const leaveShiftBtn = document.getElementById("leave-shift");
 const gateEl = document.getElementById("home-gate");
-const agentHome = document.getElementById("agent-home");
-const managerHome = document.getElementById("manager-home");
+const opsHome = document.getElementById("ops-home");
 const deniedHome = document.getElementById("denied-home");
 const searchInput = document.getElementById("agent-search");
 const searchResults = document.getElementById("agent-search-results");
@@ -112,14 +113,17 @@ function avatarFor(login) {
 }
 
 function renderWho() {
+  if (!state.login && window.CrmAuth?.current()) {
+    state.login = window.CrmAuth.current().login;
+  }
   const role = currentRole();
   const avatar = document.querySelector(".who-avatar");
   if (!role) {
-    whoEl.textContent = "Chưa chọn tài khoản";
-    if (avatar) avatar.textContent = "?";
+    if (whoEl) whoEl.textContent = "Chưa chọn tài khoản";
+    if (avatar && !window.CrmAuth?.current()) avatar.textContent = "?";
     return;
   }
-  whoEl.textContent = `Đang thử với ${role.label} (${role.login})`;
+  if (whoEl) whoEl.textContent = `${role.label} (${role.login})`;
   if (avatar) {
     avatar.textContent = role.initials;
     avatar.style.background = avatarFor(role.login).fg;
@@ -127,6 +131,9 @@ function renderWho() {
 }
 
 function renderRoles() {
+  if (!rolesEl || !rolesEl.isConnected) {
+    return;
+  }
   rolesEl.innerHTML = "";
   ROLES.forEach((role) => {
     const button = document.createElement("button");
@@ -144,15 +151,17 @@ function renderRoles() {
 }
 
 function setView(view) {
-  gateEl.hidden = view !== "gate";
-  agentHome.hidden = view !== "agent";
-  managerHome.hidden = view !== "manager";
-  deniedHome.hidden = view !== "denied";
-  leaveShiftBtn.hidden = view !== "agent";
+  if (gateEl) gateEl.hidden = view !== "gate";
+  if (opsHome) opsHome.hidden = view !== "agent" && view !== "manager";
+  if (deniedHome) deniedHome.hidden = view !== "denied";
+  if (leaveShiftBtn) leaveShiftBtn.hidden = view !== "agent";
+  const shift = document.getElementById("agent-shift");
+  if (shift) shift.hidden = view !== "agent";
 }
 
 function updateShiftUi() {
   const badge = document.getElementById("agent-shift-badge");
+  if (!badge) return;
   badge.classList.toggle("is-on", state.onShift);
   badge.classList.toggle("is-off", !state.onShift);
   badge.innerHTML = state.onShift
@@ -412,20 +421,23 @@ async function loadSurveyTouches() {
   state.surveys = [];
   try {
     const body = await request("/api/surveys");
-    const surveys = (body?.surveys || []).slice(0, 4);
+    const surveys = (body?.surveys || []).slice(0, 3);
     const rows = await Promise.all(surveys.map(async (survey) => {
       try {
         const stats = await request(`/api/surveys/${survey.id}/stats`);
+        const invited = Number(stats?.invitedCount) || 0;
         return {
           id: survey.id,
           title: survey.title || "Khảo sát",
-          rate: stats?.completionPercent ?? null,
+          status: survey.status || "",
+          rate: invited > 0 ? stats?.completionPercent ?? null : null,
           score: surveyScoreFromStats(stats)
         };
       } catch {
         return {
           id: survey.id,
           title: survey.title || "Khảo sát",
+          status: survey.status || "",
           rate: null,
           score: null
         };
@@ -460,9 +472,529 @@ async function loadOperationalData(view) {
   } catch {
     state.agents = [];
   }
-  if (view === "manager") {
-    await loadSurveyTouches();
+  await Promise.all([loadSurveyTouches(), loadCampaigns(), loadProfiles()]);
+}
+
+async function loadCampaigns() {
+  state.campaigns = [];
+  try {
+    const body = await request("/api/campaigns");
+    state.campaigns = body?.campaigns || [];
+  } catch {
+    state.campaigns = [];
   }
+}
+
+async function loadProfiles() {
+  state.profiles = [];
+  try {
+    const body = await request("/api/crm/reports/customers");
+    state.profiles = body?.customers || [];
+  } catch {
+    state.profiles = [];
+  }
+}
+
+function greeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Chào buổi sáng";
+  if (hour < 18) return "Chào buổi chiều";
+  return "Chào buổi tối";
+}
+
+function countBy(items, pick) {
+  const totals = new Map();
+  items.forEach((item) => {
+    const key = pick(item) || "other";
+    totals.set(key, (totals.get(key) || 0) + 1);
+  });
+  return totals;
+}
+
+function mixRow(label, count, total, tone) {
+  const pct = total ? Math.round((count / total) * 100) : 0;
+  return `<li class="mix-row">
+    <span class="mix-label">${escapeHtml(label)}</span>
+    <span class="mix-track"><span class="is-${tone}" style="width:${pct}%"></span></span>
+    <strong>${count}</strong>
+    <small>${pct}%</small>
+  </li>`;
+}
+
+function fillList(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
+function channelColor(value) {
+  const text = String(value || "").trim();
+  const hex = text.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (hex) {
+    let raw = hex[1];
+    if (raw.length === 3) raw = [...raw].map((char) => char + char).join("");
+    const n = Number.parseInt(raw, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  const rgb = text.match(/(\d+),\s*(\d+),\s*(\d+)/);
+  if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+  return null;
+}
+
+function rgbToHsl(rgb) {
+  const r = rgb[0] / 255;
+  const g = rgb[1] / 255;
+  const b = rgb[2] / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const light = (max + min) / 2;
+  if (max === min) return [0, 0, light];
+  const delta = max - min;
+  const sat = light > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+  let hue = 0;
+  if (max === r) hue = ((g - b) / delta) % 6;
+  else if (max === g) hue = (b - r) / delta + 2;
+  else hue = (r - g) / delta + 4;
+  hue *= 60;
+  if (hue < 0) hue += 360;
+  return [hue, sat, light];
+}
+
+function mixHsl(fromRgb, toRgb, amount) {
+  const t = Math.min(1, Math.max(0, amount));
+  const from = rgbToHsl(fromRgb);
+  const to = rgbToHsl(toRgb);
+  let dh = to[0] - from[0];
+  if (dh > 180) dh -= 360;
+  if (dh < -180) dh += 360;
+  const h = (from[0] + dh * t + 360) % 360;
+  const s = (from[1] + (to[1] - from[1]) * t) * 100;
+  const l = (from[2] + (to[2] - from[2]) * t) * 100;
+  return `hsl(${Math.round(h)} ${Math.round(s)}% ${Math.round(l)}%)`;
+}
+
+/** Từ 80% trở lên giữ xanh; dưới 80% pha dần sang cam (40%) rồi đỏ (0%). */
+function slaFill(pct) {
+  const root = getComputedStyle(document.documentElement);
+  const good = channelColor(root.getPropertyValue("--color-ok")) || [21, 128, 61];
+  const mid = [249, 115, 22];
+  const bad = channelColor(root.getPropertyValue("--color-destructive")) || [220, 38, 38];
+  if (pct >= 80) return mixHsl(good, good, 1);
+  if (pct >= 40) return mixHsl(mid, good, (pct - 40) / 40);
+  return mixHsl(bad, mid, pct / 40);
+}
+
+function renderTicketBoard(view) {
+  const openItems = state.queue.filter((item) => item.status !== "closed");
+  const closed = state.queue.length - openItems.length;
+  const inProgress = openItems.filter((item) => item.status === "in_progress").length;
+  const waiting = openItems.length - inProgress;
+  const bars = document.getElementById("ticket-hero-bars");
+  const openEl = document.getElementById("kpi-open");
+  const metaEl = document.getElementById("kpi-open-meta");
+  if (openEl) openEl.textContent = String(openItems.length);
+  if (metaEl) {
+    metaEl.textContent = view === "agent" ? "Ticket đang giao cho bạn" : "Hội thoại chưa đóng";
+  }
+  const columns = [
+    { key: "open", label: "Mở", count: waiting },
+    { key: "progress", label: "Đang xử lý", count: inProgress },
+    { key: "done", label: "Đã đóng", count: closed }
+  ];
+  const max = Math.max(...columns.map((col) => col.count), 1);
+  if (bars) {
+    bars.innerHTML = columns.map((col) => {
+      const height = Math.max(8, Math.round((col.count / max) * 100));
+      return `<div class="hero-col is-${col.key}">
+        <div class="hero-col-plot"><span class="hero-col-bar" style="height:${height}%"></span></div>
+        <strong>${col.count}</strong>
+        <small>${col.label}</small>
+      </div>`;
+    }).join("");
+  }
+
+  const due = openItems.filter((item) => !isSlaBreached(item)).length;
+  const breached = openItems.length - due;
+  const pct = openItems.length ? Math.round((due / openItems.length) * 100) : 100;
+  const ring = document.getElementById("sla-ring");
+  const pctEl = document.getElementById("sla-pct");
+  const caption = document.getElementById("sla-caption");
+  if (pctEl) pctEl.textContent = `${pct}%`;
+  if (ring) {
+    ring.style.setProperty("--sla-pct", `${pct}%`);
+    ring.style.setProperty("--sla-fill", slaFill(pct));
+    ring.setAttribute("aria-label", `Tỷ lệ đúng hạn ${pct}%`);
+  }
+  if (caption) {
+    caption.textContent = pct >= 90 ? "Đạt mục tiêu 90%" : `Dưới mục tiêu 90% · ${breached} ticket trễ`;
+  }
+  fillList("ticket-sla", [
+    mixRow("Đúng hạn", due, openItems.length, "ok"),
+    mixRow("Vượt SLA", breached, openItems.length, "bad")
+  ].join(""));
+
+  const high = openItems.filter((item) => item.priority === "high").length;
+  const normal = openItems.filter((item) => item.priority === "normal").length;
+  const low = openItems.filter((item) => item.priority !== "high" && item.priority !== "normal").length;
+  fillList("ticket-priority", [
+    mixRow("Cao", high, openItems.length, "high"),
+    mixRow("Bình thường", normal, openItems.length, "normal"),
+    mixRow("Thấp", low, openItems.length, "low")
+  ].join(""));
+
+  const queueMeta = document.getElementById("ticket-queue-meta");
+  if (queueMeta) queueMeta.textContent = openItems.length ? `${openItems.length} hội thoại` : "";
+  const rows = openItems.slice(0, 6);
+  fillList("ticket-queue", rows.length
+    ? rows.map((item) => {
+        const title = escapeHtml(item.customerName || item.code || "Khách");
+        const sub = escapeHtml([item.code, item.topicLabel || item.preview].filter(Boolean).join(" · "));
+        const statusTone = item.status === "in_progress" ? "progress" : "open";
+        const prio = item.priority === "high" ? "high" : item.priority === "low" ? "low" : "normal";
+        const prioLabel = item.priority === "high" ? "Cao" : item.priority === "low" ? "Thấp" : "Thường";
+        const sla = isSlaBreached(item) ? `<span class="home-tag is-bad">Vượt SLA</span>` : "";
+        return `<li>
+          <a class="ticket-row" href="/conversations.html">
+            <span class="ticket-copy"><strong>${title}</strong><small>${sub}</small></span>
+            <span class="ticket-flags">
+              <span class="home-tag is-${statusTone}">${escapeHtml(item.statusLabel || "Mở")}</span>
+              <span class="home-tag is-prio-${prio}">${prioLabel}</span>
+              ${sla}
+            </span>
+          </a>
+        </li>`;
+      }).join("")
+    : `<li class="home-empty">Không còn hội thoại cần xử lý. <a href="/conversations.html">Mở hàng đợi</a></li>`);
+}
+
+const RFM_LABEL = {
+  champions: "Champions",
+  loyal: "Loyal",
+  potential: "Potential",
+  at_risk: "At Risk",
+  lost: "Lost",
+  other: "Khác"
+};
+
+function kpi(label, value) {
+  return `<div class="module-kpi"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
+}
+
+function moduleRows(items, emptyHref, emptyText, render) {
+  if (!items.length) {
+    return `<li class="home-empty">${emptyText} <a href="${emptyHref}">Mở trang</a></li>`;
+  }
+  return items.slice(0, 4).map(render).join("");
+}
+
+const QUOTA_TICKS = 20;
+const CSAT_MAX = 5;
+const CSAT_TARGET = 3.5;
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function setPill(id, tone, label, title) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (!label) {
+    el.hidden = true;
+    el.replaceChildren();
+    el.className = "insight-pill";
+    el.removeAttribute("title");
+    return;
+  }
+  el.hidden = false;
+  el.className = `insight-pill${tone ? ` is-${tone}` : ""}`;
+  el.title = title || "";
+  const arrow = tone === "up" || tone === "down"
+    ? `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="${tone === "up" ? "M6 9.5V2.5M3.2 5.2 6 2.5l2.8 2.7" : "M6 2.5v7M3.2 6.8 6 9.5l2.8-2.7"}"/></svg>`
+    : "";
+  el.innerHTML = `${arrow}<span>${escapeHtml(label)}</span>`;
+}
+
+function mean(values) {
+  const nums = values.filter((value) => value != null && !Number.isNaN(Number(value)));
+  if (!nums.length) return null;
+  return nums.reduce((sum, value) => sum + Number(value), 0) / nums.length;
+}
+
+function formatPercent(value) {
+  if (value == null || Number.isNaN(Number(value))) return "—";
+  const rounded = Math.round(Number(value) * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+function targetDelta(value, target) {
+  if (value == null) return null;
+  const delta = Math.round((value - target) * 10) / 10;
+  const abs = Math.abs(delta);
+  if (abs < 0.05) {
+    return { tone: "", label: "Đúng mục tiêu", title: `Bằng mục tiêu ${target}` };
+  }
+  const shown = Number.isInteger(abs) ? String(abs) : abs.toFixed(1);
+  return {
+    tone: delta > 0 ? "up" : "down",
+    label: `${shown}`,
+    title: `${delta > 0 ? "Cao hơn" : "Thấp hơn"} mục tiêu ${target}`
+  };
+}
+
+function surveyHref(survey) {
+  return survey?.id
+    ? `/reports-surveys.html?id=${encodeURIComponent(survey.id)}`
+    : "/surveys.html";
+}
+
+function campaignHref(campaign) {
+  return campaign?.id
+    ? `/campaign-edit.html?id=${encodeURIComponent(campaign.id)}`
+    : "/campaigns.html";
+}
+
+function recentCampaigns(campaigns) {
+  return campaigns.slice().sort((left, right) => {
+    const leftAt = Date.parse(left.startAt || "") || 0;
+    const rightAt = Date.parse(right.startAt || "") || 0;
+    return rightAt - leftAt;
+  }).slice(0, 3);
+}
+
+function campaignDelivery(campaign) {
+  const unread = Number(campaign.sentCount) || 0;
+  const read = Number(campaign.readCount) || 0;
+  const delivered = unread + read;
+  const pending = campaign.deliveryStatus === "scheduled" || delivered === 0;
+  const rate = pending ? null : Math.round((read * 1000) / delivered) / 10;
+  return { unread, read, delivered, pending, rate };
+}
+
+function quotaTicks(percent, bars = QUOTA_TICKS) {
+  const rate = percent == null ? 0 : Math.max(0, Math.min(100, Number(percent)));
+  const filled = Math.round((bars * rate) / 100);
+  return Array.from({ length: bars }, (_, index) => (
+    `<i class="${index < filled ? "is-fill" : "is-rest"}" style="--tick:${index};--rate:${rate}"></i>`
+  )).join("");
+}
+
+function smallPanel(href, title, valueHtml, plotHtml, plotLabel) {
+  return `<a class="small-panel" href="${href}" title="${escapeHtml(title)}">
+    <span class="small-panel-head">
+      <span class="small-panel-name">${escapeHtml(title)}</span>
+      ${valueHtml}
+    </span>
+    <span class="small-plot" role="img" aria-label="${escapeHtml(plotLabel)}">${plotHtml}</span>
+  </a>`;
+}
+
+function emptyMultiples(chart, message) {
+  if (!chart) return;
+  chart.dataset.count = "0";
+  chart.innerHTML = `<p class="insight-empty">${message}</p>`;
+}
+
+function renderResponseChart(surveys) {
+  const chart = document.getElementById("survey-rate-chart");
+  const rates = surveys.map((survey) => survey.rate);
+  const average = mean(rates);
+  setText("survey-rate-value", average == null ? "—" : `${formatPercent(average)}%`);
+  const delta = targetDelta(average, 50);
+  setPill("survey-rate-pill", delta?.tone, delta?.label, delta ? `${delta.title}%` : "");
+  setText(
+    "survey-rate-meta",
+    surveys.length
+      ? `${surveys.length} khảo sát tạo gần nhất · mục tiêu 50%`
+      : "Chưa có khảo sát · mục tiêu 50%"
+  );
+  if (!chart) return;
+  if (!surveys.length) {
+    emptyMultiples(chart, "Chưa có khảo sát.");
+    return;
+  }
+  chart.dataset.count = String(surveys.length);
+  chart.innerHTML = surveys.map((survey) => {
+    const label = survey.rate == null ? "—" : `${formatPercent(survey.rate)}%`;
+    const deltaRow = targetDelta(survey.rate, 50);
+    const value = deltaRow
+      ? `<span class="small-panel-value">${escapeHtml(label)}${pillHtml(deltaRow.tone, deltaRow.label, `${deltaRow.title}%`)}</span>`
+      : `<span class="small-panel-value">${escapeHtml(label)}</span>`;
+    const plotLabel = survey.rate == null
+      ? `${survey.title}: chưa có tỷ lệ phản hồi`
+      : `${survey.title}: phản hồi ${formatPercent(survey.rate)}%`;
+    return smallPanel(
+      surveyHref(survey),
+      survey.title,
+      value,
+      `<span class="quota-stripes is-rate">${quotaTicks(survey.rate)}</span>`,
+      plotLabel
+    );
+  }).join("");
+}
+
+function pillHtml(tone, label, title) {
+  const arrow = tone === "up" || tone === "down"
+    ? `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="${tone === "up" ? "M6 9.5V2.5M3.2 5.2 6 2.5l2.8 2.7" : "M6 2.5v7M3.2 6.8 6 9.5l2.8-2.7"}"/></svg>`
+    : "";
+  return `<span class="insight-pill${tone ? ` is-${tone}` : ""}" title="${escapeHtml(title || "")}">${arrow}<span>${escapeHtml(label)}</span></span>`;
+}
+
+function renderCsatChart(surveys) {
+  const chart = document.getElementById("survey-csat-chart");
+  const average = mean(surveys.map((survey) => survey.score));
+  setText("survey-csat-value", average == null ? "—" : formatSurveyScore(average));
+  const delta = targetDelta(average, CSAT_TARGET);
+  setPill("survey-csat-pill", delta?.tone, delta?.label, delta?.title || "");
+  setText(
+    "survey-csat-meta",
+    surveys.length
+      ? `${surveys.length} khảo sát tạo gần nhất · thang ${CSAT_MAX}`
+      : `Chưa có khảo sát · thang ${CSAT_MAX}`
+  );
+  if (!chart) return;
+  if (!surveys.length) {
+    emptyMultiples(chart, "Chưa có khảo sát.");
+    return;
+  }
+  chart.dataset.count = String(surveys.length);
+  const targetPct = (CSAT_TARGET / CSAT_MAX) * 100;
+  chart.innerHTML = surveys.map((survey) => {
+    const score = survey.score;
+    const fillPct = score == null ? 0 : Math.max(0, Math.min(100, (score / CSAT_MAX) * 100));
+    const label = score == null ? "—" : formatSurveyScore(score);
+    const deltaRow = targetDelta(score, CSAT_TARGET);
+    const value = deltaRow
+      ? `<span class="small-panel-value">${escapeHtml(label)}${pillHtml(deltaRow.tone, deltaRow.label, deltaRow.title)}</span>`
+      : `<span class="small-panel-value">${escapeHtml(label)}</span>`;
+    const plotLabel = score == null
+      ? `${survey.title}: chưa có điểm CSAT`
+      : `${survey.title}: CSAT ${formatSurveyScore(score)} trên ${CSAT_MAX}, mục tiêu ${CSAT_TARGET}`;
+    return smallPanel(
+      surveyHref(survey),
+      survey.title,
+      value,
+      `<span class="horizon-track">
+        <span class="horizon-fill" style="width:${fillPct.toFixed(1)}%"></span>
+        <span class="horizon-mark" style="left:${targetPct}%" title="Mục tiêu ${CSAT_TARGET}"></span>
+      </span>`,
+      plotLabel
+    );
+  }).join("");
+}
+
+function renderSentChart(campaigns) {
+  const chart = document.getElementById("campaign-sent-chart");
+  const total = campaigns.length;
+  const sent = campaigns.filter((row) => row.deliveryStatus === "sent").length;
+  const scheduled = campaigns.filter((row) => row.deliveryStatus === "scheduled").length;
+  const letters = campaigns.reduce((sum, row) => sum + campaignDelivery(row).delivered, 0);
+  setText("campaign-sent-value", total ? `${sent}` : "—");
+  const valueEl = document.getElementById("campaign-sent-value");
+  if (valueEl && total) {
+    valueEl.innerHTML = `${sent}<small> / ${total}</small>`;
+  }
+  setPill(
+    "campaign-sent-pill",
+    scheduled ? "" : (total && sent === total ? "up" : ""),
+    scheduled ? `${scheduled} đã lên lịch` : (total && sent === total ? "Đã gửi hết" : ""),
+    scheduled ? "Chiến dịch chưa đến giờ phát thư" : "Mọi chiến dịch đã được gửi"
+  );
+  setText(
+    "campaign-sent-meta",
+    total ? `${letters} thư đã phát trên ${total} chiến dịch` : "Chưa có chiến dịch"
+  );
+  if (!chart) return;
+  chart.setAttribute("aria-label", total ? `${sent} trên ${total} chiến dịch đã gửi` : "Chưa có chiến dịch");
+  if (!total) {
+    chart.innerHTML = `<p class="insight-empty">Chưa có chiến dịch.</p>`;
+    return;
+  }
+  const percent = total ? (sent * 100) / total : 0;
+  chart.innerHTML = quotaTicks(percent);
+}
+
+function renderOpenChart(campaigns) {
+  const chart = document.getElementById("campaign-open-chart");
+  const summary = document.getElementById("campaign-open-summary");
+  const latest = recentCampaigns(campaigns);
+  const stats = latest.map((campaign) => ({ campaign, ...campaignDelivery(campaign) }));
+  const average = mean(stats.map((row) => row.rate));
+  const read = stats.reduce((sum, row) => sum + row.read, 0);
+  const delivered = stats.reduce((sum, row) => sum + row.delivered, 0);
+  setText("campaign-open-value", average == null ? "—" : `${formatPercent(average)}%`);
+  const tone = average == null ? "" : average >= 50 ? "up" : average >= 25 ? "" : "down";
+  setPill(
+    "campaign-open-pill",
+    tone,
+    delivered ? `${read}/${delivered} thư` : (latest.length ? "Chưa có lượt mở" : ""),
+    "Số thư đã mở trên số thư đã gửi của 3 chiến dịch gần nhất"
+  );
+  const summaryText = average == null
+    ? "Chưa có tỷ lệ mở thư."
+    : `Tỷ lệ mở thư trung bình ${formatPercent(average)}%. ${read} trên ${delivered} thư đã mở.`;
+  if (summary) summary.textContent = summaryText;
+  if (!chart) return;
+  if (!latest.length) {
+    emptyMultiples(chart, "Chưa có chiến dịch.");
+    return;
+  }
+  chart.dataset.count = String(stats.length);
+  chart.innerHTML = stats.map((row) => {
+    const name = row.campaign.name || "Chiến dịch";
+    const label = row.campaign.deliveryStatus === "scheduled"
+      ? "Chưa gửi"
+      : row.delivered === 0
+        ? "Chưa có thư"
+        : `${formatPercent(row.rate)}%`;
+    const plotLabel = `${name}: mở thư ${label}`;
+    return smallPanel(
+      campaignHref(row.campaign),
+      name,
+      `<span class="small-panel-value">${escapeHtml(label)}</span>`,
+      `<span class="quota-stripes is-open">${quotaTicks(row.rate)}</span>`,
+      plotLabel
+    );
+  }).join("");
+}
+
+function renderModules() {
+  const surveys = state.surveys.slice(0, 3);
+  renderResponseChart(surveys);
+  renderCsatChart(surveys);
+  renderSentChart(state.campaigns);
+  renderOpenChart(state.campaigns);
+
+  const profiles = state.profiles;
+  const rfm = countBy(profiles, (row) => row.rfmSegment);
+  fillList("profile-kpis", [
+    kpi("Khách", profiles.length),
+    kpi("Champions", rfm.get("champions") || 0),
+    kpi("At Risk", rfm.get("at_risk") || 0)
+  ].join(""));
+  const ranked = profiles.slice().sort((a, b) => Number(b.ltv || 0) - Number(a.ltv || 0));
+  fillList("profile-list", moduleRows(
+    ranked,
+    "/profiles.html",
+    "Chưa có hồ sơ CRM.",
+    (row) => `<li><a class="module-row" href="/profiles.html">
+      <span><strong>${escapeHtml(row.fullName || "Khách")}</strong><small>${escapeHtml(RFM_LABEL[row.rfmSegment] || row.rfmSegment || "RFM")} · ${Number(row.totalOrders) || 0} đơn</small></span>
+    </a></li>`
+  ));
+}
+
+function renderDashboard(view) {
+  const greet = document.getElementById("ops-greet");
+  const sub = document.getElementById("ops-sub");
+  const role = currentRole();
+  if (greet) greet.textContent = greeting();
+  if (sub) {
+    sub.textContent = view === "agent"
+      ? "Việc cần xử lý trong ca của bạn."
+      : `${role?.label || "CRM"} — ticket, khảo sát, chiến dịch và hồ sơ.`;
+  }
+  if (view === "agent") updateShiftUi();
+  renderTicketBoard(view);
+  renderModules();
 }
 
 async function boot() {
@@ -488,16 +1020,7 @@ async function boot() {
       await beat(true);
     }
     await loadOperationalData(view);
-    if (view === "agent") {
-      updateShiftUi();
-      renderAgentKpis();
-      renderAgentQueue();
-      renderAgentNotes();
-    } else {
-      renderManagerKpis();
-      renderBranchBars();
-      renderAgentsOnline();
-    }
+    renderDashboard(view);
   } catch (error) {
     showBanner("err", error.message);
   }
@@ -520,16 +1043,7 @@ leaveShiftBtn.addEventListener("click", async () => {
   );
 });
 
-document.getElementById("mgr-period").addEventListener("change", () => {
-  renderManagerKpis();
-  renderBranchBars();
-});
-
-document.getElementById("mgr-branch").addEventListener("change", () => {
-  renderBranchBars();
-});
-
-document.getElementById("agent-search-form").addEventListener("submit", (event) => {
+document.getElementById("agent-search-form")?.addEventListener("submit", (event) => {
   event.preventDefault();
   runCustomerSearch(searchInput.value);
 });

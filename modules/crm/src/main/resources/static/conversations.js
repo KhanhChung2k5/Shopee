@@ -34,6 +34,7 @@ const entitySwitch = createEntitySwitch({
   pinKey: "crmConversationPins",
   recentKey: "crmConversationRecent",
   showDateFilter: true,
+  inlineQuick: true,
   labels: {
     noun: "hội thoại",
     switchLabel: "Đổi hội thoại",
@@ -277,6 +278,9 @@ function escapeHtml(value) {
 }
 
 function renderRoles() {
+  if (!rolesEl || !rolesEl.isConnected) {
+    return;
+  }
   rolesEl.innerHTML = ROLES.map((role) => `
     <button type="button" class="${role.login === state.login ? "active" : ""}" data-login="${role.login}">
       <span class="actor-dot" style="background:#2563eb">${role.initials}</span>
@@ -410,9 +414,11 @@ function renderThread() {
         </select>
         <label class="note-toggle"><input id="note-toggle" type="checkbox" ${state.note ? "checked" : ""}> Ghi chú nội bộ</label>
       </div>
-      <textarea id="draft" placeholder="${state.note ? "Ghi chú cho agent khác, khách không thấy" : "Trả lời khách"}"></textarea>
-      <div class="thread-actions">
-        <button class="${state.note ? "btn-note" : "btn-primary"}" type="submit" id="composer-submit">${state.note ? "Lưu ghi chú" : "Gửi"}</button>
+      <div class="composer-input">
+        <textarea id="draft" rows="2" placeholder="${state.note ? "Ghi chú cho agent khác, khách không thấy" : "Trả lời khách"}" title="Enter gửi · Shift+Enter xuống dòng"></textarea>
+        <button class="composer-send${state.note ? " is-note" : ""}" type="submit" id="composer-submit" aria-label="${state.note ? "Lưu ghi chú" : "Gửi"}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4 20-7z"/><path d="M22 2 11 13"/></svg>
+        </button>
       </div>
     </form>`;
   const box = document.getElementById("messages");
@@ -429,8 +435,8 @@ function applyNoteMode(on) {
   if (!form || !draft || !submit) return;
   form.classList.toggle("is-note", on);
   draft.placeholder = on ? "Ghi chú cho agent khác, khách không thấy" : "Trả lời khách";
-  submit.textContent = on ? "Lưu ghi chú" : "Gửi";
-  submit.className = on ? "btn-note" : "btn-primary";
+  submit.classList.toggle("is-note", on);
+  submit.setAttribute("aria-label", on ? "Lưu ghi chú" : "Gửi");
   if (mode) mode.textContent = on ? "Khi bật “Ghi chú nội bộ” — khách không thấy" : "Trả lời khách (mặc định)";
   if (canned) canned.disabled = on;
 }
@@ -597,6 +603,14 @@ threadPane.addEventListener("change", async (event) => {
       showBanner("err", error.message);
     }
   }
+});
+
+threadPane.addEventListener("keydown", (event) => {
+  if (event.target.id !== "draft") return;
+  if (event.key !== "Enter" || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return;
+  if (event.isComposing || event.keyCode === 229) return;
+  event.preventDefault();
+  document.getElementById("composer")?.requestSubmit();
 });
 
 threadPane.addEventListener("input", () => {

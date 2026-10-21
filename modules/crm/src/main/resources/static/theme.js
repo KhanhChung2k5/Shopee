@@ -1,9 +1,14 @@
 (() => {
   const KEY = "crm-theme";
-  const VALID = new Set(["light", "dark", "system"]);
+  const VALID = new Set(["light", "dark", "dark-orange", "system"]);
+  const DARK_THEMES = new Set(["dark", "dark-orange"]);
 
   function systemTheme() {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
+  function isDark(theme) {
+    return DARK_THEMES.has(theme);
   }
 
   function readPreference() {
@@ -26,7 +31,7 @@
     const theme = resolve(pref);
     document.documentElement.setAttribute("data-theme", theme);
     document.documentElement.setAttribute("data-theme-pref", pref);
-    document.documentElement.style.colorScheme = theme;
+    document.documentElement.style.colorScheme = isDark(theme) ? "dark" : "light";
     return { preference: pref, theme };
   }
 
@@ -65,5 +70,5 @@
     if (event.key === KEY) apply();
   });
 
-  window.CrmTheme = { KEY, get, set, apply, resolve, readPreference };
+  window.CrmTheme = { KEY, get, set, apply, resolve, readPreference, isDark };
 })();

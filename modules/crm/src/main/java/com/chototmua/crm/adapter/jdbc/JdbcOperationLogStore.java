@@ -6,6 +6,7 @@ import com.chototmua.crm.application.audit.OperationLogPage;
 import com.chototmua.crm.application.audit.OperationLogQuery;
 import com.chototmua.crm.application.audit.OperationLogStore;
 import com.chototmua.crm.domain.audit.OperationLog;
+import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -32,6 +33,34 @@ public class JdbcOperationLogStore implements OperationLogStore {
 
     public JdbcOperationLogStore(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
+    }
+
+    /**
+     * Flyway trên CSDL nhóm có thể đã ghi version 2 bằng script khác,
+     * nên {@code V2__operation_logs.sql} không chạy lại và bảng này bị thiếu.
+     * Thiếu bảng thì seeder làm cả ứng dụng thoát, giao diện không còn dữ liệu.
+     */
+    @PostConstruct
+    void ensureSchema() {
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS operation_logs (
+                    id            UUID PRIMARY KEY,
+                    actor_id      UUID,
+                    actor_login   VARCHAR(100) NOT NULL,
+                    actor_label   VARCHAR(255) NOT NULL,
+                    department    VARCHAR(20),
+                    action        VARCHAR(255) NOT NULL,
+                    http_method   VARCHAR(10) NOT NULL,
+                    path          VARCHAR(500) NOT NULL,
+                    status_code   INTEGER NOT NULL,
+                    outcome       VARCHAR(20) NOT NULL,
+                    occurred_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+                )
+                """);
+        jdbc.execute("""
+                CREATE INDEX IF NOT EXISTS idx_operation_logs_occurred_at
+                ON operation_logs (occurred_at DESC)
+                """);
     }
 
     @Override

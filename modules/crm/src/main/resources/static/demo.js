@@ -36,7 +36,7 @@ const GENDER_LABEL = {
 };
 
 const state = {
-  login: sessionStorage.getItem("crmLogin") || "",
+  login: sessionStorage.getItem("crmLogin") || window.CrmAuth?.current()?.login || "",
   includeDeleted: true,
   search: "",
   status: "",
@@ -174,18 +174,24 @@ function initialsOf(name) {
 }
 
 function syncWho() {
+  if (!state.login && window.CrmAuth?.current()) {
+    state.login = window.CrmAuth.current().login;
+  }
   const role = currentRole();
   const avatar = document.querySelector(".who-avatar");
   if (role) {
-    whoEl.textContent = `Đang thử với ${role.label} (${role.login})`;
-    avatar.textContent = role.initials;
+    if (whoEl) whoEl.textContent = `${role.label} (${role.login})`;
+    if (avatar) avatar.textContent = role.initials;
   } else {
-    whoEl.textContent = "Chưa chọn tài khoản";
-    avatar.textContent = "?";
+    if (whoEl) whoEl.textContent = "Chưa chọn tài khoản";
+    if (avatar && !window.CrmAuth?.current()) avatar.textContent = "?";
   }
 }
 
 function renderRoles() {
+  if (!rolesEl || !rolesEl.isConnected) {
+    return;
+  }
   rolesEl.innerHTML = "";
   ROLES.forEach((role) => {
     const button = document.createElement("button");

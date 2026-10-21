@@ -19,10 +19,14 @@ const ANSWER_TYPE = {
 
 const PIN_KEY = "crmSurveyPins";
 const RECENT_KEY = "crmSurveyRecent";
+const QUERY_KEY = "crmSurveyRecentQueries";
+const QUERY_PREFIX = "q:";
 const QUICK_LIMIT = 5;
 const PALETTE_THRESHOLD = 80;
 
 const PIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17v5"/><path d="M9 4h6v2H9z"/><path d="M8 6h8l-1 5.2a2 2 0 0 0 .4 1.6L17 15H7l1.6-2.2a2 2 0 0 0 .4-1.6z"/></svg>';
+const SEARCH_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
+const CLOCK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>';
 
 const params = new URLSearchParams(location.search);
 
@@ -110,6 +114,9 @@ function syncWho() {
 }
 
 function renderRoles() {
+  if (!rolesEl || !rolesEl.isConnected) {
+    return;
+  }
   rolesEl.innerHTML = "";
   ROLES.forEach((role) => {
     const button = document.createElement("button");
@@ -212,21 +219,46 @@ function statusGroups(pool) {
   })).filter((group) => group.items.length);
 }
 
-function labeledGroups(pool) {
+function labeledGroups(pool, query) {
   const poolIds = new Set(pool.map((survey) => survey.id));
   const pinned = existing(readIds(PIN_KEY)).filter((survey) => poolIds.has(survey.id));
   const pinnedIds = new Set(pinned.map((survey) => survey.id));
   const recent = existing(readIds(RECENT_KEY)).filter((survey) => poolIds.has(survey.id) && !pinnedIds.has(survey.id));
   const used = new Set([...pinned, ...recent].map((survey) => survey.id));
+  const searches = queryItems(query || "");
   const groups = [];
+  if (searches.length) {
+    groups.push({ label: "Tìm kiếm gần đây", kind: "search", items: searches });
+  }
   if (pinned.length) {
-    groups.push({ label: "Đã ghim", items: pinned });
+    groups.push({ label: "Đã ghim", kind: "pin", items: pinned });
   }
   if (recent.length) {
-    groups.push({ label: "Gần đây", items: recent });
+    groups.push({ label: "Đã xem", kind: "viewed", items: recent });
   }
   statusGroups(pool.filter((survey) => !used.has(survey.id))).forEach((group) => groups.push(group));
   return groups;
+}
+
+function readQueries() {
+  return readIds(QUERY_KEY).map((query) => String(query).trim()).filter((query) => query.length >= 2);
+}
+
+function pushQuery(query) {
+  const value = String(query || "").trim();
+  if (value.length < 2) return;
+  writeIds(QUERY_KEY, [value, ...readQueries().filter((item) => item !== value)].slice(0, QUICK_LIMIT));
+}
+
+function queryItems(filter) {
+  const needle = fold(filter);
+  return readQueries()
+    .filter((query) => !needle || fold(query).includes(needle))
+    .map((query) => ({ id: `${QUERY_PREFIX}${query}`, title: query, kind: "search" }));
+}
+
+function isSearchItem(item) {
+  return item?.kind === "search" || String(item?.id || "").startsWith(QUERY_PREFIX);
 }
 
 function matchesName(survey, query) {
@@ -269,11 +301,17 @@ function matchesPalette(survey, query) {
 function comboGroups() {
   const matched = state.surveys.filter((survey) => matchesName(survey, state.filter));
   if (!state.filter.trim()) {
-    const quickIds = new Set(quickSurveys().map((item) => item.survey.id));
-    const rest = matched.filter((survey) => !quickIds.has(survey.id));
-    return statusGroups(rest.length ? rest : matched);
+    const groups = [];
+    const searches = queryItems("");
+    if (searches.length) groups.push({ label: "Tìm kiếm gần đây", kind: "search", items: searches });
+    const viewed = existing(readIds(RECENT_KEY)).slice(0, QUICK_LIMIT);
+    if (viewed.length) groups.push({ label: "Đã xem", kind: "viewed", items: viewed });
+    const used = new Set(viewed.map((survey) => survey.id));
+    const rest = matched.filter((survey) => !used.has(survey.id));
+    statusGroups(rest.length ? rest : matched).forEach((group) => groups.push(group));
+    return groups;
   }
-  return labeledGroups(matched);
+  return labeledGroups(matched, state.filter);
 }
 
 function highlight(text, query) {
@@ -312,19 +350,27 @@ function renderOptions(container, groups, prefix, highlightQuery, showDescriptio
     const options = group.items.map((survey) => {
       const index = flat.length;
       flat.push(survey);
-      const meta = statusMeta(survey.status);
-      const pinned = isPinned(survey.id);
+      const search = group.kind === "search" || isSearchItem(survey);
+      const viewed = group.kind === "viewed";
+      const meta = search ? null : statusMeta(survey.status);
+      const pinned = !search && isPinned(survey.id);
       const active = index === activeIndex;
-      const current = survey.id === state.surveyId;
-      const extra = showDescription && survey.description ? ` · ${survey.description}` : "";
+      const current = !search && survey.id === state.surveyId;
+      const extra = !search && showDescription && survey.description ? ` · ${survey.description}` : "";
+      const leading = search
+        ? `<span class="pick-kind" aria-hidden="true">${SEARCH_SVG}</span>`
+        : `<button type="button" class="pin-btn${pinned ? " is-on" : ""}" data-pin="${escapeHtml(survey.id)}" aria-pressed="${pinned ? "true" : "false"}" aria-label="${pinned ? "Bỏ ghim" : "Ghim"} ${escapeHtml(survey.title || "phiếu này")}">${PIN_SVG}</button>`;
+      const titleIcon = viewed ? `<span class="pick-kind" aria-hidden="true">${CLOCK_SVG}</span>` : "";
+      const badge = meta ? `<span class="badge ${meta.tone}">${escapeHtml(meta.label)}</span>` : "";
+      const subtitle = search ? "" : `<small>Tạo ${escapeHtml(formatDate(survey.createdAt))}${escapeHtml(extra)}</small>`;
       return `
-        <div class="pick-option${active ? " is-active" : ""}${current ? " is-current" : ""}" role="option" id="${prefix}-${survey.id}" data-id="${escapeHtml(survey.id)}" data-index="${index}" aria-selected="${active ? "true" : "false"}">
-          <button type="button" class="pin-btn${pinned ? " is-on" : ""}" data-pin="${escapeHtml(survey.id)}" aria-pressed="${pinned ? "true" : "false"}" aria-label="${pinned ? "Bỏ ghim" : "Ghim"} ${escapeHtml(survey.title || "phiếu này")}">${PIN_SVG}</button>
+        <div class="pick-option${active ? " is-active" : ""}${current ? " is-current" : ""}" role="option" id="${prefix}-${index}" data-id="${escapeHtml(survey.id)}" data-index="${index}" data-kind="${escapeHtml(group.kind || survey.kind || "")}" aria-selected="${active ? "true" : "false"}">
+          ${leading}
           <span class="pick-copy">
-            <strong>${highlight(survey.title || "Chưa đặt tên", highlightQuery)}</strong>
-            <small>Tạo ${escapeHtml(formatDate(survey.createdAt))}${escapeHtml(extra)}</small>
+            <span class="pick-title">${titleIcon}<strong>${highlight(survey.title || "Chưa đặt tên", highlightQuery)}</strong></span>
+            ${subtitle}
           </span>
-          <span class="badge ${meta.tone}">${escapeHtml(meta.label)}</span>
+          ${badge}
         </div>`;
     }).join("");
     return `<div class="pick-group" role="presentation" aria-hidden="true">${escapeHtml(group.label)}</div>${options}`;
@@ -345,7 +391,7 @@ function paintActive(container, prefix, flat, activeIndex, scroll) {
     input.removeAttribute("aria-activedescendant");
     return;
   }
-  input.setAttribute("aria-activedescendant", `${prefix}-${survey.id}`);
+  input.setAttribute("aria-activedescendant", `${prefix}-${activeIndex}`);
   if (scroll) {
     container.querySelector(`[data-index="${activeIndex}"]`)?.scrollIntoView({ block: "nearest" });
   }
@@ -359,10 +405,10 @@ function bindPickList(container, mode) {
       togglePin(pin.dataset.pin);
       return;
     }
-    const option = event.target.closest("[data-id]");
-    if (option) {
-      selectSurvey(option.dataset.id);
-    }
+    const option = event.target.closest("[data-index]");
+    if (!option) return;
+    const list = mode === "combo" ? state.comboFlat : state.paletteFlat;
+    chooseItem(list[Number(option.dataset.index)]);
   });
   container.addEventListener("mouseover", (event) => {
     const option = event.target.closest("[data-index]");
@@ -477,9 +523,11 @@ function renderQuick() {
   quickEl.hidden = false;
   quickEl.innerHTML = `<p class="survey-quick-label">Ghim và xem gần đây</p>` + items.map(({ survey, pinned }) => {
     const current = survey.id === state.surveyId ? " is-current" : "";
-    const pin = pinned ? `<span class="quick-pin" aria-hidden="true">${PIN_SVG}</span>` : "";
-    const kind = pinned ? "Đã ghim" : "Xem gần đây";
-    return `<button type="button" class="quick-chip${current}" data-quick="${escapeHtml(survey.id)}" aria-label="${kind}: ${escapeHtml(survey.title || "Chưa đặt tên")}">${pin}<span>${escapeHtml(survey.title || "Chưa đặt tên")}</span></button>`;
+    const glyph = pinned
+      ? `<span class="quick-pin" aria-hidden="true">${PIN_SVG}</span>`
+      : `<span class="quick-kind" aria-hidden="true">${CLOCK_SVG}</span>`;
+    const kind = pinned ? "Đã ghim" : "Đã xem";
+    return `<button type="button" class="quick-chip${current}" data-quick="${escapeHtml(survey.id)}" aria-label="${kind}: ${escapeHtml(survey.title || "Chưa đặt tên")}">${glyph}<span>${escapeHtml(survey.title || "Chưa đặt tên")}</span></button>`;
   }).join("");
 }
 
@@ -544,8 +592,34 @@ function rememberUrl(id) {
   history.replaceState(null, "", `${url.pathname}${url.search}`);
 }
 
+function applySearchQuery(query) {
+  if (state.paletteOpen) {
+    paletteQuery.value = query;
+    state.paletteActive = 0;
+    renderPalette();
+    paletteQuery.focus();
+    return;
+  }
+  state.filter = query;
+  comboInput.value = query;
+  state.active = 0;
+  if (!state.comboOpen) openCombo();
+  else renderComboList();
+}
+
+function chooseItem(item) {
+  if (!item) return;
+  if (isSearchItem(item)) {
+    applySearchQuery(item.title);
+    return;
+  }
+  const typed = state.paletteOpen ? paletteQuery.value : state.filter;
+  pushQuery(typed);
+  selectSurvey(item.id);
+}
+
 function selectSurvey(id) {
-  if (!id) {
+  if (!id || String(id).startsWith(QUERY_PREFIX)) {
     return;
   }
   const changed = id !== state.surveyId;
@@ -584,7 +658,7 @@ function renderPalette() {
   }
   const query = paletteQuery.value;
   const matched = state.surveys.filter((survey) => matchesPalette(survey, query));
-  state.paletteFlat = renderOptions(paletteResults, labeledGroups(matched), "palette", query, true);
+  state.paletteFlat = renderOptions(paletteResults, labeledGroups(matched, query), "palette", query, true);
   if (!state.paletteFlat.length) {
     paletteQuery.removeAttribute("aria-activedescendant");
     return;
@@ -878,10 +952,7 @@ comboInput.addEventListener("keydown", (event) => {
   }
   if (event.key === "Enter" && state.comboOpen) {
     event.preventDefault();
-    const survey = state.comboFlat[state.active];
-    if (survey) {
-      selectSurvey(survey.id);
-    }
+    chooseItem(state.comboFlat[state.active]);
     return;
   }
   if (event.key === "Escape" && state.comboOpen) {
@@ -979,10 +1050,7 @@ paletteQuery.addEventListener("keydown", (event) => {
   }
   if (event.key === "Enter") {
     event.preventDefault();
-    const survey = state.paletteFlat[state.paletteActive];
-    if (survey) {
-      selectSurvey(survey.id);
-    }
+    chooseItem(state.paletteFlat[state.paletteActive]);
   }
 });
 

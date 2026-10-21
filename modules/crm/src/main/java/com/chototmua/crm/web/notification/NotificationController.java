@@ -3,8 +3,11 @@ package com.chototmua.crm.web.notification;
 import com.chototmua.crm.application.campaign.CampaignService;
 import com.chototmua.crm.web.CurrentActor;
 import com.chototmua.crm.web.dto.NotificationListResponse;
+import com.chototmua.crm.web.dto.NotificationResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,5 +31,11 @@ public class NotificationController {
     @GetMapping
     public NotificationListResponse inbox(@RequestParam(required = false) UUID userId) {
         return campaigns.inbox(currentActor.requireUserId(), userId);
+    }
+
+    /** Khách mở thư của mình thì đánh dấu đã đọc. */
+    @PostMapping("/{id}/read")
+    public NotificationResponse markRead(@PathVariable UUID id) {
+        return campaigns.markRead(currentActor.requireUserId(), id);
     }
 }

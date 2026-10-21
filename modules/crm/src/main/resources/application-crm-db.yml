@@ -1,10 +1,10 @@
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:chototmua}?sslmode=${DB_SSLMODE:prefer}&prepareThreshold=0
-    username: ${DB_USER:chototmua}
-    password: ${DB_PASSWORD:chototmua}
+    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5434}/${DB_NAME:chotomua}?sslmode=${DB_SSLMODE:prefer}&prepareThreshold=0
+    username: ${DB_USER:chotomua}
+    password: ${DB_PASSWORD:chotomua}
     hikari:
-      maximum-pool-size: 5
+      maximum-pool-size: 10
   flyway:
     enabled: true
     locations: classpath:db/migration

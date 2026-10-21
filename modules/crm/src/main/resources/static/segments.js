@@ -104,6 +104,9 @@ function syncWho() {
 }
 
 function renderRoles() {
+  if (!rolesEl || !rolesEl.isConnected) {
+    return;
+  }
   rolesEl.innerHTML = "";
   ROLES.forEach((role) => {
     const button = document.createElement("button");

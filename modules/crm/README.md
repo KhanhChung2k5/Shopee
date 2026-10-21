@@ -37,16 +37,16 @@ Thông số mặc định từ `docker-compose.yml`:
 
 | Mục | Giá trị |
 |---|---|
-| Host | `localhost` |
-| Port | `5432` |
-| Database | `chototmua` |
-| User / Password | `chototmua` / `chototmua` |
+| Host | `127.0.0.1` |
+| Port | `5434` |
+| Database | `chotomua` |
+| User / Password | `chotomua` / `chotomua` |
 
 **Cách B — Neon / PostgreSQL remote:** tạo file `.env` ở gốc repo (không commit mật khẩu):
 
 ```env
 DB_HOST=...
-DB_PORT=5432
+DB_PORT=5434
 DB_NAME=...
 DB_USER=...
 DB_PASSWORD=...
@@ -59,11 +59,11 @@ Biến môi trường hỗ trợ (mặc định = local Docker):
 
 | Biến | Mặc định |
 |---|---|
-| `DB_HOST` | `localhost` |
-| `DB_PORT` | `5432` |
-| `DB_NAME` | `chototmua` |
-| `DB_USER` | `chototmua` |
-| `DB_PASSWORD` | `chototmua` |
+| `DB_HOST` | `127.0.0.1` |
+| `DB_PORT` | `5434` |
+| `DB_NAME` | `chotomua` |
+| `DB_USER` | `chotomua` |
+| `DB_PASSWORD` | `chotomua` |
 | `DB_SSLMODE` | `prefer` |
 
 ### 4. Migration & dữ liệu demo
@@ -92,7 +92,7 @@ Hoặc chạy class `com.chototmua.crm.CrmApplication` từ IDE (DB / `.env` ph�
 | Dịch vụ | Port |
 |---|---|
 | Ứng dụng CRM | **8080** |
-| PostgreSQL (Docker) | **5432** |
+| PostgreSQL (Docker) | **5434** |
 
 Nếu 8080 đã bị chiếm, đổi `server.port` trong `application.yml` hoặc dừng tiến trình đang dùng port đó.
 
@@ -188,7 +188,7 @@ curl http://localhost:8080/api/crm/health
 
 ## Lưu ý quan trọng
 
-- **Port:** app `8080`, Postgres Docker `5432`.
+- **Port:** app `8080`, Postgres Docker `5434` (cùng cổng và database với nhánh `test`).
 - **Data:** seed tự động chỉ khi `users` trống; sửa trên DB được giữ khi khởi động lại.
 - **Database:** mặc định `crm-db` + Flyway; test dùng `crm-fake` (in-memory).
 - **UI:** bản thử nghiệm — branding/layout/auth chính thức sẽ thay đổi sau.

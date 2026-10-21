@@ -12,6 +12,7 @@
  *   groupItems?: (items) => [{ label, items }],
  *   dateOf?: (item) => string|Date|null,
  *   showDateFilter?: boolean,
+ *   inlineQuick?: boolean,
  *   quickLimit?: number,
  *   denseThreshold?: number
  * })
@@ -19,7 +20,9 @@
 (function (global) {
   const PIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17v5"/><path d="M9 4h6v2H9z"/><path d="M8 6h8l-1 5.2a2 2 0 0 0 .4 1.6L17 15H7l1.6-2.2a2 2 0 0 0 .4-1.6z"/></svg>';
   const SEARCH_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
+  const CLOCK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>';
   const CHEVRON_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+  const QUERY_PREFIX = "q:";
 
   function fold(value) {
     return String(value ?? "")
@@ -113,6 +116,7 @@
     const quickLimit = options.quickLimit || 5;
     const denseThreshold = options.denseThreshold || 80;
     const showDateFilter = options.showDateFilter !== false;
+    const inlineQuick = options.inlineQuick === true;
     const labels = {
       quickLabel: "Ghim và xem gần đây",
       switchLabel: "Đổi mục",
@@ -141,8 +145,10 @@
     let paletteReturn = null;
 
     root.classList.add("survey-switch");
+    if (inlineQuick) root.classList.add("is-inline-quick");
+    const quickMarkup = `<div class="survey-quick" data-es-quick hidden></div>`;
     root.innerHTML = `
-      <div class="survey-quick" data-es-quick hidden></div>
+      ${inlineQuick ? "" : quickMarkup}
       <div class="survey-switch-row">
         <div class="combo" data-es-combo>
           <label for="${uid}-combo">Đổi ${escapeHtml(labels.noun)}</label>
@@ -162,6 +168,7 @@
           <span data-es-palette-label>${escapeHtml(labels.searchLabel)}</span>
           <kbd data-es-palette-kbd>Ctrl K</kbd>
         </button>
+        ${inlineQuick ? quickMarkup : ""}
       </div>`;
 
     const paletteEl = document.createElement("div");
@@ -189,6 +196,9 @@
         <p class="palette-hint">Mũi tên chọn · Enter mở · Esc đóng</p>
       </div>`;
     document.body.appendChild(paletteEl);
+    if (typeof global.CrmDatePicker?.mount === "function") {
+      global.CrmDatePicker.mount(paletteEl);
+    }
 
     const quickEl = root.querySelector("[data-es-quick]");
     const comboWrap = root.querySelector("[data-es-combo]");
@@ -238,6 +248,32 @@
     function isPinned(id) {
       return readIds(pinKey).includes(id);
     }
+
+    function queryStoreKey() {
+      return `${recentKey}Queries`;
+    }
+
+    function readQueries() {
+      return readIds(queryStoreKey()).map((query) => String(query).trim()).filter((query) => query.length >= 2);
+    }
+
+    function pushQuery(query) {
+      const value = String(query || "").trim();
+      if (value.length < 2) return;
+      writeIds(queryStoreKey(), [value, ...readQueries().filter((item) => item !== value)].slice(0, quickLimit));
+    }
+
+    function queryItems(filter) {
+      const needle = fold(filter);
+      return readQueries()
+        .filter((query) => !needle || fold(query).includes(needle))
+        .map((query) => ({ id: `${QUERY_PREFIX}${query}`, title: query, kind: "search" }));
+    }
+
+    function isSearchItem(item) {
+      return item?.kind === "search" || String(item?.id || "").startsWith(QUERY_PREFIX);
+    }
+
 
     function byNewest(list) {
       return [...list].sort((left, right) => {
@@ -340,8 +376,10 @@
       );
       const used = new Set([...pinned, ...recent].map((item) => item.id));
       const groups = [];
-      if (pinned.length) groups.push({ label: "Đã ghim", items: pinned });
-      if (recent.length) groups.push({ label: "Gần đây", items: recent });
+      const searches = queryItems(query);
+      if (searches.length) groups.push({ label: "Tìm kiếm gần đây", kind: "search", items: searches });
+      if (pinned.length) groups.push({ label: "Đã ghim", kind: "pin", items: pinned });
+      if (recent.length) groups.push({ label: "Đã xem", kind: "viewed", items: recent });
       defaultGroups(pool.filter((item) => !used.has(item.id)), query).forEach((group) => groups.push(group));
       return groups;
     }
@@ -363,9 +401,15 @@
       const query = state.filter;
       const pool = items().filter((item) => matchesQuery(item, query));
       if (!query.trim()) {
-        const quickIds = new Set(quickItems().map((row) => row.item.id));
-        const rest = pool.filter((item) => !quickIds.has(item.id));
-        return defaultGroups(rest.length ? rest : pool, query);
+        const groups = [];
+        const searches = queryItems("");
+        if (searches.length) groups.push({ label: "Tìm kiếm gần đây", kind: "search", items: searches });
+        const viewed = existing(readIds(recentKey)).slice(0, quickLimit);
+        if (viewed.length) groups.push({ label: "Đã xem", kind: "viewed", items: viewed });
+        const used = new Set(viewed.map((item) => item.id));
+        const rest = pool.filter((item) => !used.has(item.id));
+        defaultGroups(rest.length ? rest : pool, query).forEach((group) => groups.push(group));
+        return groups;
       }
       return labeledGroups(pool, query);
     }
@@ -384,20 +428,28 @@
         const options = group.items.map((item) => {
           const index = flat.length;
           flat.push(item);
-          const pinned = isPinned(item.id);
+          const search = group.kind === "search" || isSearchItem(item);
+          const viewed = group.kind === "viewed";
+          const pinned = !search && isPinned(item.id);
           const active = index === activeIndex;
-          const current = item.id === selectedId();
-          const subtitle = showSubtitle
-            ? [item.subtitle, dateOf(item) ? `· ${formatDate(dateOf(item))}` : ""].filter(Boolean).join(" ")
-            : (item.subtitle || "");
-          const badge = item.badge
+          const current = !search && item.id === selectedId();
+          const subtitle = search
+            ? ""
+            : showSubtitle
+              ? [item.subtitle, dateOf(item) ? `· ${formatDate(dateOf(item))}` : ""].filter(Boolean).join(" ")
+              : (item.subtitle || "");
+          const badge = !search && item.badge
             ? `<span class="badge ${escapeHtml(item.badge.tone || "")}">${escapeHtml(item.badge.label)}</span>`
             : "";
+          const leading = search
+            ? `<span class="pick-kind" aria-hidden="true">${SEARCH_SVG}</span>`
+            : `<button type="button" class="pin-btn${pinned ? " is-on" : ""}" data-pin="${escapeHtml(item.id)}" aria-pressed="${pinned ? "true" : "false"}" aria-label="${pinned ? "Bỏ ghim" : "Ghim"} ${escapeHtml(item.title || labels.noun)}">${PIN_SVG}</button>`;
+          const titleIcon = viewed ? `<span class="pick-kind" aria-hidden="true">${CLOCK_SVG}</span>` : "";
           return `
-            <div class="pick-option${active ? " is-active" : ""}${current ? " is-current" : ""}" role="option" id="${uid}-${prefix}-${item.id}" data-id="${escapeHtml(item.id)}" data-index="${index}" aria-selected="${active ? "true" : "false"}">
-              <button type="button" class="pin-btn${pinned ? " is-on" : ""}" data-pin="${escapeHtml(item.id)}" aria-pressed="${pinned ? "true" : "false"}" aria-label="${pinned ? "Bỏ ghim" : "Ghim"} ${escapeHtml(item.title || labels.noun)}">${PIN_SVG}</button>
+            <div class="pick-option${active ? " is-active" : ""}${current ? " is-current" : ""}" role="option" id="${uid}-${prefix}-${index}" data-id="${escapeHtml(item.id)}" data-index="${index}" data-kind="${escapeHtml(group.kind || item.kind || "")}" aria-selected="${active ? "true" : "false"}">
+              ${leading}
               <span class="pick-copy">
-                <strong>${highlight(item.title || "Chưa đặt tên", highlightQuery)}</strong>
+                <span class="pick-title">${titleIcon}<strong>${highlight(item.title || "Chưa đặt tên", highlightQuery)}</strong></span>
                 ${subtitle ? `<small>${highlight(subtitle, highlightQuery)}</small>` : ""}
               </span>
               ${badge}
@@ -420,7 +472,7 @@
         input.removeAttribute("aria-activedescendant");
         return;
       }
-      input.setAttribute("aria-activedescendant", `${uid}-${prefix}-${item.id}`);
+      input.setAttribute("aria-activedescendant", `${uid}-${prefix}-${activeIndex}`);
       if (scroll) {
         container.querySelector(`[data-index="${activeIndex}"]`)?.scrollIntoView({ block: "nearest" });
       }
@@ -493,11 +545,14 @@
         return;
       }
       quickEl.hidden = false;
-      quickEl.innerHTML = `<p class="survey-quick-label">${escapeHtml(labels.quickLabel)}</p>` + rows.map(({ item, pinned }) => {
+      const labelClass = inlineQuick ? "survey-quick-label sr-only" : "survey-quick-label";
+      quickEl.innerHTML = `<p class="${labelClass}">${escapeHtml(labels.quickLabel)}</p>` + rows.map(({ item, pinned }) => {
         const current = item.id === selectedId() ? " is-current" : "";
-        const pin = pinned ? `<span class="quick-pin" aria-hidden="true">${PIN_SVG}</span>` : "";
-        const kind = pinned ? "Đã ghim" : "Xem gần đây";
-        return `<button type="button" class="quick-chip${current}" data-quick="${escapeHtml(item.id)}" aria-label="${kind}: ${escapeHtml(item.title || labels.noun)}">${pin}<span>${escapeHtml(item.title || "Chưa đặt tên")}</span></button>`;
+        const glyph = pinned
+          ? `<span class="quick-pin" aria-hidden="true">${PIN_SVG}</span>`
+          : `<span class="quick-kind" aria-hidden="true">${CLOCK_SVG}</span>`;
+        const kind = pinned ? "Đã ghim" : "Đã xem";
+        return `<button type="button" class="quick-chip${current}" data-quick="${escapeHtml(item.id)}" aria-label="${kind}: ${escapeHtml(item.title || labels.noun)}">${glyph}<span>${escapeHtml(item.title || "Chưa đặt tên")}</span></button>`;
       }).join("");
     }
 
@@ -581,8 +636,34 @@
       sync();
     }
 
+    function applySearchQuery(query) {
+      if (state.paletteOpen) {
+        paletteQuery.value = query;
+        state.paletteActive = 0;
+        renderPalette();
+        paletteQuery.focus();
+        return;
+      }
+      state.filter = query;
+      comboInput.value = query;
+      state.active = 0;
+      if (!state.comboOpen) openCombo();
+      else renderComboList();
+    }
+
+    function choose(item) {
+      if (!item) return;
+      if (isSearchItem(item)) {
+        applySearchQuery(item.title);
+        return;
+      }
+      const typed = state.paletteOpen ? paletteQuery.value : state.filter;
+      pushQuery(typed);
+      select(item.id);
+    }
+
     function select(id) {
-      if (!id) return;
+      if (!id || String(id).startsWith(QUERY_PREFIX)) return;
       const fromPalette = state.paletteOpen;
       pushRecent(id);
       closeCombo();
@@ -619,8 +700,10 @@
           togglePin(pin.dataset.pin);
           return;
         }
-        const option = event.target.closest("[data-id]");
-        if (option) select(option.dataset.id);
+        const option = event.target.closest("[data-index]");
+        if (!option) return;
+        const list = mode === "combo" ? state.comboFlat : state.paletteFlat;
+        choose(list[Number(option.dataset.index)]);
       });
       container.addEventListener("mouseover", (event) => {
         const option = event.target.closest("[data-index]");
@@ -679,8 +762,7 @@
       }
       if (event.key === "Enter" && state.comboOpen) {
         event.preventDefault();
-        const item = state.comboFlat[state.active];
-        if (item) select(item.id);
+        choose(state.comboFlat[state.active]);
         return;
       }
       if (event.key === "Escape" && state.comboOpen) {
@@ -769,8 +851,7 @@
       }
       if (event.key === "Enter") {
         event.preventDefault();
-        const item = state.paletteFlat[state.paletteActive];
-        if (item) select(item.id);
+        choose(state.paletteFlat[state.paletteActive]);
       }
     });
 

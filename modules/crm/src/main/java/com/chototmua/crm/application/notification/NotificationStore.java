@@ -4,6 +4,7 @@ import com.chototmua.crm.domain.notification.AppNotification;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -15,6 +16,9 @@ public interface NotificationStore {
 
     /** Hộp thư một người, mới trước. */
     List<AppNotification> findByUser(UUID userId);
+
+    /** Một thư theo mã, rỗng nếu đã xóa. */
+    Optional<AppNotification> find(UUID id);
 
     /** Số thư {@code sent} của một chiến dịch/khảo sát. */
     int countByReference(String referenceType, UUID referenceId);
@@ -45,6 +49,9 @@ public interface NotificationStore {
 
     /** Đổi trạng thái sang {@code sent}. */
     void markSent(UUID id, Instant sentAt);
+
+    /** Khách đã mở thư: {@code sent} → {@code read}. */
+    void markRead(UUID id);
 
     /** Xóa một thư (ví dụ khách không còn active khi đến giờ phát). */
     void deleteById(UUID id);

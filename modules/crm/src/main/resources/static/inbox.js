@@ -40,8 +40,15 @@ function showBanner(type, message) {
   bannerEl.textContent = message || "";
 }
 
-async function request(path) {
-  const response = await fetch(path, { headers: { ...authHeader() } });
+async function request(path, options = {}) {
+  const response = await fetch(path, {
+    ...options,
+    headers: {
+      ...authHeader(),
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.headers || {})
+    }
+  });
   const text = await response.text();
   const body = text ? JSON.parse(text) : null;
   if (!response.ok) {
@@ -88,6 +95,9 @@ function syncWho() {
 }
 
 function renderRoles() {
+  if (!rolesEl || !rolesEl.isConnected) {
+    return;
+  }
   rolesEl.innerHTML = "";
   CUSTOMERS.forEach((customer) => {
     const button = document.createElement("button");
@@ -204,7 +214,15 @@ const letterSurveyEl = document.getElementById("letter-survey");
 const letterCloseEl = document.getElementById("letter-close");
 let letterReturnFocus = null;
 
-function openLetter(row, letter) {
+async function openLetter(row, letter) {
+  if (row.id && row.status !== "read") {
+    try {
+      const updated = await request(`/api/notifications/${row.id}/read`, { method: "POST" });
+      row.status = updated?.status || "read";
+    } catch {
+      /* Vẫn mở thư dù đánh dấu đã đọc thất bại. */
+    }
+  }
   const type = mailType(row.referenceType);
   letterMarkEl.className = `mail-mark is-${type}`;
   letterMarkEl.innerHTML = MARK[type];

@@ -132,6 +132,27 @@ class CustomerProfileServiceTest {
     }
 
     @Test
+    void recalculateAllCoversLockedAndDeletedCustomers() {
+        CustomerView active = identity.seedCustomer(
+                "Song", "male", LocalDate.of(1994, 6, 6), CustomerStatus.ACTIVE);
+        CustomerView locked = identity.seedCustomer(
+                "KhoaDem", "female", LocalDate.of(1991, 7, 7), CustomerStatus.ACTIVE);
+        CustomerView deleted = identity.seedCustomer(
+                "XoaDem", "male", LocalDate.of(1989, 8, 8), CustomerStatus.ACTIVE);
+        seedDelivered(active.id(), "50000", "2026-08-10T10:00:00Z");
+        identity.lock(locked.id());
+        identity.softDeleteCustomer(deleted.id());
+
+        int done = profiles.recalculateAll();
+
+        assertThat(done).isEqualTo(3);
+        assertThat(profiles.get(ACTOR, active.id()).totalOrders()).isEqualTo(1);
+        assertThat(store.find(locked.id())).isPresent();
+        assertThat(store.find(deleted.id())).isPresent();
+        assertThat(store.find(active.id()).orElseThrow().calculatedAt()).isEqualTo(NOW);
+    }
+
+    @Test
     void salesStaffCannotRecalculate() {
         CustomerView customer = identity.seedCustomer(
                 "An", "male", LocalDate.of(1998, 5, 12), CustomerStatus.ACTIVE);

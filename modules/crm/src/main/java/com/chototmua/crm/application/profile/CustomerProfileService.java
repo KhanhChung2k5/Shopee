@@ -5,9 +5,12 @@ import com.chototmua.crm.domain.profile.LifetimeValue;
 import com.chototmua.crm.domain.profile.RfmClassifier;
 import com.chototmua.crm.port.IdentityPort;
 import com.chototmua.crm.port.OrderPort;
+import com.chototmua.crm.port.dto.CustomerFilter;
 import com.chototmua.crm.port.dto.CustomerView;
 import com.chototmua.crm.port.dto.DeliveredOrderView;
 import com.chototmua.crm.web.dto.CustomerProfileResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +27,8 @@ import java.util.UUID;
  */
 @Service
 public class CustomerProfileService {
+
+    private static final Logger log = LoggerFactory.getLogger(CustomerProfileService.class);
 
     private final IdentityPort identity;
     private final OrderPort orders;
@@ -81,6 +86,24 @@ public class CustomerProfileService {
         identity.requireCrmStaff(actorId);
         CustomerProfileCRM profile = recalculate(userId);
         return toResponse(identity.getCustomer(userId), profile);
+    }
+
+    /**
+     * Cùng phạm vi nút « Tính lại tất cả »: mọi khách, kể cả khóa và đã xóa.
+     * Một khách lỗi không chặn các khách còn lại.
+     */
+    public int recalculateAll() {
+        List<CustomerView> customers = identity.findCustomers(new CustomerFilter(null, null), true);
+        int done = 0;
+        for (CustomerView customer : customers) {
+            try {
+                recalculate(customer.id());
+                done++;
+            } catch (RuntimeException ex) {
+                log.warn("Không tính lại được hồ sơ {}: {}", customer.id(), ex.getMessage());
+            }
+        }
+        return done;
     }
 
     /** Hồ sơ mặc định khi chưa tính lại: LTV 0, nhãn lost, chưa có mốc. */

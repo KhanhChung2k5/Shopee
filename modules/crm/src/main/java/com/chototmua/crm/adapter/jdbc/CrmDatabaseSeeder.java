@@ -63,6 +63,7 @@ public class CrmDatabaseSeeder implements ApplicationRunner {
         populator.addScript(new ClassPathResource("db/seed/crm-demo.sql"));
         populator.setContinueOnError(false);
         populator.execute(jdbc.getDataSource());
+        remainder.load();
         for (CustomerView customer : identity.findCustomers(new CustomerFilter(null, null), true)) {
             profiles.recalculate(customer.id());
         }

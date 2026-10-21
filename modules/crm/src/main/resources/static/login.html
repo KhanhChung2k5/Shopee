@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="/theme.js?v=2"></script>
+  <script src="/auth.js?v=3"></script>
+  <title>Chợ Tốt Mua — Đăng nhập CRM</title>
+  <link rel="stylesheet" href="/demo.css?v=83">
+</head>
+<body class="login-body">
+  <main class="login-shell">
+    <section class="login-brand" aria-hidden="true">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/>
+        </svg>
+      </span>
+      <p>Chợ Tốt Mua</p>
+      <h1>Đăng nhập CRM</h1>
+      <p class="login-lead">Chọn tài khoản sẵn có theo chức năng. Phiên được lưu trên trình duyệt này.</p>
+    </section>
+
+    <section class="login-card">
+      <h2>Vào module</h2>
+      <p class="hint" id="login-hint">Dùng một trong các tài khoản demo bên dưới.</p>
+      <form id="login-form" class="form form-stack" autocomplete="on">
+        <label>Tên đăng nhập
+          <input id="login-user" name="username" required autocomplete="username" placeholder="admin">
+        </label>
+        <label>Mật khẩu
+          <input id="login-pass" name="password" type="password" required autocomplete="current-password" placeholder="••••">
+        </label>
+        <p id="login-error" class="login-error" hidden role="alert"></p>
+        <button type="submit" class="btn-primary">Đăng nhập</button>
+      </form>
+
+      <h3 class="login-accounts-title">Tài khoản sẵn có</h3>
+      <div class="login-accounts" id="login-accounts"></div>
+    </section>
+  </main>
+  <script src="/login.js?v=1"></script>
+</body>
+</html>

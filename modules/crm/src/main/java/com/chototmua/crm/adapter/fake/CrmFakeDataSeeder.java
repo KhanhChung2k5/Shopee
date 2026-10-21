@@ -7,6 +7,7 @@ import com.chototmua.crm.port.dto.CustomerFilter;
 import com.chototmua.crm.port.dto.CustomerStatus;
 import com.chototmua.crm.port.dto.DeliveredOrderLine;
 import com.chototmua.crm.port.dto.DeliveredOrderView;
+import com.chototmua.crm.port.dto.ProductView;
 import com.chototmua.crm.port.dto.StaffDepartment;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -39,6 +40,7 @@ public class CrmFakeDataSeeder implements ApplicationRunner {
 
     private static final UUID CATEGORY_CONTROLLER = UUID.fromString("01010101-0000-0000-0000-000000000001");
     private static final UUID CATEGORY_DISC = UUID.fromString("01010101-0000-0000-0000-000000000002");
+    private static final UUID CATEGORY_ACCESSORY = UUID.fromString("01010101-0000-0000-0000-000000000003");
     private static final UUID PRODUCT_DUALSENSE = UUID.fromString("02020202-0000-0000-0000-000000000001");
     private static final UUID PRODUCT_FIFA = UUID.fromString("02020202-0000-0000-0000-000000000002");
     private static final UUID PRODUCT_SWITCH_PRO = UUID.fromString("02020202-0000-0000-0000-000000000003");
@@ -46,6 +48,8 @@ public class CrmFakeDataSeeder implements ApplicationRunner {
     private static final UUID PRODUCT_GOW = UUID.fromString("02020202-0000-0000-0000-000000000005");
     private static final UUID PRODUCT_ZELDA = UUID.fromString("02020202-0000-0000-0000-000000000006");
     private static final UUID PRODUCT_MARIO = UUID.fromString("02020202-0000-0000-0000-000000000007");
+    private static final UUID PRODUCT_NBA = UUID.fromString("02020202-0000-0000-0000-000000000008");
+    private static final UUID PRODUCT_DOCK = UUID.fromString("02020202-0000-0000-0000-000000000011");
 
     private final FakeIdentityPort identity;
     private final FakeOrderPort orders;
@@ -182,13 +186,7 @@ public class CrmFakeDataSeeder implements ApplicationRunner {
                 "5 Bà Triệu, Hoàn Kiếm, Hà Nội",
                 true);
 
-        products.seedActive(PRODUCT_DUALSENSE);
-        products.seedActive(PRODUCT_FIFA);
-        products.seedActive(PRODUCT_SWITCH_PRO);
-        products.seedActive(PRODUCT_ELDEN);
-        products.seedActive(PRODUCT_GOW);
-        products.seedActive(PRODUCT_ZELDA);
-        products.seedActive(PRODUCT_MARIO);
+        seedCatalog();
 
         orders.seedDeliveredOrder(new DeliveredOrderView(
                 UUID.fromString("aaaa0001-0000-0000-0000-000000000001"),
@@ -225,13 +223,19 @@ public class CrmFakeDataSeeder implements ApplicationRunner {
         orders.seedDeliveredOrder(new DeliveredOrderView(
                 UUID.fromString("dddd0001-0000-0000-0000-000000000001"),
                 CUSTOMER_DUNG,
-                new BigDecimal("1590000"),
+                new BigDecimal("2480000"),
                 Instant.parse("2026-09-10T10:00:00Z"),
-                List.of(new DeliveredOrderLine(
-                        PRODUCT_SWITCH_PRO,
-                        CATEGORY_CONTROLLER,
-                        "Tay cầm",
-                        new BigDecimal("1590000")))));
+                List.of(
+                        new DeliveredOrderLine(
+                                PRODUCT_SWITCH_PRO,
+                                CATEGORY_CONTROLLER,
+                                "Tay cầm",
+                                new BigDecimal("1590000")),
+                        new DeliveredOrderLine(
+                                PRODUCT_DOCK,
+                                CATEGORY_ACCESSORY,
+                                "Phụ kiện",
+                                new BigDecimal("890000")))));
         orders.seedDeliveredOrder(new DeliveredOrderView(
                 UUID.fromString("ffff0001-0000-0000-0000-000000000001"),
                 CUSTOMER_PHONG,
@@ -266,6 +270,23 @@ public class CrmFakeDataSeeder implements ApplicationRunner {
                         new BigDecimal("890000"),
                         "Hành động"))));
         orders.seedDeliveredOrder(new DeliveredOrderView(
+                UUID.fromString("cccc0002-0000-0000-0000-000000000002"),
+                CUSTOMER_CHAU,
+                new BigDecimal("3080000"),
+                Instant.parse("2026-09-15T10:00:00Z"),
+                List.of(
+                        new DeliveredOrderLine(
+                                PRODUCT_DUALSENSE,
+                                CATEGORY_CONTROLLER,
+                                "Tay cầm",
+                                new BigDecimal("1890000")),
+                        new DeliveredOrderLine(
+                                PRODUCT_ELDEN,
+                                CATEGORY_DISC,
+                                "Đĩa game",
+                                new BigDecimal("1190000"),
+                                "Nhập vai"))));
+        orders.seedDeliveredOrder(new DeliveredOrderView(
                 UUID.fromString("eeee0001-0000-0000-0000-000000000001"),
                 CUSTOMER_EM,
                 new BigDecimal("1200000"),
@@ -276,6 +297,16 @@ public class CrmFakeDataSeeder implements ApplicationRunner {
                         "Đĩa game",
                         new BigDecimal("1200000"),
                         "Phiêu lưu"))));
+        orders.seedDeliveredOrder(new DeliveredOrderView(
+                UUID.fromString("eeee0002-0000-0000-0000-000000000002"),
+                CUSTOMER_EM,
+                new BigDecimal("890000"),
+                Instant.parse("2026-09-08T10:00:00Z"),
+                List.of(new DeliveredOrderLine(
+                        PRODUCT_DOCK,
+                        CATEGORY_ACCESSORY,
+                        "Phụ kiện",
+                        new BigDecimal("890000")))));
         orders.seedDeliveredOrder(new DeliveredOrderView(
                 UUID.fromString("77770001-0000-0000-0000-000000000001"),
                 CUSTOMER_LINH,
@@ -288,8 +319,66 @@ public class CrmFakeDataSeeder implements ApplicationRunner {
                         new BigDecimal("790000"),
                         "Đua xe"))));
 
+        seedSalesFromDeliveredOrders();
+
         for (CustomerView customer : identity.findCustomers(new CustomerFilter(null, null), true)) {
             profiles.recalculate(customer.id());
         }
+    }
+
+    private void seedCatalog() {
+        products.seed(product(
+                PRODUCT_DUALSENSE, "Tay cầm DualSense", "Sony", "controller",
+                CATEGORY_CONTROLLER, "Tay cầm", null, List.of("PS5"), "1890000"));
+        products.seed(product(
+                PRODUCT_FIFA, "Đĩa EA FC 25", "EA", "game_disc",
+                CATEGORY_DISC, "Đĩa game", "Thể thao", List.of("PS5", "PS4"), "990000"));
+        products.seed(product(
+                PRODUCT_SWITCH_PRO, "Tay cầm Switch Pro", "Nintendo", "controller",
+                CATEGORY_CONTROLLER, "Tay cầm", null, List.of("Switch"), "1590000"));
+        products.seed(product(
+                PRODUCT_ELDEN, "Đĩa Elden Ring", "Bandai Namco", "game_disc",
+                CATEGORY_DISC, "Đĩa game", "Nhập vai", List.of("PS5", "Xbox"), "1190000"));
+        products.seed(product(
+                PRODUCT_GOW, "Đĩa God of War Ragnarök", "Sony", "game_disc",
+                CATEGORY_DISC, "Đĩa game", "Hành động", List.of("PS5"), "1290000"));
+        products.seed(product(
+                PRODUCT_ZELDA, "Đĩa Zelda Tears of the Kingdom", "Nintendo", "game_disc",
+                CATEGORY_DISC, "Đĩa game", "Phiêu lưu", List.of("Switch"), "1390000"));
+        products.seed(product(
+                PRODUCT_MARIO, "Đĩa Mario Kart 8 Deluxe", "Nintendo", "game_disc",
+                CATEGORY_DISC, "Đĩa game", "Đua xe", List.of("Switch"), "790000"));
+        products.seed(product(
+                PRODUCT_NBA, "Đĩa NBA 2K", "2K", "game_disc",
+                CATEGORY_DISC, "Đĩa game", "Thể thao", List.of("PS5"), "890000"));
+        products.seed(product(
+                PRODUCT_DOCK, "Dock Nintendo Switch", "Nintendo", "accessory",
+                CATEGORY_ACCESSORY, "Phụ kiện", null, List.of("Switch"), "890000"));
+    }
+
+    private void seedSalesFromDeliveredOrders() {
+        for (CustomerView customer : identity.findCustomers(new CustomerFilter(null, null), true)) {
+            for (DeliveredOrderView order : orders.listDeliveredOrders(customer.id())) {
+                for (DeliveredOrderLine line : order.lines()) {
+                    products.seedSale(line.productId(), order.deliveredAt(), 1);
+                }
+            }
+        }
+    }
+
+    private static ProductView product(
+            UUID id,
+            String name,
+            String brandName,
+            String productType,
+            UUID categoryId,
+            String categoryName,
+            String genre,
+            List<String> platforms,
+            String price
+    ) {
+        return new ProductView(
+                id, name, brandName, productType, categoryId, categoryName, genre, platforms,
+                new BigDecimal(price), "published");
     }
 }

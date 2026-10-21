@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="/theme.js?v=1"></script>
+  <script src="/theme.js?v=2"></script>
+  <script src="/auth.js?v=3"></script>
   <title>Chợ Tốt Mua — Trang chủ CRM</title>
   <meta name="application-name" content="crm-home">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Fira+Sans:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/demo.css?v=48">
+  <link rel="stylesheet" href="/demo.css?v=87">
 </head>
 <body>
   <div class="app">
@@ -22,7 +23,7 @@
         </span>
         <span class="brand-copy">
           <strong>Chợ Tốt Mua</strong>
-          <small>CRM Demo</small>
+          
         </span>
       </a>
 
@@ -80,7 +81,7 @@
 
       <section class="sidebar-panel">
         <h2>Đăng nhập giả lập</h2>
-        <p class="hint">CSKH xem Agent Home. Admin / CRM Manager xem Manager Home.</p>
+        <p class="hint">CSKH xem hàng đợi của mình. Admin / CRM Manager xem toàn team.</p>
         <div class="roles" id="roles"></div>
       </section>
     </aside>
@@ -104,16 +105,16 @@
       <main class="workspace home-workspace">
         <div id="home-gate" class="home-gate" hidden>
           <strong>Chọn tài khoản để mở trang chủ</strong>
-          <p>CSKH → việc cần làm hôm nay. Admin / CRM Manager → vận hành team.</p>
+          <p>Dashboard tổng hợp ticket, khảo sát, chiến dịch và hồ sơ CRM. CSKH thấy hàng đợi của mình.</p>
         </div>
 
-        <section id="agent-home" class="home-view" hidden aria-label="Trang chủ nhân viên CSKH">
-          <div class="home-head">
+        <section id="ops-home" class="home-view" hidden aria-label="Dashboard CRM">
+          <div class="bento-head">
             <div>
-              <p class="home-kicker">Trang chủ</p>
-              <h1>Vai trò <span class="home-role">Nhân viên CSKH</span></h1>
+              <h1 id="ops-greet">Chào buổi sáng</h1>
+              <p class="bento-sub" id="ops-sub">Tổng quan vận hành và lối tắt tới các chức năng.</p>
             </div>
-            <div class="home-shift" id="agent-shift">
+            <div class="home-shift" id="agent-shift" hidden>
               <div class="home-shift-copy">
                 <span class="home-shift-label">Ca trực</span>
                 <strong id="agent-shift-label">Ca sáng · 08:00 – 17:00</strong>
@@ -128,126 +129,142 @@
           <form class="home-search" id="agent-search-form" role="search" autocomplete="off">
             <label class="sr-only" for="agent-search">Tìm khách hàng nhanh</label>
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <input id="agent-search" type="search" placeholder="Tìm khách hàng theo tên, SĐT, mã đơn…" enterkeyhint="search">
+            <input id="agent-search" type="search" placeholder="Tìm khách hàng theo tên, SĐT, email…" enterkeyhint="search">
             <div id="agent-search-results" class="home-search-results" hidden role="listbox" aria-label="Kết quả tìm khách"></div>
           </form>
 
-          <section class="home-kpi-row" aria-label="Số liệu cá nhân">
-            <a class="home-kpi" href="/conversations.html">
-              <span>Ticket của tôi</span>
-              <strong id="kpi-my-tickets">—</strong>
-            </a>
-            <a class="home-kpi is-urgent" href="/conversations.html" aria-label="Cần phản hồi gấp">
-              <span>Cần phản hồi gấp</span>
-              <strong id="kpi-urgent">—</strong>
-            </a>
-            <div class="home-kpi">
-              <span>Đã đóng hôm nay</span>
-              <strong id="kpi-closed-today">—</strong>
+          <section class="dash-block" aria-labelledby="ticket-title">
+            <div class="dash-block-head">
+              <div>
+                <p class="dash-kicker">Ưu tiên trước</p>
+                <h2 id="ticket-title">Ticket</h2>
+              </div>
+              <a class="home-link" href="/conversations.html">Mở hàng đợi →</a>
             </div>
-            <div class="home-kpi">
-              <span>CSAT cá nhân</span>
-              <strong id="kpi-csat-personal">—</strong>
+            <div class="ticket-grid">
+              <a class="bento-card is-hero" href="/conversations.html">
+                <div class="bento-card-head">
+                  <span>Cần xử lý</span>
+                  <span class="live-pill">LIVE</span>
+                </div>
+                <strong id="kpi-open">—</strong>
+                <p class="bento-meta" id="kpi-open-meta">Hội thoại chưa đóng</p>
+                <div class="hero-cols" id="ticket-hero-bars" role="img" aria-label="Phân bố trạng thái ticket"></div>
+              </a>
+              <section class="bento-card" aria-labelledby="ticket-sla-title">
+                <div class="bento-card-head">
+                  <h3 id="ticket-sla-title">Hiệu suất SLA</h3>
+                  <span class="muted">Mục tiêu 90%</span>
+                </div>
+                <div class="sla-gauge">
+                  <div class="sla-ring" id="sla-ring" role="img" aria-label="Tỷ lệ đúng hạn">
+                    <div class="sla-hole">
+                      <strong id="sla-pct">—</strong>
+                      <span>đúng hạn</span>
+                    </div>
+                  </div>
+                  <p class="sla-caption" id="sla-caption">So với mục tiêu 90%</p>
+                </div>
+                <ul class="mix-list" id="ticket-sla"></ul>
+              </section>
+              <section class="bento-card" aria-labelledby="ticket-priority-title">
+                <div class="bento-card-head">
+                  <h3 id="ticket-priority-title">Mức ưu tiên</h3>
+                  <span class="muted">Chưa đóng</span>
+                </div>
+                <ul class="mix-list" id="ticket-priority"></ul>
+              </section>
+              <section class="bento-card is-wide" aria-labelledby="ticket-queue-title">
+                <div class="home-panel-head">
+                  <h3 id="ticket-queue-title">Hội thoại cần xử lý</h3>
+                  <span class="muted" id="ticket-queue-meta"></span>
+                </div>
+                <ul class="ticket-queue" id="ticket-queue"></ul>
+              </section>
             </div>
           </section>
 
-          <div class="home-split">
-            <section class="home-panel" aria-labelledby="agent-queue-title">
-              <div class="home-panel-head">
-                <h2 id="agent-queue-title">Hội thoại cần xử lý</h2>
-                <a class="home-link" href="/conversations.html">Mở hàng đợi →</a>
+          <section class="dash-block" aria-labelledby="modules-title">
+            <div class="dash-block-head">
+              <div>
+                <p class="dash-kicker">Hiệu quả gần đây</p>
+                <h2 id="modules-title">Khảo sát · Chiến dịch · Hồ sơ</h2>
               </div>
-              <ul class="home-queue" id="agent-queue"></ul>
-            </section>
-            <section class="home-panel" aria-labelledby="agent-note-title">
-              <div class="home-panel-head">
-                <h2 id="agent-note-title">Thông báo</h2>
-              </div>
-              <ul class="home-notes" id="agent-notes"></ul>
-            </section>
-          </div>
-        </section>
+            </div>
+            <div class="insight-grid">
+              <article class="bento-card insight-card" aria-labelledby="survey-rate-title">
+                <div class="bento-card-head">
+                  <h3 id="survey-rate-title">Tỷ lệ phản hồi</h3>
+                  <a class="home-link" href="/surveys.html">Khảo sát →</a>
+                </div>
+                <div class="insight-kpi">
+                  <strong id="survey-rate-value">—</strong>
+                  <span class="insight-pill" id="survey-rate-pill" hidden></span>
+                </div>
+                <p class="bento-meta" id="survey-rate-meta">3 khảo sát tạo gần nhất · mục tiêu 50%</p>
+                <div class="small-multiples" id="survey-rate-chart"></div>
+              </article>
 
-        <section id="manager-home" class="home-view" hidden aria-label="Trang chủ quản lý">
-          <div class="home-head">
-            <div>
-              <p class="home-kicker">Trang chủ</p>
-              <h1>Vai trò <span class="home-role">Quản lý / Supervisor</span></h1>
-            </div>
-            <div class="home-filters" role="group" aria-label="Bộ lọc vận hành">
-              <label class="home-filter">
-                <span class="sr-only">Thời gian</span>
-                <select id="mgr-period" aria-label="Lọc theo thời gian">
-                  <option value="today" selected>Hôm nay</option>
-                  <option value="7d">7 ngày</option>
-                  <option value="30d">30 ngày</option>
-                </select>
-              </label>
-              <label class="home-filter">
-                <span class="sr-only">Chi nhánh</span>
-                <select id="mgr-branch" aria-label="Lọc theo chi nhánh">
-                  <option value="all" selected>Tất cả CN</option>
-                  <option value="q1">Q.1</option>
-                  <option value="q3">Q.3</option>
-                  <option value="td">Thủ Đức</option>
-                </select>
-              </label>
-            </div>
-          </div>
+              <article class="bento-card insight-card" aria-labelledby="survey-csat-title">
+                <div class="bento-card-head">
+                  <h3 id="survey-csat-title">CSAT trung bình</h3>
+                  <span class="muted">Thang 5 · mục tiêu 3.5</span>
+                </div>
+                <div class="insight-kpi">
+                  <strong id="survey-csat-value">—</strong>
+                  <span class="insight-pill" id="survey-csat-pill" hidden></span>
+                </div>
+                <p class="bento-meta" id="survey-csat-meta">3 khảo sát tạo gần nhất</p>
+                <div class="small-multiples" id="survey-csat-chart"></div>
+              </article>
 
-          <section class="home-kpi-row" aria-label="Số liệu team">
-            <a class="home-kpi" href="/conversations.html">
-              <span>Ticket mở toàn team</span>
-              <strong id="kpi-team-open">—</strong>
-            </a>
-            <a class="home-kpi is-urgent" href="/conversations.html" aria-label="Vi phạm SLA">
-              <span>Vi phạm SLA</span>
-              <strong id="kpi-sla">—</strong>
-            </a>
-            <div class="home-kpi">
-              <span>Thời gian phản hồi TB</span>
-              <strong id="kpi-avg-reply">—</strong>
-            </div>
-            <div class="home-kpi">
-              <span>CSAT toàn team</span>
-              <strong id="kpi-csat-team">—</strong>
+              <article class="bento-card insight-card" aria-labelledby="campaign-sent-title">
+                <div class="bento-card-head">
+                  <h3 id="campaign-sent-title">Chiến dịch đã gửi</h3>
+                  <a class="home-link" href="/campaigns.html">Chiến dịch →</a>
+                </div>
+                <div class="insight-kpi">
+                  <strong id="campaign-sent-value">—</strong>
+                  <span class="insight-pill" id="campaign-sent-pill" hidden></span>
+                </div>
+                <p class="bento-meta" id="campaign-sent-meta">Đã phát trên tổng chiến dịch</p>
+                <div class="quota-stripes" id="campaign-sent-chart" role="img" aria-label="Tỷ lệ chiến dịch đã gửi"></div>
+              </article>
+
+              <article class="bento-card insight-card is-ink insight-span" aria-labelledby="campaign-open-title">
+                <div class="bento-card-head">
+                  <h3 id="campaign-open-title">Tỷ lệ mở thư</h3>
+                  <span class="muted">3 chiến dịch gần nhất</span>
+                </div>
+                <div class="insight-kpi">
+                  <strong id="campaign-open-value">—</strong>
+                  <span class="insight-pill" id="campaign-open-pill" hidden></span>
+                </div>
+                <p class="sr-only" id="campaign-open-summary"></p>
+                <div class="small-multiples" id="campaign-open-chart"></div>
+              </article>
+
+              <article class="bento-card module-card" aria-labelledby="profile-mod-title">
+                <div class="home-panel-head">
+                  <h3 id="profile-mod-title">Hồ sơ CRM</h3>
+                  <a class="home-link" href="/profiles.html">Đi tới →</a>
+                </div>
+                <div class="module-kpis" id="profile-kpis"></div>
+                <ul class="module-list" id="profile-list"></ul>
+              </article>
             </div>
           </section>
-
-          <div class="home-split">
-            <section class="home-panel" aria-labelledby="branch-chart-title">
-              <div class="home-panel-head">
-                <h2 id="branch-chart-title">Khiếu nại theo chi nhánh</h2>
-              </div>
-              <div class="home-bars" id="branch-bars" role="img" aria-label="Biểu đồ khiếu nại theo chi nhánh"></div>
-            </section>
-            <section class="home-panel" aria-labelledby="agents-online-title">
-              <div class="home-panel-head">
-                <h2 id="agents-online-title">Agent đang online</h2>
-                <a class="home-link" href="/conversations.html">Phân công →</a>
-              </div>
-              <ul class="home-agents" id="agents-online"></ul>
-            </section>
-          </div>
-
-          <aside class="home-surveys" aria-label="Điểm chạm khảo sát">
-            <div class="home-panel-head">
-              <h2>Khảo sát</h2>
-              <a class="home-link" href="/reports-surveys.html">Xem tất cả →</a>
-            </div>
-            <ul class="home-survey-list" id="survey-touch"></ul>
-          </aside>
         </section>
 
         <section id="denied-home" class="home-view home-gate" hidden>
           <strong>Vai trò này không có trang chủ vận hành</strong>
-          <p>NV Kinh doanh dùng module bán hàng. Đổi sang CSKH hoặc CRM Manager để xem demo.</p>
+          <p>NV Kinh doanh dùng module bán hàng. Đăng xuất rồi đăng nhập CSKH hoặc Quản lý CRM để xem dashboard.</p>
         </section>
       </main>
     </div>
   </div>
 
-  <script src="/home.js?v=3"></script>
-  <script src="/shell-nav.js?v=2"></script>
+  <script src="/home.js?v=15"></script>
+  <script src="/shell-nav.js?v=6"></script>
 </body>
 </html>
