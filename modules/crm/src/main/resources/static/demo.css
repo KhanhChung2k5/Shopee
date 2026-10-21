@@ -8197,6 +8197,50 @@ html[data-theme="dark-orange"] .sync-chip {
 }
 .ticket-grid .bento-card.is-hero { min-height: 220px; grid-row: auto; }
 .ticket-grid .bento-card.is-wide { grid-column: 1 / -1; }
+
+/* Trang chủ: khóa cửa sổ, không cuộn html/body. */
+html:has(.home-workspace),
+html:has(.home-workspace) body {
+  height: 100%;
+  overflow: hidden;
+}
+.app:has(.home-workspace) {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+.app:has(.home-workspace) .sidebar {
+  min-height: 0;
+  height: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.shell:has(.home-workspace) {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.shell:has(.home-workspace) .topbar { flex-shrink: 0; }
+.workspace.home-workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 8px;
+}
+.home-workspace > .home-view:not([hidden]) {
+  flex: 1;
+  min-height: 0;
+}
+#ops-home.home-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
 .ticket-grid h3,
 .module-card h3 {
   margin: 0;
