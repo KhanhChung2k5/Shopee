@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import CatalogProductGrid from '../components/CatalogProductGrid'
+import { Alert, Button, Card, Loading, Page, PageHeader, inputClass } from '../components/ui'
 import { cacheCategories, fetchCategories, fetchProducts, getCachedCategories, type CatalogCategory, type CatalogProductSummary } from '../lib/catalog'
 
 const PAGE_SIZE = 12
@@ -94,41 +95,50 @@ export default function CategoryPage() {
   const visible = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   return (
-    <div className="container" style={{ paddingBlock: 'var(--space-5)' }}>
-      <nav aria-label="breadcrumb" style={{ fontSize: 13, color: 'var(--color-muted-foreground)', marginBottom: 'var(--space-3)' }}>
-        <Link to="/">Trang chủ</Link> / {category?.name ?? 'Danh mục'}
-      </nav>
-      <h1 className="section-title">{category?.name ?? (loading ? 'Đang tải danh mục…' : 'Không tìm thấy danh mục')}</h1>
-      <div className="filter-bar" role="group" aria-label="Lọc và sắp xếp sản phẩm">
-        <input aria-label="Tìm trong danh mục" className="search__input" style={{ position: 'static', maxWidth: 260 }} placeholder="Tìm tên sản phẩm..." value={query} onChange={(event) => { setQuery(event.target.value); setPage(0) }} />
-        <select aria-label="Lọc thương hiệu" className="filter-chip" value={brand} onChange={(event) => { setBrand(event.target.value); setPage(0) }}>
+    <Page>
+      <PageHeader
+        breadcrumb={[{ label: 'Trang chủ', to: '/' }, { label: category?.name ?? 'Danh mục' }]}
+        title={category?.name ?? (loading ? 'Đang tải danh mục…' : 'Không tìm thấy danh mục')}
+        subtitle={loading ? undefined : `${filtered.length} sản phẩm`}
+      />
+
+      <Card className="flex flex-wrap items-center gap-space-sm !p-space-md" role="group" aria-label="Lọc và sắp xếp sản phẩm">
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
+          <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-lg text-on-surface-variant">search</span>
+          <input aria-label="Tìm trong danh mục" className={`${inputClass} pl-9`} placeholder="Tìm tên sản phẩm..." value={query} onChange={(event) => { setQuery(event.target.value); setPage(0) }} />
+        </div>
+        <select aria-label="Lọc thương hiệu" className={`${inputClass} !w-auto`} value={brand} onChange={(event) => { setBrand(event.target.value); setPage(0) }}>
           <option value="">Tất cả thương hiệu</option>
           {brands.map((item) => <option key={item} value={item}>{item}</option>)}
         </select>
-        <select aria-label="Lọc loại sản phẩm" className="filter-chip" value={productType} onChange={(event) => { setProductType(event.target.value); setPage(0) }}>
+        <select aria-label="Lọc loại sản phẩm" className={`${inputClass} !w-auto`} value={productType} onChange={(event) => { setProductType(event.target.value); setPage(0) }}>
           <option value="">Tất cả loại</option>
           <option value="game_disc">Đĩa game</option>
           <option value="controller">Tay cầm</option>
           <option value="accessory">Phụ kiện</option>
         </select>
-        <select aria-label="Sắp xếp sản phẩm" className="filter-chip" value={sort} onChange={(event) => setSort(event.target.value)}>
+        <select aria-label="Sắp xếp sản phẩm" className={`${inputClass} !w-auto md:ml-auto`} value={sort} onChange={(event) => setSort(event.target.value)}>
           <option value="name">Tên A–Z</option>
           <option value="name-desc">Tên Z–A</option>
           <option value="price-asc">Giá tăng dần</option>
           <option value="price-desc">Giá giảm dần</option>
         </select>
-      </div>
+      </Card>
 
-      {error && <p role="alert" style={{ color: 'var(--color-urgent)' }}>{error}</p>}
-      {loading ? <p>Đang tải sản phẩm…</p> : <>
-        <p style={{ color: 'var(--color-muted-foreground)', fontSize: 13 }}>Hiển thị {filtered.length === 0 ? 0 : page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} trong {filtered.length} sản phẩm</p>
+      {error && <Alert>{error}</Alert>}
+      {loading ? <Loading>Đang tải sản phẩm…</Loading> : <>
+        <p className="font-body-md text-body-md text-on-surface-variant">
+          Hiển thị {filtered.length === 0 ? 0 : page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} trong {filtered.length} sản phẩm
+        </p>
         <CatalogProductGrid products={visible} />
-        {pageCount > 1 && <nav className="filter-bar" aria-label="Phân trang">
-          <button className="filter-chip" type="button" disabled={page === 0} onClick={() => setPage((value) => value - 1)}>← Trước</button>
-          <span>Trang {page + 1}/{pageCount}</span>
-          <button className="filter-chip" type="button" disabled={page + 1 >= pageCount} onClick={() => setPage((value) => value + 1)}>Tiếp →</button>
+        {pageCount > 1 && <nav className="flex items-center justify-center gap-space-md" aria-label="Phân trang">
+          <Button variant="outline" icon="chevron_left" disabled={page === 0} onClick={() => setPage((value) => value - 1)}>Trước</Button>
+          <span className="font-title-md text-title-md text-on-surface">Trang {page + 1}/{pageCount}</span>
+          <Button variant="outline" disabled={page + 1 >= pageCount} onClick={() => setPage((value) => value + 1)}>
+            Tiếp <span className="material-symbols-outlined text-base">chevron_right</span>
+          </Button>
         </nav>}
       </>}
-    </div>
+    </Page>
   )
 }

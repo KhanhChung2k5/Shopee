@@ -26,7 +26,7 @@ export default function DonutChart({ segments, size = 120, thickness = 16 }: {
     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
         <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--color-border)" strokeWidth={thickness} />
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--st-line)" strokeWidth={thickness} />
           {arcs.map((a) => (
             <circle
               key={a.label}
@@ -42,7 +42,7 @@ export default function DonutChart({ segments, size = 120, thickness = 16 }: {
             />
           ))}
         </g>
-        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fontSize="20" fontWeight="800" fill="var(--color-foreground)">
+        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fontSize="20" fontWeight="800" fill="var(--st-on-surface)">
           {total}
         </text>
       </svg>
@@ -50,7 +50,7 @@ export default function DonutChart({ segments, size = 120, thickness = 16 }: {
         {segments.map((s) => (
           <li key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
             <span style={{ width: 10, height: 10, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
-            <span style={{ color: 'var(--color-muted-foreground)' }}>{s.label}</span>
+            <span style={{ color: 'var(--st-on-surface-variant)' }}>{s.label}</span>
             <strong>{s.value}</strong>
           </li>
         ))}

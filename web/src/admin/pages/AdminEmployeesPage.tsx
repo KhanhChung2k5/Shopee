@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useAuth } from '../../state/AuthContext'
 import { apiFetch, ApiError } from '../../lib/api'
+import { a, chipClass } from '../adminUi'
+import { buttonClass } from '../../components/ui'
 
 type Department = 'sales' | 'warehouse' | 'admin' | 'cs'
 
@@ -109,63 +111,58 @@ export default function AdminEmployeesPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="flex flex-wrap items-center justify-between gap-space-md mb-space-md">
         <h1>
           Nhân viên ({filtered.length}/{employees.length})
         </h1>
-        <button type="button" className="button button--primary" onClick={() => setShowCreateForm((v) => !v)}>
+        <button type="button" className={buttonClass('primary')} onClick={() => setShowCreateForm((v) => !v)}>
           {showCreateForm ? 'Đóng' : '+ Thêm nhân viên'}
         </button>
       </div>
 
-      {loadError && <p style={{ color: 'var(--color-urgent)' }}>{loadError}</p>}
+      {loadError && <p className="font-body-md text-body-md text-error mb-space-md">{loadError}</p>}
 
       {showCreateForm && (
         <form
           onSubmit={submitCreate}
-          className="checkout-section"
-          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}
+          className={`${a.card} grid grid-cols-1 md:grid-cols-2 gap-space-md mb-space-lg`}
         >
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
+          <label className="flex flex-col gap-1 font-label-md text-label-md text-on-surface-variant">
             Họ tên
             <input
-              className="search__input"
+              className={a.input}
               required
               value={createForm.fullName}
               onChange={(e) => setCreateForm((f) => ({ ...f, fullName: e.target.value }))}
-              style={{ paddingInline: 16, position: 'static' }}
             />
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
+          <label className="flex flex-col gap-1 font-label-md text-label-md text-on-surface-variant">
             Email
             <input
-              className="search__input"
+              className={a.input}
               type="email"
               required
               value={createForm.email}
               onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
-              style={{ paddingInline: 16, position: 'static' }}
             />
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
+          <label className="flex flex-col gap-1 font-label-md text-label-md text-on-surface-variant">
             Mật khẩu tạm
             <input
-              className="search__input"
+              className={a.input}
               type="password"
               required
               minLength={6}
               value={createForm.password}
               onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
-              style={{ paddingInline: 16, position: 'static' }}
             />
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
+          <label className="flex flex-col gap-1 font-label-md text-label-md text-on-surface-variant">
             Bộ phận
             <select
-              className="search__input"
+              className={a.input}
               value={createForm.department}
               onChange={(e) => setCreateForm((f) => ({ ...f, department: e.target.value as Department }))}
-              style={{ paddingInline: 16, position: 'static' }}
             >
               {(['sales', 'warehouse', 'admin', 'cs'] as Department[]).map((d) => (
                 <option key={d} value={d}>
@@ -174,28 +171,27 @@ export default function AdminEmployeesPage() {
               ))}
             </select>
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
+          <label className="flex flex-col gap-1 font-label-md text-label-md text-on-surface-variant">
             Chức danh
             <input
-              className="search__input"
+              className={a.input}
               value={createForm.position}
               onChange={(e) => setCreateForm((f) => ({ ...f, position: e.target.value }))}
-              style={{ paddingInline: 16, position: 'static' }}
             />
           </label>
-          {createError && <p style={{ color: 'var(--color-urgent)', gridColumn: '1 / -1', margin: 0 }}>{createError}</p>}
-          <button className="button button--primary" type="submit" style={{ gridColumn: '1 / -1', justifySelf: 'start' }}>
+          {createError && <p className="col-span-full font-body-md text-body-md text-error">{createError}</p>}
+          <button className={buttonClass('primary', 'md', 'col-span-full justify-self-start')} type="submit">
             Tạo nhân viên
           </button>
         </form>
       )}
 
-      <div className="filter-bar">
+      <div className={`${a.filterBar} mb-space-md`}>
         {DEPT_FILTERS.map((f) => (
           <button
             key={f.value}
             type="button"
-            className={`filter-chip${deptFilter === f.value ? ' filter-chip--active' : ''}`}
+            className={chipClass(deptFilter === f.value)}
             onClick={() => setDeptFilter(f.value)}
           >
             {f.label}
@@ -203,8 +199,8 @@ export default function AdminEmployeesPage() {
         ))}
       </div>
 
-      <div className="admin-table-wrap">
-        <table className="admin-table">
+      <div className={a.tableWrap}>
+        <table className={a.table}>
           <thead>
             <tr>
               <th>Họ tên</th>
@@ -219,13 +215,12 @@ export default function AdminEmployeesPage() {
               editingId === emp.id ? (
                 <tr key={emp.id}>
                   <td colSpan={5}>
-                    <form onSubmit={submitEdit} style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+                    <form onSubmit={submitEdit} className="flex flex-wrap items-center gap-space-sm">
                       <strong>{emp.fullName ?? emp.email}</strong>
                       <select
-                        className="search__input"
+                        className={`${a.input} !w-40`}
                         value={editForm.department}
                         onChange={(e) => setEditForm((f) => ({ ...f, department: e.target.value as Department }))}
-                        style={{ paddingInline: 12, position: 'static', width: 160 }}
                       >
                         {(['sales', 'warehouse', 'admin', 'cs'] as Department[]).map((d) => (
                           <option key={d} value={d}>
@@ -234,16 +229,15 @@ export default function AdminEmployeesPage() {
                         ))}
                       </select>
                       <input
-                        className="search__input"
+                        className={`${a.input} !w-44`}
                         placeholder="Chức danh"
                         value={editForm.position}
                         onChange={(e) => setEditForm((f) => ({ ...f, position: e.target.value }))}
-                        style={{ paddingInline: 12, position: 'static', width: 180 }}
                       />
-                      <button className="button button--primary" type="submit">
+                      <button className={buttonClass('primary')} type="submit">
                         Lưu
                       </button>
-                      <button type="button" className="button button--outline" onClick={() => setEditingId(null)}>
+                      <button type="button" className={buttonClass('outline')} onClick={() => setEditingId(null)}>
                         Huỷ
                       </button>
                     </form>
@@ -256,7 +250,7 @@ export default function AdminEmployeesPage() {
                   <td>{DEPARTMENT_LABEL[emp.department]}</td>
                   <td>{emp.position ?? '—'}</td>
                   <td>
-                    <button type="button" className="button button--outline" onClick={() => startEdit(emp)}>
+                    <button type="button" className={buttonClass('outline')} onClick={() => startEdit(emp)}>
                       Sửa
                     </button>
                   </td>
@@ -267,7 +261,7 @@ export default function AdminEmployeesPage() {
         </table>
       </div>
 
-      <p style={{ color: 'var(--color-muted-foreground)', fontSize: 13.5, marginTop: 'var(--space-3)' }}>
+      <p className="mt-space-md font-body-md text-body-md text-on-surface-variant">
         Đang đăng nhập với quyền: <code>{user?.role}</code>. Chỉ tài khoản thuộc bộ phận <code>admin</code> mới tạo/sửa được nhân viên
         (backend trả 403 nếu không đúng quyền).
       </p>

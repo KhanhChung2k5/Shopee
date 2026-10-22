@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { apiFetch } from '../../lib/api'
 import type { InvoiceDiscount, PromotionProgram } from './types'
 import { errorMessage, money } from './types'
+import { a } from '../adminUi'
+import { buttonClass } from '../../components/ui'
 
 interface InvoiceForm {
   promotionProgramId: string
@@ -80,12 +82,12 @@ export default function InvoiceDiscountManager({ token, programs, discounts, onC
   }
 
   return (
-    <section className="admin-stat-card" style={{ marginTop: 'var(--space-4)' }}>
-      <h2 style={{ marginTop: 0 }}>Ưu đãi hóa đơn ({discounts.length})</h2>
-      <form onSubmit={save} className="marketing-form">
+    <section className={`${a.card} mt-space-lg`}>
+      <h2 className="font-headline-md text-headline-md text-on-surface mb-space-md">Ưu đãi hóa đơn ({discounts.length})</h2>
+      <form onSubmit={save} className={a.formGrid}>
         <label>
           Chương trình
-          <select className="search__input" required value={form.promotionProgramId}
+          <select className={a.input} required value={form.promotionProgramId}
             onChange={(event) => setForm({ ...form, promotionProgramId: event.target.value })}>
             <option value="">Chọn chương trình</option>
             {programs.map((program) => <option key={program.id} value={program.id}>{program.code} · {program.name}</option>)}
@@ -93,7 +95,7 @@ export default function InvoiceDiscountManager({ token, programs, discounts, onC
         </label>
         <label>
           Kiểu giảm
-          <select className="search__input" value={form.kind}
+          <select className={a.input} value={form.kind}
             onChange={(event) => setForm({ ...form, kind: event.target.value as InvoiceForm['kind'], value: '' })}>
             <option value="percentage">Phần trăm</option>
             <option value="fixed_amount">Số tiền</option>
@@ -101,21 +103,21 @@ export default function InvoiceDiscountManager({ token, programs, discounts, onC
         </label>
         <label>
           Giá trị giảm
-          <input className="search__input" type="number" required min="0.01"
+          <input className={a.input} type="number" required min="0.01"
             max={form.kind === 'percentage' ? '100' : '9999999999.99'} step="0.01"
             value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} />
         </label>
-        {error && <p role="alert" className="marketing-form__message">{error}</p>}
-        <div className="marketing-form__actions">
-          <button className="button button--primary" type="submit" disabled={busy || programs.length === 0}>
+        {error && <p role="alert" className={a.formMessage}>{error}</p>}
+        <div className={a.formActions}>
+          <button className={buttonClass('primary')} type="submit" disabled={busy || programs.length === 0}>
             {busy ? 'Đang lưu...' : editingId ? 'Lưu ưu đãi' : 'Thêm ưu đãi'}
           </button>
-          {editingId && <button className="button button--outline" type="button" onClick={reset}>Huỷ sửa</button>}
+          {editingId && <button className={buttonClass('outline')} type="button" onClick={reset}>Huỷ sửa</button>}
         </div>
       </form>
 
-      <div className="admin-table-wrap">
-        <table className="admin-table">
+      <div className={a.tableWrap}>
+        <table className={a.table}>
           <thead><tr><th>Chương trình</th><th>Mức giảm</th><th>Thao tác</th></tr></thead>
           <tbody>
             {discounts.map((discount) => (
@@ -123,9 +125,9 @@ export default function InvoiceDiscountManager({ token, programs, discounts, onC
                 <td>{programs.find((program) => program.id === discount.promotionProgramId)?.code ?? '—'}</td>
                 <td>{discount.discountAmount === null ? `${discount.discountPercent}%` : money.format(discount.discountAmount)}</td>
                 <td>
-                  <div className="marketing-actions">
-                    <button className="button button--outline" type="button" onClick={() => edit(discount)}>Sửa</button>
-                    <button className="button button--outline" type="button" onClick={() => remove(discount)}>Xóa</button>
+                  <div className={a.rowActions}>
+                    <button className={buttonClass('outline')} type="button" onClick={() => edit(discount)}>Sửa</button>
+                    <button className={buttonClass('outline')} type="button" onClick={() => remove(discount)}>Xóa</button>
                   </div>
                 </td>
               </tr>

@@ -1,6 +1,6 @@
 // Minimal inline sparkline — no charting library, matches the "big number +
 // mini trend line inside the stat card" pattern seen on dashboard-style UIs.
-export default function Sparkline({ values, color = 'var(--color-primary)', width = 120, height = 32 }: {
+export default function Sparkline({ values, color = 'var(--st-primary)', width = 120, height = 32 }: {
   values: number[]
   color?: string
   width?: number

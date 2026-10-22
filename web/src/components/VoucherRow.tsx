@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Alert, buttonClass } from './ui'
 import { formatVnd } from '../lib/catalog'
 import { apiFetch } from '../lib/api'
 import { useAuth } from '../state/AuthContext'
@@ -30,7 +31,10 @@ export default function VoucherRow() {
     return () => { active = false }
   }, [token, user?.role])
 
-  const loading = Boolean(token && user?.role === 'buyer' && result?.token !== token)
+  // Staff accounts have no buyer vouchers — nothing useful to show them here.
+  if (token && user?.role !== 'buyer') return null
+
+  const loading = Boolean(token && result?.token !== token)
   const vouchers = result?.token === token ? result.vouchers : []
   const error = (result?.token === token ? result.error : '') || copyError
 
@@ -45,38 +49,57 @@ export default function VoucherRow() {
   }
 
   return (
-    <section id="vouchers" className="section" aria-labelledby="vouchers-heading">
-      <div className="container">
-        <h2 id="vouchers-heading" className="section-title section-title--plain">Mã giảm giá dành cho bạn</h2>
-        {!token && <p><Link to="/dang-nhap">Đăng nhập</Link> để xem voucher phù hợp với bạn.</p>}
-        {token && user?.role === 'buyer' && loading && <p>Đang tải voucher…</p>}
-        {token && user?.role === 'buyer' && error && <p role="alert">{error}</p>}
-        {token && user?.role === 'buyer' && !loading && !error && vouchers.length === 0 && (
-          <p>Hiện chưa có voucher khả dụng cho bạn.</p>
-        )}
-        {token && user?.role === 'buyer' && vouchers.length > 0 && (
-          <ul className="voucher-row">
-            {vouchers.map((voucher) => (
-              <li key={voucher.id} className="voucher-card">
-                <div className="voucher-card__value">
-                  <span className="voucher-card__amount">
+    <section id="vouchers" className="space-y-space-md scroll-mt-44" aria-labelledby="vouchers-heading">
+      <div className="flex flex-wrap items-end justify-between gap-space-sm">
+        <div>
+          <h2 id="vouchers-heading" className="font-headline-lg text-headline-lg text-on-surface">Mã Giảm Giá Dành Cho Bạn</h2>
+          <p className="font-body-md text-body-md text-on-surface-variant">Sao chép mã và áp dụng ở bước thanh toán</p>
+        </div>
+        {token && <Link className="font-title-md text-title-md text-primary flex items-center gap-1 hover:underline" to="/kho-voucher">
+          Kho voucher <span className="material-symbols-outlined text-base">arrow_forward</span>
+        </Link>}
+      </div>
+
+      {!token && (
+        <div className="flex flex-wrap items-center justify-between gap-space-sm rounded-xl bg-primary-fixed px-space-lg py-space-md">
+          <p className="font-body-lg text-body-lg text-on-primary-fixed">Đăng nhập để xem voucher phù hợp với bạn.</p>
+          <Link className={buttonClass('primary')} to="/dang-nhap">Đăng nhập</Link>
+        </div>
+      )}
+      {token && loading && <p className="font-body-md text-body-md text-on-surface-variant">Đang tải voucher…</p>}
+      {token && error && <Alert>{error}</Alert>}
+      {token && !loading && !error && vouchers.length === 0 && (
+        <p className="font-body-md text-body-md text-on-surface-variant">Hiện chưa có voucher khả dụng cho bạn.</p>
+      )}
+      {token && vouchers.length > 0 && (
+        <ul className="flex gap-space-md overflow-x-auto pb-1 snap-x">
+          {vouchers.map((voucher) => {
+            const copied = copiedCode === voucher.code
+            return (
+              <li key={voucher.id} className="snap-start flex flex-shrink-0 w-80 bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+                <div className="w-24 flex-shrink-0 flex flex-col items-center justify-center gap-1 p-space-sm bg-primary text-on-primary text-center">
+                  <span className="font-headline-md text-headline-md">
                     {voucher.type === 'percentage' ? `-${voucher.value}%` : `-${formatVnd(voucher.value)}`}
                   </span>
-                  <span className="voucher-card__condition">Mã: {voucher.code}</span>
+                  <span className="font-label-sm text-label-sm opacity-90 break-all">{voucher.code}</span>
                 </div>
-                <div className="voucher-card__body">
-                  <p className="voucher-card__name">{voucher.programName}</p>
-                  <p className="voucher-card__expiry">Hết hạn: {new Date(voucher.endsAt).toLocaleString('vi-VN')}</p>
-                  <button className="button button--outline button--sm voucher-save" type="button"
-                    data-saved={copiedCode === voucher.code} onClick={() => void copyCode(voucher.code)}>
-                    {copiedCode === voucher.code ? 'Đã sao chép' : 'Sao chép mã'}
+                <div className="flex-1 min-w-0 p-space-md space-y-space-xs border-l-2 border-dashed border-line">
+                  <p className="font-title-md text-title-md text-on-surface line-clamp-2">{voucher.programName}</p>
+                  <p className="font-label-md text-label-md text-on-surface-variant">Hết hạn: {new Date(voucher.endsAt).toLocaleString('vi-VN')}</p>
+                  <button
+                    className={buttonClass(copied ? 'secondary' : 'outline', 'sm')}
+                    type="button"
+                    onClick={() => void copyCode(voucher.code)}
+                  >
+                    <span className="material-symbols-outlined text-sm">{copied ? 'check' : 'content_copy'}</span>
+                    {copied ? 'Đã sao chép' : 'Sao chép mã'}
                   </button>
                 </div>
               </li>
-            ))}
-          </ul>
-        )}
-      </div>
+            )
+          })}
+        </ul>
+      )}
     </section>
   )
 }

@@ -33,7 +33,7 @@ class PublicProductControllerTest {
         variants = mock(ProductVariantRepository.class);
         stocks = mock(InventoryStockRepository.class);
         categories = mock(CategoryRepository.class);
-        controller = new PublicProductController(products, variants, stocks, categories);
+        controller = new PublicProductController(products, variants, stocks, categories, mock(jakarta.persistence.EntityManager.class));
     }
 
     @Test

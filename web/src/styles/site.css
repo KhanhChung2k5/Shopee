@@ -56,7 +56,7 @@ input, select, textarea { font: inherit; }
 .profile-page__logout { flex-shrink: 0; }
 
 .section { padding-block: var(--space-6); }
-.section-title { font-size: 24px; font-weight: 800; margin-bottom: var(--space-4); }
+.section-title { font-size: 28px; font-weight: 700; margin-bottom: var(--space-4); letter-spacing: -0.01em; }
 .section-title--plain { color: var(--color-foreground); }
 .section-link {
   font-weight: 600; color: var(--color-primary); white-space: nowrap;
@@ -84,13 +84,20 @@ input, select, textarea { font: inherit; }
 
 /* ============ Header ============ */
 .site-header { position: sticky; top: 0; z-index: 100; background: var(--color-surface); box-shadow: 0 1px 0 var(--color-border); }
-.topbar { background: #FBEAE4; font-size: 12.5px; }
+.topbar { background: #0F172A; font-size: 12.5px; }
 .topbar__inner { display: flex; justify-content: space-between; padding-block: 6px; }
 .topbar__links { display: flex; gap: var(--space-4); }
-.topbar__links a { color: var(--color-primary-dark); }
-.topbar__links a:hover { text-decoration: underline; }
+.topbar__links a { color: rgba(255, 255, 255, .78); }
+.topbar__links a:hover { color: #fff; text-decoration: underline; }
 
 .main-header { padding-block: 14px; }
+
+/* Category nav row under the header (Stitch design, 2026-10) — real
+   categories from the catalog API, not a static mock link list. */
+.category-nav { background: var(--color-surface); border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); }
+.category-nav__inner { display: flex; gap: var(--space-4); overflow-x: auto; padding-block: 10px; }
+.category-nav__inner a { white-space: nowrap; font-size: 13px; font-weight: 600; color: var(--color-foreground); }
+.category-nav__inner a:hover { color: var(--color-primary); }
 .main-header__inner { display: flex; align-items: center; gap: var(--space-4); }
 
 .logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
@@ -188,6 +195,7 @@ input, select, textarea { font: inherit; }
 .category-grid a {
   display: flex; flex-direction: column; align-items: center; gap: 10px;
   padding: var(--space-3) var(--space-2); background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md); box-shadow: var(--shadow-card);
   font-size: 13px; font-weight: 600; text-align: center;
   transition: transform .15s ease, box-shadow .15s ease;
@@ -310,36 +318,44 @@ input, select, textarea { font: inherit; }
 .hero-tile:hover { box-shadow: var(--shadow-card-hover); }
 .hero-tile svg { flex-shrink: 0; color: var(--color-primary); }
 .hero-tile--app svg { color: var(--color-trust); }
-.hero-tile strong { display: block; font-size: 14px; margin-bottom: 2px; }
-.hero-tile span { font-size: 12.5px; color: var(--color-muted-foreground); }
+.hero-tile strong { display: block; font-size: 14px; margin: 3px 0 2px; }
+.hero-tile > div > span { display: block; font-size: 12.5px; color: var(--color-muted-foreground); }
+.hero-tile__eyebrow {
+  display: inline-block !important; width: auto; font-size: 10.5px !important; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .03em; padding: 2px 7px; border-radius: 4px;
+  background: var(--color-trust-light); color: var(--color-trust) !important;
+}
+.hero-tile__eyebrow--accent { background: var(--color-accent-light); color: var(--color-accent) !important; }
 
 /* ============ Flash sale ============ */
 .flash-section { padding-block: 0 var(--space-6); }
+/* Flash Sale as a single gradient banner card (Stitch design, 2026-10) —
+   was a plain section header + bare product row on the page background. */
+.flash-banner {
+  background: linear-gradient(120deg, var(--color-primary) 0%, #EA580C 100%);
+  border-radius: var(--radius-lg); padding: var(--space-4);
+}
 .flash-header { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4); flex-wrap: wrap; }
 .flash-title {
-  display: flex; align-items: center; gap: 8px; font-size: 23px; font-weight: 800;
-  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--color-urgent) 45%, transparent));
+  display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 800;
+  color: #fff; text-transform: uppercase; letter-spacing: .02em;
 }
-.flash-title span {
-  background: var(--gradient-fire); background-clip: text; -webkit-background-clip: text; color: transparent;
-}
-.flash-title svg { color: var(--color-urgent); }
+.flash-title span { color: #fff; }
+.flash-title svg { color: #fff; }
 .flash-timer {
   display: flex; align-items: center; gap: 7px; margin-right: auto;
-  background: var(--glass-bg); border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, .18); border: 1px solid rgba(255, 255, 255, .25);
   padding: 6px 12px; border-radius: 999px;
 }
-.flash-timer__label { font-size: 12.5px; color: var(--color-muted-foreground); margin-right: 2px; }
+.flash-timer__label { font-size: 12.5px; color: rgba(255, 255, 255, .9); margin-right: 2px; }
 .flash-timer__box {
-  /* Always a dark chip with white digits — independent of theme, so it
-     never inherits --color-foreground (which flips light/dark and used to
-     make the digits unreadable in dark mode). */
-  background: #14161A; color: #fff; font-weight: 800; font-size: 15px;
+  background: #0F172A; color: #fff; font-weight: 800; font-size: 15px;
   font-variant-numeric: tabular-nums; padding: 4px 8px; border-radius: 6px;
   min-width: 30px; text-align: center;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 0 10px -2px var(--color-accent);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
 }
-.flash-timer__sep { color: var(--color-accent); font-weight: 800; }
+.flash-timer__sep { color: #fff; font-weight: 800; }
+.flash-banner__status { color: #fff; }
 
 .product-row {
   display: flex; gap: var(--space-3); overflow-x: auto; padding-bottom: 8px;
@@ -349,7 +365,8 @@ input, select, textarea { font: inherit; }
 
 /* ============ Product card ============ */
 .product-card {
-  background: var(--color-surface); border-radius: var(--radius-md);
+  background: var(--color-surface); border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
   overflow: hidden; box-shadow: var(--shadow-card); display: flex; flex-direction: column;
   transition: transform .15s ease, box-shadow .15s ease;
 }
@@ -389,6 +406,16 @@ input, select, textarea { font: inherit; }
 .product-card__progress { height: 6px; border-radius: 999px; background: var(--color-primary-light); overflow: hidden; margin-top: 2px; }
 .product-card__progress-fill { height: 100%; background: var(--color-primary); }
 .product-card__sold { font-size: 11px; color: var(--color-muted-foreground); }
+.product-card__genuine {
+  align-self: flex-start; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+  background: var(--color-trust-light); color: var(--color-trust);
+}
+.product-card__cta {
+  display: flex; align-items: center; justify-content: center; gap: 5px; text-align: center; margin: 0 var(--space-3) var(--space-3);
+  padding: 7px; border-radius: var(--radius-sm); background: var(--color-primary); color: #fff;
+  font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em;
+}
+.product-card__cta:hover { background: var(--color-primary-dark); }
 
 .filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: var(--space-4); }
 .filter-chip {
@@ -398,6 +425,15 @@ input, select, textarea { font: inherit; }
 .filter-chip:hover { border-color: var(--color-primary); }
 .filter-chip--active { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-on-primary); }
 .filter-chip--clear { border-style: dashed; color: var(--color-muted-foreground); }
+
+.suggested-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-4); flex-wrap: wrap; }
+.suggested-head__desc { margin: 2px 0 0; font-size: 13px; color: var(--color-muted-foreground); }
+.suggested-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.suggested-tab {
+  padding: 7px 14px; border-radius: 999px; border: 1px solid var(--color-border); background: var(--color-surface);
+  font-size: 13px; font-weight: 600; color: var(--color-muted-foreground); cursor: pointer;
+}
+.suggested-tab--active { background: var(--color-foreground); border-color: var(--color-foreground); color: var(--color-surface); }
 
 .product-grid {
   display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-3);
@@ -712,43 +748,61 @@ input, select, textarea { font: inherit; }
 .order-detail-state__actions { display: flex; justify-content: center; gap: var(--space-2); flex-wrap: wrap; }
 
 /* ============ Trust bento ============ */
+/* Slim trust strip (Stitch design, 2026-10) — a single white bar of 4
+   icon+label items directly under the hero, not large colored cards. */
 .trust-bento {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3);
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card); overflow: hidden;
 }
 .trust-tile {
-  padding: var(--space-4); border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 8px;
-  transition: transform .15s ease, box-shadow .15s ease; box-shadow: 0 8px 24px -8px rgba(0, 0, 0, .45);
+  padding: var(--space-3) var(--space-4); display: flex; align-items: center; gap: 10px;
+  border-right: 1px solid var(--color-border);
 }
-.trust-tile:hover { box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .55); }
-.trust-tile:hover { transform: translateY(-3px); }
-.trust-tile strong { font-size: 15px; font-weight: 700; }
-.trust-tile span { font-size: 12.5px; opacity: .85; line-height: 1.4; }
-.trust-tile--primary { background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface)); color: var(--color-primary-dark); }
-.trust-tile--accent { background: color-mix(in srgb, var(--color-accent) 16%, var(--color-surface)); color: var(--color-accent); }
-.trust-tile--trust { background: color-mix(in srgb, var(--color-trust) 16%, var(--color-surface)); color: var(--color-trust); }
-.trust-tile--urgent { background: color-mix(in srgb, var(--color-urgent) 16%, var(--color-surface)); color: var(--color-urgent); }
+.trust-tile:last-child { border-right: none; }
+.trust-tile strong { font-size: 13.5px; font-weight: 700; color: var(--color-foreground); }
+.trust-tile__icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 999px; flex-shrink: 0;
+}
+.trust-tile--primary .trust-tile__icon { background: var(--color-primary-light); color: var(--color-primary); }
+.trust-tile--accent .trust-tile__icon { background: var(--color-accent-light); color: var(--color-accent); }
+.trust-tile--trust .trust-tile__icon { background: var(--color-trust-light); color: var(--color-trust); }
+.trust-tile--urgent .trust-tile__icon { background: var(--color-urgent-light); color: var(--color-urgent); }
 
 @media (max-width: 1024px) {
   .trust-bento { grid-template-columns: repeat(2, 1fr); }
+  .trust-tile:nth-child(2) { border-right: none; }
 }
 @media (max-width: 480px) {
   .trust-bento { grid-template-columns: 1fr; }
+  .trust-tile { border-right: none; border-bottom: 1px solid var(--color-border); }
+  .trust-tile:last-child { border-bottom: none; }
 }
 
 /* ============ Footer ============ */
 .site-footer { background: #1F2126; color: #C7C9D1; margin-top: var(--space-7); }
-.footer-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-5); padding-block: var(--space-6); }
-.footer-col h3 { color: #fff; font-size: 14px; margin-bottom: var(--space-3); font-family: var(--font-body); }
-.footer-col ul { display: flex; flex-direction: column; gap: 10px; }
+
+.footer-guarantees { background: #24262D; }
+.footer-guarantees__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); padding-block: var(--space-4); }
+.footer-guarantee { display: flex; flex-direction: column; gap: 2px; }
+.footer-guarantee strong { color: #fff; font-size: 13.5px; }
+.footer-guarantee span { font-size: 12px; color: #9AA0AC; }
+
+.footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: var(--space-5); padding-block: var(--space-6); }
+.footer-col h3 { color: #fff; font-size: 14px; margin-bottom: var(--space-3); font-family: var(--font-body); text-transform: uppercase; }
+.footer-col__subheading { margin-top: var(--space-4); }
+.footer-col ul { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .footer-col a { color: #C7C9D1; font-size: 13.5px; }
 .footer-col a:hover { color: #fff; }
+.footer-col--brand p { font-size: 13px; line-height: 1.6; margin: 0 0 var(--space-2); }
+.payment-icons { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 var(--space-2); padding: 0; list-style: none; }
 .payment-icons li {
   font-size: 12px; display: inline-flex; padding: 6px 10px; border: 1px solid #3A3D46;
-  border-radius: 6px; margin: 0 6px 6px 0; color: #C7C9D1;
+  border-radius: 6px; color: #C7C9D1;
 }
-.social-row { display: flex; gap: 8px; margin-bottom: var(--space-3); }
-.social-row .icon-button { background: #2B2E36; color: #fff; }
-.social-row .icon-button:hover { background: var(--color-primary); }
+.footer-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.footer-tags span { font-size: 11.5px; padding: 4px 8px; border-radius: 6px; background: #2B2E36; color: #9AA0AC; }
 .footer-note { font-size: 12.5px; margin: 0; }
 .footer-bottom { border-top: 1px solid #33353D; padding-block: var(--space-3); font-size: 12px; }
 .footer-bottom .container { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
@@ -911,4 +965,41 @@ input, select, textarea { font: inherit; }
   .carousel__track { transition: none; }
   .product-card, .category-grid a, .hero-tile { transition: none; }
   .reveal-grid > * { transition: none; opacity: 1; transform: none; }
+}
+
+/* ============ Top sellers + review showcase (Stitch design, 2026-10) ============ */
+.leaderboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.leaderboard-card {
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  padding: var(--space-4); box-shadow: var(--shadow-card);
+}
+.leaderboard-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.leaderboard-row { display: flex; align-items: center; gap: 10px; }
+.leaderboard-rank {
+  display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px;
+  border-radius: 999px; font-size: 12px; font-weight: 800; background: var(--color-background); color: var(--color-muted-foreground);
+  flex-shrink: 0;
+}
+.leaderboard-rank--1 { background: #FDE68A; color: #92400E; }
+.leaderboard-rank--2 { background: #E5E7EB; color: #374151; }
+.leaderboard-rank--3 { background: #FED7AA; color: #9A3412; }
+.leaderboard-name { flex: 1; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leaderboard-price { font-size: 13px; font-weight: 700; color: var(--color-primary-dark); white-space: nowrap; }
+
+.review-showcase-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.review-showcase-item { padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-border); }
+.review-showcase-item:last-child { border-bottom: none; padding-bottom: 0; }
+.review-showcase-item__head { display: flex; align-items: center; gap: 8px; }
+.review-showcase-item__head strong { margin-right: auto; }
+.review-showcase-item__verified {
+  font-size: 10px; font-weight: 700; color: var(--color-trust); background: var(--color-trust-light);
+  padding: 1px 6px; border-radius: 999px;
+}
+.review-showcase-item__stars { color: #EAB308; font-size: 12px; letter-spacing: 1px; }
+.review-showcase-item__product { font-size: 12px; color: var(--color-muted-foreground); margin: 2px 0 6px; }
+.review-showcase-item__comment { font-size: 13px; margin: 0; }
+.review-showcase-item__reply { font-size: 12px; color: var(--color-muted-foreground); margin: 6px 0 0; }
+
+@media (max-width: 768px) {
+  .leaderboard-grid { grid-template-columns: 1fr; }
 }

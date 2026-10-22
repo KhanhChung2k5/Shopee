@@ -3,6 +3,8 @@ import { age, type Customer, type CustomerStatus } from '../types/customer'
 import { formatVnd } from '../../data/sampleProducts'
 import { useAuth } from '../../state/AuthContext'
 import { apiFetch, ApiError } from '../../lib/api'
+import { a, chipClass, statusPillClass } from '../adminUi'
+import { buttonClass } from '../../components/ui'
 
 const STATUS_LABEL: Record<CustomerStatus, string> = {
   active: 'Hoạt động',
@@ -151,27 +153,26 @@ export default function AdminCustomersPage() {
 
   return (
     <div>
-      <div className="admin-toolbar">
-        <h1 style={{ margin: 0 }}>Khách hàng ({filtered.length}/{customers.length})</h1>
+      <div className={a.toolbar}>
+        <h1 className="!mb-0">Khách hàng ({filtered.length}/{customers.length})</h1>
       </div>
 
-      {loadError && <p style={{ color: 'var(--color-urgent)' }}>{loadError}</p>}
+      {loadError && <p className="font-body-md text-body-md text-error mb-space-md">{loadError}</p>}
 
-      <div className="admin-toolbar">
+      <div className={a.toolbar}>
         <input
-          className="search__input"
-          style={{ position: 'static', maxWidth: 280 }}
+          className={`${a.input} max-w-[280px]`}
           type="search"
           placeholder="Tìm theo tên hoặc email..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <div className="filter-bar" style={{ marginBottom: 0 }}>
+        <div className={a.filterBar}>
           {STATUS_FILTERS.map((f) => (
             <button
               key={f.value}
               type="button"
-              className={`filter-chip${statusFilter === f.value ? ' filter-chip--active' : ''}`}
+              className={chipClass(statusFilter === f.value)}
               onClick={() => setStatusFilter(f.value)}
             >
               {f.label}
@@ -181,19 +182,19 @@ export default function AdminCustomersPage() {
       </div>
 
       {selected.size > 0 && (
-        <div className="admin-bulk-bar">
+        <div className={a.bulkBar}>
           <span>{selected.size} đã chọn</span>
-          <button className="button button--outline button--sm" type="button" onClick={bulkLock}>Khoá đã chọn</button>
-          <button className="button button--outline button--sm" type="button" onClick={bulkSoftDelete}>Xoá mềm đã chọn</button>
-          <button className="button button--outline button--sm" type="button" onClick={() => setSelected(new Set())}>Bỏ chọn</button>
+          <button className={buttonClass('outline', 'sm')} type="button" onClick={bulkLock}>Khoá đã chọn</button>
+          <button className={buttonClass('outline', 'sm')} type="button" onClick={bulkSoftDelete}>Xoá mềm đã chọn</button>
+          <button className={buttonClass('outline', 'sm')} type="button" onClick={() => setSelected(new Set())}>Bỏ chọn</button>
         </div>
       )}
 
-      <div className="admin-table-wrap">
-        <table className="admin-table">
+      <div className={a.tableWrap}>
+        <table className={a.table}>
           <thead>
             <tr>
-              <th style={{ width: 32 }}>
+              <th className="w-8">
                 <input
                   type="checkbox"
                   aria-label="Chọn tất cả"
@@ -201,11 +202,11 @@ export default function AdminCustomersPage() {
                   onChange={toggleSelectAll}
                 />
               </th>
-              <th className="admin-table__sortable" onClick={() => toggleSort('fullName')}>Họ tên{sortArrow('fullName')}</th>
+              <th className={a.sortable} onClick={() => toggleSort('fullName')}>Họ tên{sortArrow('fullName')}</th>
               <th>Email / SĐT</th>
-              <th className="admin-table__sortable" onClick={() => toggleSort('age')}>Tuổi{sortArrow('age')}</th>
-              <th className="admin-table__sortable" onClick={() => toggleSort('totalOrders')}>Đơn hàng{sortArrow('totalOrders')}</th>
-              <th className="admin-table__sortable" onClick={() => toggleSort('ltv')}>LTV{sortArrow('ltv')}</th>
+              <th className={a.sortable} onClick={() => toggleSort('age')}>Tuổi{sortArrow('age')}</th>
+              <th className={a.sortable} onClick={() => toggleSort('totalOrders')}>Đơn hàng{sortArrow('totalOrders')}</th>
+              <th className={a.sortable} onClick={() => toggleSort('ltv')}>LTV{sortArrow('ltv')}</th>
               <th>Trạng thái</th>
               <th>Hành động</th>
             </tr>
@@ -214,10 +215,10 @@ export default function AdminCustomersPage() {
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={8}>
-                  <div className="admin-empty">
+                  <div className={a.empty}>
                     <p>{customers.length === 0 ? 'Chưa có khách hàng nào đăng ký.' : 'Không có khách hàng nào khớp bộ lọc hiện tại.'}</p>
                     {customers.length > 0 && (
-                      <button className="button button--outline button--sm" type="button" onClick={clearFilters}>Xoá bộ lọc</button>
+                      <button className={buttonClass('outline', 'sm')} type="button" onClick={clearFilters}>Xoá bộ lọc</button>
                     )}
                   </div>
                 </td>
@@ -237,26 +238,25 @@ export default function AdminCustomersPage() {
                   <td>
                     {c.email ?? '—'}
                     <br />
-                    <span style={{ color: 'var(--color-muted-foreground)' }}>{c.phone ?? '—'}</span>
+                    <span className="text-on-surface-variant">{c.phone ?? '—'}</span>
                   </td>
                   <td>{age(c.dob) ?? '—'}</td>
                   <td>{c.totalOrders}</td>
                   <td>{formatVnd(c.ltv)}</td>
                   <td>
-                    <span className={`status-pill status-pill--${c.status}`}>{STATUS_LABEL[c.status]}</span>
+                    <span className={statusPillClass(c.status)}>{STATUS_LABEL[c.status]}</span>
                   </td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
+                  <td className="whitespace-nowrap">
                     <button
-                      className="button button--outline button--sm"
+                      className={buttonClass('outline', 'sm', 'mr-1.5')}
                       type="button"
                       disabled={c.status === 'deleted'}
                       onClick={() => toggleLock(c.id)}
-                      style={{ marginRight: 6 }}
                     >
                       {c.status === 'locked' ? 'Mở khoá' : 'Khoá'}
                     </button>
                     <button
-                      className="button button--outline button--sm"
+                      className={buttonClass('outline', 'sm')}
                       type="button"
                       disabled={c.status === 'deleted'}
                       onClick={() => softDelete(c.id)}
@@ -271,12 +271,12 @@ export default function AdminCustomersPage() {
         </table>
       </div>
 
-      <p style={{ color: 'var(--color-muted-foreground)', fontSize: 13.5, marginTop: 'var(--space-3)' }}>
+      <p className="mt-space-md font-body-md text-body-md text-on-surface-variant">
         Dữ liệu thật từ bảng <code>users</code> (role=buyer). "Đơn hàng"/"LTV" sẽ luôn hiển thị 0 cho tới khi module Order được xây dựng.
         Khách hàng tự đăng ký qua app — admin không tạo tài khoản khách hàng trực tiếp.
       </p>
 
-      {toast.message && <div className="admin-toast" role="status">{toast.message}</div>}
+      {toast.message && <div className={a.toast} role="status">{toast.message}</div>}
     </div>
   )
 }

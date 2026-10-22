@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { Alert, Button, Card, Field, cx, inputClass } from '../components/ui'
 import { useAuth } from '../state/AuthContext'
 import { ApiError } from '../lib/api'
 
@@ -38,99 +39,85 @@ export default function LoginPage() {
     }
   }
 
+  const switchMode = (next: 'login' | 'register') => {
+    setMode(next)
+    setError(null)
+  }
+
+  const tabClass = (active: boolean) => cx(
+    'flex-1 py-2 rounded-lg font-title-md text-title-md transition-colors cursor-pointer',
+    active ? 'bg-surface-container-lowest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
+  )
+
   return (
-    <div className="container auth-page">
-      <div className="auth-card">
-        <div className="auth-card__intro">
-          <p>Chợ Tốt Mua</p>
-          <h1>{mode === 'login' ? 'Chào mừng bạn quay lại' : 'Tạo tài khoản mới'}</h1>
-          <span>{mode === 'login' ? 'Đăng nhập để theo dõi đơn hàng và lưu sản phẩm.' : 'Chỉ mất một phút để bắt đầu mua sắm.'}</span>
+    <div className="max-w-[1280px] mx-auto px-margin md:px-margin-desktop py-space-xl">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-gutter-desktop items-stretch max-w-4xl mx-auto">
+        <div className="hidden lg:flex flex-col justify-between rounded-xl p-space-xl bg-gradient-to-br from-primary via-primary-container to-primary text-on-primary shadow-lg">
+          <div className="space-y-space-sm">
+            <p className="font-label-md text-label-md uppercase tracking-wider opacity-90">Chợ Tốt Mua</p>
+            <h2 className="font-headline-xl text-headline-xl">Gaming gear chính hãng, giao nhanh tận tay.</h2>
+          </div>
+          <ul className="space-y-space-sm font-body-lg text-body-lg">
+            {[['verified', 'Cam kết hàng chính hãng 100%'], ['local_shipping', 'Theo dõi đơn hàng mọi lúc'], ['redeem', 'Tích điểm & nhận voucher độc quyền']].map(([icon, text]) => (
+              <li key={icon} className="flex items-center gap-space-sm">
+                <span className="material-symbols-outlined">{icon}</span>{text}
+              </li>
+            ))}
+          </ul>
         </div>
-      <div className="auth-tabs" role="tablist" aria-label="Đăng nhập hoặc đăng ký">
-        <button
-          type="button"
-          className={`auth-tabs__button${mode === 'login' ? ' auth-tabs__button--active' : ''}`}
-          onClick={() => {
-            setMode('login')
-            setError(null)
-          }}
-        >
-          Đăng nhập
-        </button>
-        <button
-          type="button"
-          className={`auth-tabs__button${mode === 'register' ? ' auth-tabs__button--active' : ''}`}
-          onClick={() => {
-            setMode('register')
-            setError(null)
-          }}
-        >
-          Đăng ký
-        </button>
-      </div>
 
-      <form className="form-stack" onSubmit={handleSubmit}>
-        {mode === 'register' && (
-          <label className="form-field">
-            Họ và tên
-            <input
-              type="text"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="form-field__input"
-            />
-          </label>
-        )}
-        <label className="form-field">
-          {mode === 'login' ? 'Email hoặc số điện thoại' : 'Email'}
-          <input
-            type={mode === 'login' ? 'text' : 'email'}
-            required
-            value={emailOrPhone}
-            onChange={(e) => setEmailOrPhone(e.target.value)}
-            className="form-field__input"
-          />
-        </label>
-        <label className="form-field">
-          Mật khẩu
-          <input
-            type="password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="form-field__input"
-          />
-        </label>
-        {mode === 'register' && (
-          <label className="form-field">
-            Nhập lại mật khẩu
-            <input
-              type="password"
-              required
-              minLength={8}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="form-field__input"
-            />
-          </label>
-        )}
+        <Card className="!p-space-xl space-y-space-lg">
+          <div className="space-y-space-xs">
+            <p className="font-label-md text-label-md text-primary uppercase">Chợ Tốt Mua</p>
+            <h1 className="font-headline-lg text-headline-lg text-on-surface">{mode === 'login' ? 'Chào mừng bạn quay lại' : 'Tạo tài khoản mới'}</h1>
+            <p className="font-body-md text-body-md text-on-surface-variant">{mode === 'login' ? 'Đăng nhập để theo dõi đơn hàng và lưu sản phẩm.' : 'Chỉ mất một phút để bắt đầu mua sắm.'}</p>
+          </div>
 
-        {error && (
-          <p style={{ fontSize: 13, color: 'var(--color-urgent)', margin: 0 }} role="alert">
-            {error}
-          </p>
-        )}
+          <div className="flex gap-1 p-1 rounded-lg bg-surface-container" role="tablist" aria-label="Đăng nhập hoặc đăng ký">
+            <button type="button" role="tab" aria-selected={mode === 'login'} className={tabClass(mode === 'login')} onClick={() => switchMode('login')}>Đăng nhập</button>
+            <button type="button" role="tab" aria-selected={mode === 'register'} className={tabClass(mode === 'register')} onClick={() => switchMode('register')}>Đăng ký</button>
+          </div>
 
-        {mode === 'register' && (
-          <p className="auth-card__hint">Mật khẩu có ít nhất 8 ký tự, gồm chữ và số.</p>
-        )}
+          <form className="space-y-space-md" onSubmit={handleSubmit}>
+            {mode === 'register' && (
+              <Field label="Họ và tên">
+                <input type="text" required autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
+              </Field>
+            )}
+            <Field label={mode === 'login' ? 'Email hoặc số điện thoại' : 'Email'}>
+              <input
+                type={mode === 'login' ? 'text' : 'email'}
+                required
+                autoComplete={mode === 'login' ? 'username' : 'email'}
+                value={emailOrPhone}
+                onChange={(e) => setEmailOrPhone(e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Mật khẩu" hint={mode === 'register' ? 'Mật khẩu có ít nhất 8 ký tự, gồm chữ và số.' : undefined}>
+              <input
+                type="password"
+                required
+                minLength={8}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+            {mode === 'register' && (
+              <Field label="Nhập lại mật khẩu">
+                <input type="password" required minLength={8} autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={inputClass} />
+              </Field>
+            )}
 
-        <button className="button button--primary auth-card__submit" type="submit" disabled={submitting}>
-          {submitting ? 'Đang xử lý...' : mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
-        </button>
-      </form>
+            {error && <Alert>{error}</Alert>}
+
+            <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+              {submitting ? 'Đang xử lý...' : mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
+            </Button>
+          </form>
+        </Card>
       </div>
     </div>
   )

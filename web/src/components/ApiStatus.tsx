@@ -3,6 +3,12 @@ import { API_BASE } from '../lib/api'
 
 type Status = 'checking' | 'up' | 'down'
 
+const DOT: Record<Status, string> = {
+  checking: 'bg-outline animate-pulse',
+  up: 'bg-secondary',
+  down: 'bg-error',
+}
+
 export default function ApiStatus() {
   const [status, setStatus] = useState<Status>('checking')
 
@@ -24,8 +30,8 @@ export default function ApiStatus() {
   const label = status === 'checking' ? 'Đang kiểm tra API...' : status === 'up' ? 'API: hoạt động' : 'API: không kết nối được'
 
   return (
-    <span className={`api-status api-status--${status}`}>
-      <span className="api-status__dot" aria-hidden="true" />
+    <span className="inline-flex items-center gap-1.5 font-label-sm text-label-sm">
+      <span className={`w-2 h-2 rounded-full ${DOT[status]}`} aria-hidden="true" />
       {label}
     </span>
   )

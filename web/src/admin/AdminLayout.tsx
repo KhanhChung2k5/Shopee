@@ -1,5 +1,4 @@
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
-import './admin.css'
 import { useAuth } from '../state/AuthContext'
 import { canAccessSection, type Department } from './access'
 
@@ -91,47 +90,56 @@ export default function AdminLayout() {
   })).filter((group) => group.items.length > 0)
 
   return (
-    <div className="admin-shell">
-      <aside className="admin-sidebar">
-        <div className="admin-sidebar__brand">
-          Chợ Tốt Mua
-          <span>Trang quản trị</span>
+    <div className="flex flex-col md:flex-row min-h-screen bg-surface text-on-surface">
+      <aside className="md:sticky md:top-0 md:h-screen md:w-60 flex-shrink-0 flex md:flex-col items-center md:items-stretch gap-space-md md:gap-0 bg-[#14161a] text-[#e4e6eb] px-space-md py-space-sm md:py-space-lg">
+        <div className="font-headline-md text-headline-md text-white md:mb-space-xl md:px-space-sm whitespace-nowrap">
+          Chợ Tốt <span className="text-[#ffb4a2]">Mua</span>
+          <span className="hidden md:block font-label-md text-label-md text-[#9aa0ac] font-medium">Trang quản trị</span>
         </div>
-        <nav className="admin-nav" aria-label="Điều hướng quản trị">
+        <nav className="flex md:flex-col flex-1 overflow-x-auto md:overflow-y-auto" aria-label="Điều hướng quản trị">
           {visibleGroups.map((group, gi) => (
-            <div className="admin-nav__group" key={group.title ?? `g${gi}`}>
-              {group.title && <div className="admin-nav__group-title">{group.title}</div>}
+            <div className="flex md:flex-col gap-0.5 md:mb-space-md" key={group.title ?? `g${gi}`}>
+              {group.title && <div className="hidden md:block px-space-sm pt-1.5 pb-0.5 font-label-sm text-label-sm uppercase tracking-wider text-[#6b7280]">{group.title}</div>}
               {group.items.map((item) => (
-                <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => (isActive ? 'active' : '')}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  title={item.label}
+                  className={({ isActive }) => `flex items-center gap-2.5 px-space-sm py-2.5 rounded-lg font-title-md text-title-md transition-colors whitespace-nowrap ${
+                    isActive ? 'bg-primary text-on-primary' : 'text-[#b8bcc4] hover:bg-[#1f2126] hover:text-white'
+                  }`}
+                >
+                  <svg className="flex-shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <g stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none">
                       {item.icon}
                     </g>
                   </svg>
-                  <span>{item.label}</span>
+                  <span className="hidden md:inline">{item.label}</span>
                 </NavLink>
               ))}
             </div>
           ))}
         </nav>
-        <div className="admin-sidebar__user">
-          <div className="admin-sidebar__avatar" aria-hidden="true">
+        <div className="hidden md:flex items-center gap-2.5 mt-space-lg pt-space-md px-space-xs border-t border-[#262930]">
+          <div className="w-8 h-8 flex-shrink-0 rounded-full bg-primary text-on-primary flex items-center justify-center font-title-md text-title-md" aria-hidden="true">
             {(user?.fullName ?? '?').charAt(0).toUpperCase()}
           </div>
-          <div>
-            <div className="admin-sidebar__user-name">{user?.fullName ?? 'Chưa đăng nhập'}</div>
-            <div className="admin-sidebar__user-role">{department ? DEPARTMENT_LABEL[department] : '—'}</div>
+          <div className="min-w-0">
+            <div className="font-title-md text-title-md text-white truncate">{user?.fullName ?? 'Chưa đăng nhập'}</div>
+            <div className="font-label-md text-label-md text-[#9aa0ac]">{department ? DEPARTMENT_LABEL[department] : '—'}</div>
           </div>
         </div>
-        <div className="admin-sidebar__back">
-          <Link to="/">← Về trang khách hàng</Link>
-        </div>
+        <Link className="hidden md:flex items-center gap-1 px-space-sm py-2.5 font-label-md text-label-md text-[#9aa0ac] hover:text-white" to="/">
+          <span className="material-symbols-outlined text-base">arrow_back</span> Về trang khách hàng
+        </Link>
       </aside>
-      <div className="admin-content">
-        <header className="admin-topbar">
-          <h2>{pageTitle}</h2>
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="sticky top-0 z-10 flex items-center justify-between px-space-lg md:px-space-xl py-space-md bg-surface-container-lowest border-b border-line">
+          <h2 className="font-title-lg text-title-lg text-on-surface">{pageTitle}</h2>
+          <Link className="md:hidden font-label-md text-label-md text-primary" to="/">Về cửa hàng</Link>
         </header>
-        <main className="admin-main">
+        <main className="flex-1 min-w-0 px-space-lg md:px-space-xl py-space-xl [&_h1]:font-headline-lg [&_h1]:text-headline-lg [&_h1]:text-on-surface [&_h1]:mb-space-lg">
           <Outlet />
         </main>
       </div>

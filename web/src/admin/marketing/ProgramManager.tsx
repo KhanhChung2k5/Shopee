@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { apiFetch } from '../../lib/api'
 import type { PromotionProgram } from './types'
 import { dateTime, errorMessage, toIso, toLocalInput } from './types'
+import { a } from '../adminUi'
+import { buttonClass } from '../../components/ui'
 
 interface ProgramForm {
   code: string
@@ -88,50 +90,50 @@ export default function ProgramManager({ token, programs, onChanged }: Props) {
   }
 
   return (
-    <section className="admin-stat-card" style={{ marginBottom: 'var(--space-4)' }}>
-      <h2 style={{ marginTop: 0 }}>Chương trình khuyến mãi ({programs.length})</h2>
-      <form onSubmit={save} className="marketing-form">
+    <section className={`${a.card} mb-space-lg`}>
+      <h2 className="font-headline-md text-headline-md text-on-surface mb-space-md">Chương trình khuyến mãi ({programs.length})</h2>
+      <form onSubmit={save} className={a.formGrid}>
         <label>
           Mã chương trình
-          <input className="search__input" required maxLength={50} pattern="[A-Za-z0-9_-]+"
+          <input className={a.input} required maxLength={50} pattern="[A-Za-z0-9_-]+"
             value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} />
         </label>
         <label>
           Tên chương trình
-          <input className="search__input" required maxLength={255}
+          <input className={a.input} required maxLength={255}
             value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
         </label>
         <label>
           Loại chương trình
-          <input className="search__input" required maxLength={20}
+          <input className={a.input} required maxLength={20}
             value={form.programType} onChange={(event) => setForm({ ...form, programType: event.target.value })} />
         </label>
         <label>
           Hạng thành viên (tùy chọn)
-          <input className="search__input" maxLength={50}
+          <input className={a.input} maxLength={50}
             value={form.targetLoyaltyTier} onChange={(event) => setForm({ ...form, targetLoyaltyTier: event.target.value })} />
         </label>
         <label>
           Bắt đầu
-          <input className="search__input" type="datetime-local" required
+          <input className={a.input} type="datetime-local" required
             value={form.startAt} onChange={(event) => setForm({ ...form, startAt: event.target.value })} />
         </label>
         <label>
           Kết thúc
-          <input className="search__input" type="datetime-local" required
+          <input className={a.input} type="datetime-local" required
             value={form.endAt} onChange={(event) => setForm({ ...form, endAt: event.target.value })} />
         </label>
-        {error && <p role="alert" className="marketing-form__message">{error}</p>}
-        <div className="marketing-form__actions">
-          <button className="button button--primary" type="submit" disabled={busy}>
+        {error && <p role="alert" className={a.formMessage}>{error}</p>}
+        <div className={a.formActions}>
+          <button className={buttonClass('primary')} type="submit" disabled={busy}>
             {busy ? 'Đang lưu...' : editingId ? 'Lưu chương trình' : 'Thêm chương trình'}
           </button>
-          {editingId && <button className="button button--outline" type="button" onClick={reset}>Huỷ sửa</button>}
+          {editingId && <button className={buttonClass('outline')} type="button" onClick={reset}>Huỷ sửa</button>}
         </div>
       </form>
 
-      <div className="admin-table-wrap">
-        <table className="admin-table">
+      <div className={a.tableWrap}>
+        <table className={a.table}>
           <thead><tr><th>Mã</th><th>Tên</th><th>Loại / Hạng</th><th>Thời gian</th><th>Thao tác</th></tr></thead>
           <tbody>
             {programs.map((program) => (
@@ -141,9 +143,9 @@ export default function ProgramManager({ token, programs, onChanged }: Props) {
                 <td>{program.programType}{program.targetLoyaltyTier ? ` · ${program.targetLoyaltyTier}` : ''}</td>
                 <td>{dateTime.format(new Date(program.startAt))} – {dateTime.format(new Date(program.endAt))}</td>
                 <td>
-                  <div className="marketing-actions">
-                    <button className="button button--outline" type="button" onClick={() => edit(program)}>Sửa</button>
-                    <button className="button button--outline" type="button" onClick={() => remove(program)}>Xóa</button>
+                  <div className={a.rowActions}>
+                    <button className={buttonClass('outline')} type="button" onClick={() => edit(program)}>Sửa</button>
+                    <button className={buttonClass('outline')} type="button" onClick={() => remove(program)}>Xóa</button>
                   </div>
                 </td>
               </tr>

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
+import { Alert, Badge, Button, Card, CardTitle, Field, Loading, Page, cx, inputClass } from '../components/ui'
 import { useAuth } from '../state/AuthContext'
 import { apiFetch, ApiError } from '../lib/api'
 import WalletPanel from './WalletPanel'
@@ -24,6 +25,8 @@ interface Address {
   isDefault: boolean
 }
 
+type Tab = 'profile' | 'addresses' | 'wallet' | 'loyalty'
+
 const EMPTY_ADDRESS_FORM = { recipientName: '', phone: '', fullAddress: '', isDefault: false }
 
 export default function ProfilePage() {
@@ -37,7 +40,7 @@ export default function ProfilePage() {
 }
 
 function ProfilePageContent({ token, logout, isBuyer }: { token: string; logout: () => void; isBuyer: boolean }) {
-  const [tab, setTab] = useState<'profile' | 'addresses' | 'wallet' | 'loyalty'>('profile')
+  const [tab, setTab] = useState<Tab>('profile')
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileForm, setProfileForm] = useState({ fullName: '', gender: '', dob: '' })
@@ -133,197 +136,157 @@ function ProfilePageContent({ token, logout, isBuyer }: { token: string; logout:
     }
   }
 
+  const tabs: { id: Tab; label: string; icon: string }[] = [
+    { id: 'profile', label: 'Hồ sơ cá nhân', icon: 'person' },
+    { id: 'addresses', label: 'Địa chỉ giao hàng', icon: 'location_on' },
+    ...(isBuyer ? [
+      { id: 'wallet' as const, label: 'Ví của tôi', icon: 'account_balance_wallet' },
+      { id: 'loyalty' as const, label: 'Điểm thành viên', icon: 'loyalty' },
+    ] : []),
+  ]
+  const displayName = profile?.fullName?.trim() || profile?.email || 'Tài khoản'
+
   return (
-    <div className="container profile-page">
-      <div className="profile-page__heading">
-        <div className="profile-tabs" role="tablist" aria-label="Quản lý tài khoản">
-          <button
-            type="button"
-            className={`profile-tabs__button${tab === 'profile' ? ' profile-tabs__button--active' : ''}`}
-            onClick={() => setTab('profile')}
-          >
-            Hồ sơ cá nhân
-          </button>
-          <button
-            type="button"
-            className={`profile-tabs__button${tab === 'addresses' ? ' profile-tabs__button--active' : ''}`}
-            onClick={() => setTab('addresses')}
-          >
-            Địa chỉ giao hàng
-          </button>
-          {isBuyer && (
+    <Page>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop items-start">
+        <Card as="aside" className="lg:col-span-3 lg:sticky lg:top-44 !p-space-md space-y-space-md">
+          <div className="flex items-center gap-space-sm px-space-xs">
+            <div className="w-12 h-12 rounded-full bg-primary/15 text-primary flex items-center justify-center font-headline-md text-headline-md">
+              {displayName.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="font-title-md text-title-md text-on-surface truncate">{displayName}</p>
+              {profile && <p className="font-label-md text-label-md text-on-surface-variant truncate">{profile.email}</p>}
+            </div>
+          </div>
+
+          <nav className="flex lg:flex-col gap-1 overflow-x-auto" role="tablist" aria-label="Quản lý tài khoản">
+            {tabs.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === item.id}
+                className={cx(
+                  'flex items-center gap-space-sm px-space-sm py-2 rounded-lg font-title-md text-title-md whitespace-nowrap transition-colors cursor-pointer text-left',
+                  tab === item.id ? 'bg-primary-fixed text-on-primary-fixed' : 'text-on-surface hover:bg-surface-container',
+                )}
+                onClick={() => setTab(item.id)}
+              >
+                <span className="material-symbols-outlined text-xl">{item.icon}</span>
+                {item.label}
+              </button>
+            ))}
+            <Link className="flex items-center gap-space-sm px-space-sm py-2 rounded-lg font-title-md text-title-md whitespace-nowrap text-on-surface hover:bg-surface-container" to="/don-hang">
+              <span className="material-symbols-outlined text-xl">receipt_long</span>Đơn mua
+            </Link>
+            <Link className="flex items-center gap-space-sm px-space-sm py-2 rounded-lg font-title-md text-title-md whitespace-nowrap text-on-surface hover:bg-surface-container" to="/kho-voucher">
+              <span className="material-symbols-outlined text-xl">confirmation_number</span>Kho voucher
+            </Link>
+          </nav>
+
+          <Button variant="outline" className="w-full" icon="logout" onClick={logout}>Đăng xuất</Button>
+        </Card>
+
+        <div className="lg:col-span-9 space-y-space-md">
+          {tab === 'profile' && (
+            <Card as="section">
+              <CardTitle icon="person">Thông tin cá nhân</CardTitle>
+              {profile ? (
+                <form onSubmit={saveProfile} className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+                  <Field label="Email" className="md:col-span-2">
+                    <input className={inputClass} type="text" value={profile.email} disabled />
+                  </Field>
+                  <Field label="Họ và tên" className="md:col-span-2">
+                    <input
+                      className={inputClass}
+                      type="text"
+                      autoComplete="name"
+                      value={profileForm.fullName}
+                      onChange={(e) => setProfileForm((f) => ({ ...f, fullName: e.target.value }))}
+                    />
+                  </Field>
+                  <Field label="Giới tính">
+                    <select className={inputClass} value={profileForm.gender} onChange={(e) => setProfileForm((f) => ({ ...f, gender: e.target.value }))}>
+                      <option value="">Không xác định</option>
+                      <option value="male">Nam</option>
+                      <option value="female">Nữ</option>
+                      <option value="other">Khác</option>
+                    </select>
+                  </Field>
+                  <Field label="Ngày sinh">
+                    <input className={inputClass} type="date" value={profileForm.dob} onChange={(e) => setProfileForm((f) => ({ ...f, dob: e.target.value }))} />
+                  </Field>
+
+                  <div className="md:col-span-2 space-y-space-sm">
+                    {profileError && <Alert>{profileError}</Alert>}
+                    {profileSaved && <Alert tone="success">Đã lưu thay đổi.</Alert>}
+                    <Button type="submit" icon="save">Lưu thay đổi</Button>
+                  </div>
+                </form>
+              ) : (
+                profileError ? <Alert>{profileError}</Alert> : <Loading />
+              )}
+            </Card>
+          )}
+
+          {tab === 'addresses' && (
             <>
-              <button
-                type="button"
-                className={`profile-tabs__button${tab === 'wallet' ? ' profile-tabs__button--active' : ''}`}
-                onClick={() => setTab('wallet')}
-              >
-                Ví của tôi
-              </button>
-              <button
-                type="button"
-                className={`profile-tabs__button${tab === 'loyalty' ? ' profile-tabs__button--active' : ''}`}
-                onClick={() => setTab('loyalty')}
-              >
-                Điểm thành viên
-              </button>
+              <Card as="section">
+                <CardTitle icon={editingId ? 'edit_location' : 'add_location'}>{editingId ? 'Sửa địa chỉ' : 'Thêm địa chỉ mới'}</CardTitle>
+                <form onSubmit={saveAddress} className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+                  <Field label="Tên người nhận">
+                    <input className={inputClass} type="text" required autoComplete="name" value={addressForm.recipientName} onChange={(e) => setAddressForm((f) => ({ ...f, recipientName: e.target.value }))} />
+                  </Field>
+                  <Field label="Số điện thoại">
+                    <input className={inputClass} type="tel" required autoComplete="tel" value={addressForm.phone} onChange={(e) => setAddressForm((f) => ({ ...f, phone: e.target.value }))} />
+                  </Field>
+                  <Field label="Địa chỉ đầy đủ" className="md:col-span-2">
+                    <input className={inputClass} type="text" required autoComplete="street-address" value={addressForm.fullAddress} onChange={(e) => setAddressForm((f) => ({ ...f, fullAddress: e.target.value }))} />
+                  </Field>
+                  <label className="md:col-span-2 flex items-center gap-space-xs font-body-md text-body-md text-on-surface cursor-pointer">
+                    <input className="w-4 h-4 accent-primary" type="checkbox" checked={addressForm.isDefault} onChange={(e) => setAddressForm((f) => ({ ...f, isDefault: e.target.checked }))} />
+                    Đặt làm địa chỉ mặc định
+                  </label>
+
+                  <div className="md:col-span-2 space-y-space-sm">
+                    {addressError && <Alert>{addressError}</Alert>}
+                    <div className="flex gap-space-sm">
+                      <Button type="submit" icon={editingId ? 'save' : 'add'}>{editingId ? 'Cập nhật' : 'Thêm địa chỉ'}</Button>
+                      {editingId && <Button variant="outline" onClick={resetAddressForm}>Huỷ</Button>}
+                    </div>
+                  </div>
+                </form>
+              </Card>
+
+              <Card as="section">
+                <CardTitle icon="home_pin">Địa chỉ đã lưu</CardTitle>
+                {addresses.length === 0 && <p className="font-body-md text-body-md text-on-surface-variant">Chưa có địa chỉ nào.</p>}
+                <div className="space-y-space-sm">
+                  {addresses.map((address) => (
+                    <div key={address.id} className={cx('flex flex-wrap items-start gap-space-md rounded-lg border p-space-md', editingId === address.id ? 'border-primary' : 'border-line')}>
+                      <div className="flex-1 min-w-0">
+                        <p className="flex flex-wrap items-center gap-space-xs font-title-md text-title-md text-on-surface">
+                          {address.recipientName} · {address.phone}
+                          {address.isDefault && <Badge tone="success">Mặc định</Badge>}
+                        </p>
+                        <p className="font-body-md text-body-md text-on-surface-variant mt-0.5">{address.fullAddress}</p>
+                      </div>
+                      <div className="flex gap-space-xs">
+                        <Button variant="outline" size="sm" icon="edit" onClick={() => startEditAddress(address)}>Sửa</Button>
+                        <Button variant="ghost" size="sm" icon="delete" onClick={() => deleteAddress(address.id)}>Xoá</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
             </>
           )}
+
+          {tab === 'wallet' && isBuyer && <WalletPanel token={token} />}
+          {tab === 'loyalty' && isBuyer && <LoyaltyPanel token={token} />}
         </div>
-        <button type="button" className="button button--outline profile-page__logout" onClick={logout}>
-          Đăng xuất
-        </button>
       </div>
-
-      {tab === 'profile' && (
-        <div className="checkout-section">
-          <h2 className="checkout-section__title">Thông tin cá nhân</h2>
-          {profile ? (
-            <form onSubmit={saveProfile} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
-                Email
-                <input className="search__input" type="text" value={profile.email} disabled style={{ paddingInline: 16, position: 'static' }} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
-                Họ và tên
-                <input
-                  className="search__input"
-                  type="text"
-                  value={profileForm.fullName}
-                  onChange={(e) => setProfileForm((f) => ({ ...f, fullName: e.target.value }))}
-                  style={{ paddingInline: 16, position: 'static' }}
-                />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
-                Giới tính
-                <select
-                  className="search__input"
-                  value={profileForm.gender}
-                  onChange={(e) => setProfileForm((f) => ({ ...f, gender: e.target.value }))}
-                  style={{ paddingInline: 16, position: 'static' }}
-                >
-                  <option value="">Không xác định</option>
-                  <option value="male">Nam</option>
-                  <option value="female">Nữ</option>
-                  <option value="other">Khác</option>
-                </select>
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
-                Ngày sinh
-                <input
-                  className="search__input"
-                  type="date"
-                  value={profileForm.dob}
-                  onChange={(e) => setProfileForm((f) => ({ ...f, dob: e.target.value }))}
-                  style={{ paddingInline: 16, position: 'static' }}
-                />
-              </label>
-
-              {profileError && <p style={{ fontSize: 13, color: 'var(--color-urgent)', margin: 0 }}>{profileError}</p>}
-              {profileSaved && <p style={{ fontSize: 13, color: 'var(--color-trust)', margin: 0 }}>Đã lưu thay đổi.</p>}
-
-              <button className="button button--primary" type="submit" style={{ alignSelf: 'flex-start' }}>
-                Lưu thay đổi
-              </button>
-            </form>
-          ) : (
-            <p>{profileError ?? 'Đang tải...'}</p>
-          )}
-        </div>
-      )}
-
-      {tab === 'addresses' && (
-        <>
-          <div className="checkout-section">
-            <h2 className="checkout-section__title">{editingId ? 'Sửa địa chỉ' : 'Thêm địa chỉ mới'}</h2>
-            <form onSubmit={saveAddress} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
-                Tên người nhận
-                <input
-                  className="search__input"
-                  type="text"
-                  required
-                  value={addressForm.recipientName}
-                  onChange={(e) => setAddressForm((f) => ({ ...f, recipientName: e.target.value }))}
-                  style={{ paddingInline: 16, position: 'static' }}
-                />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
-                Số điện thoại
-                <input
-                  className="search__input"
-                  type="text"
-                  required
-                  value={addressForm.phone}
-                  onChange={(e) => setAddressForm((f) => ({ ...f, phone: e.target.value }))}
-                  style={{ paddingInline: 16, position: 'static' }}
-                />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5 }}>
-                Địa chỉ đầy đủ
-                <input
-                  className="search__input"
-                  type="text"
-                  required
-                  value={addressForm.fullAddress}
-                  onChange={(e) => setAddressForm((f) => ({ ...f, fullAddress: e.target.value }))}
-                  style={{ paddingInline: 16, position: 'static' }}
-                />
-              </label>
-              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13.5 }}>
-                <input
-                  type="checkbox"
-                  checked={addressForm.isDefault}
-                  onChange={(e) => setAddressForm((f) => ({ ...f, isDefault: e.target.checked }))}
-                />
-                Đặt làm địa chỉ mặc định
-              </label>
-
-              {addressError && <p style={{ fontSize: 13, color: 'var(--color-urgent)', margin: 0 }}>{addressError}</p>}
-
-              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                <button className="button button--primary" type="submit">
-                  {editingId ? 'Cập nhật' : 'Thêm địa chỉ'}
-                </button>
-                {editingId && (
-                  <button className="button button--outline" type="button" onClick={resetAddressForm}>
-                    Huỷ
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-
-          <div className="checkout-section">
-            <h2 className="checkout-section__title">Địa chỉ đã lưu</h2>
-            {addresses.length === 0 && <p style={{ color: 'var(--color-muted-foreground)' }}>Chưa có địa chỉ nào.</p>}
-            {addresses.map((address) => (
-              <div key={address.id} className="radio-card">
-                <div style={{ flex: 1 }}>
-                  <p className="radio-card__title">
-                    {address.recipientName} · {address.phone}
-                    {address.isDefault && (
-                      <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-trust)', fontWeight: 700 }}>MẶC ĐỊNH</span>
-                    )}
-                  </p>
-                  <p className="radio-card__desc">{address.fullAddress}</p>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" className="button button--outline" onClick={() => startEditAddress(address)}>
-                    Sửa
-                  </button>
-                  <button type="button" className="button button--outline" onClick={() => deleteAddress(address.id)}>
-                    Xoá
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {tab === 'wallet' && isBuyer && <WalletPanel token={token} />}
-      {tab === 'loyalty' && isBuyer && <LoyaltyPanel token={token} />}
-    </div>
+    </Page>
   )
 }

@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { apiFetch } from '../../lib/api'
 import type { PromotionProgram, Voucher } from './types'
 import { dateTime, errorMessage, money, toIso, toLocalInput } from './types'
+import { a } from '../adminUi'
+import { buttonClass } from '../../components/ui'
 
 interface VoucherForm {
   promotionProgramId: string
@@ -82,13 +84,13 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
   }
 
   return (
-    <section className="admin-stat-card">
-      <h2 style={{ marginTop: 0 }}>Voucher ({vouchers.length})</h2>
+    <section className={a.card}>
+      <h2 className="font-headline-md text-headline-md text-on-surface mb-space-md">Voucher ({vouchers.length})</h2>
       {programs.length === 0 && <p>Tạo chương trình trước khi thêm voucher.</p>}
-      <form onSubmit={save} className="marketing-form">
+      <form onSubmit={save} className={a.formGrid}>
         <label>
           Chương trình
-          <select className="search__input" required value={form.promotionProgramId}
+          <select className={a.input} required value={form.promotionProgramId}
             onChange={(event) => setForm({ ...form, promotionProgramId: event.target.value })}>
             <option value="">Chọn chương trình</option>
             {programs.map((program) => <option key={program.id} value={program.id}>{program.code} · {program.name}</option>)}
@@ -96,12 +98,12 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
         </label>
         <label>
           Mã voucher
-          <input className="search__input" required maxLength={50} pattern="[A-Za-z0-9_-]+"
+          <input className={a.input} required maxLength={50} pattern="[A-Za-z0-9_-]+"
             value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} />
         </label>
         <label>
           Kiểu giảm
-          <select className="search__input" value={form.type}
+          <select className={a.input} value={form.type}
             onChange={(event) => setForm({ ...form, type: event.target.value as Voucher['type'] })}>
             <option value="percentage">Phần trăm</option>
             <option value="fixed_amount">Số tiền</option>
@@ -109,26 +111,26 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
         </label>
         <label>
           Giá trị
-          <input className="search__input" type="number" required min="0.01" step="0.01"
+          <input className={a.input} type="number" required min="0.01" step="0.01"
             max={form.type === 'percentage' ? '100' : '9999999999.99'}
             value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} />
         </label>
         <label>
           Hết hạn (tùy chọn)
-          <input className="search__input" type="datetime-local"
+          <input className={a.input} type="datetime-local"
             value={form.expiresAt} onChange={(event) => setForm({ ...form, expiresAt: event.target.value })} />
         </label>
-        {error && <p role="alert" className="marketing-form__message">{error}</p>}
-        <div className="marketing-form__actions">
-          <button className="button button--primary" type="submit" disabled={busy || programs.length === 0}>
+        {error && <p role="alert" className={a.formMessage}>{error}</p>}
+        <div className={a.formActions}>
+          <button className={buttonClass('primary')} type="submit" disabled={busy || programs.length === 0}>
             {busy ? 'Đang lưu...' : editingId ? 'Lưu voucher' : 'Thêm voucher'}
           </button>
-          {editingId && <button className="button button--outline" type="button" onClick={reset}>Huỷ sửa</button>}
+          {editingId && <button className={buttonClass('outline')} type="button" onClick={reset}>Huỷ sửa</button>}
         </div>
       </form>
 
-      <div className="admin-table-wrap">
-        <table className="admin-table">
+      <div className={a.tableWrap}>
+        <table className={a.table}>
           <thead><tr><th>Mã</th><th>Chương trình</th><th>Mức giảm</th><th>Hết hạn</th><th>Thao tác</th></tr></thead>
           <tbody>
             {vouchers.map((voucher) => (
@@ -138,9 +140,9 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
                 <td>{voucher.type === 'percentage' ? `${voucher.value}%` : money.format(voucher.value)}</td>
                 <td>{voucher.expiresAt ? dateTime.format(new Date(voucher.expiresAt)) : 'Theo chương trình'}</td>
                 <td>
-                  <div className="marketing-actions">
-                    <button className="button button--outline" type="button" onClick={() => edit(voucher)}>Sửa</button>
-                    <button className="button button--outline" type="button" onClick={() => remove(voucher)}>Xóa</button>
+                  <div className={a.rowActions}>
+                    <button className={buttonClass('outline')} type="button" onClick={() => edit(voucher)}>Sửa</button>
+                    <button className={buttonClass('outline')} type="button" onClick={() => remove(voucher)}>Xóa</button>
                   </div>
                 </td>
               </tr>

@@ -34,13 +34,42 @@ public class PublicProductController {
     private final ProductVariantRepository variants;
     private final InventoryStockRepository stocks;
     private final CategoryRepository categories;
+    private final jakarta.persistence.EntityManager entityManager;
 
     public PublicProductController(ProductRepository products, ProductVariantRepository variants,
-                                   InventoryStockRepository stocks, CategoryRepository categories) {
+                                   InventoryStockRepository stocks, CategoryRepository categories,
+                                   jakarta.persistence.EntityManager entityManager) {
         this.products = products;
         this.variants = variants;
         this.stocks = stocks;
         this.categories = categories;
+        this.entityManager = entityManager;
+    }
+
+    /** Public homepage "best sellers" ranking — total quantity sold across
+     * non-cancelled orders. Reads order_items directly (snapshot-safe even
+     * if a variant is later deactivated). */
+    @GetMapping("/top-sellers")
+    public List<TopSellerResponse> topSellers(@RequestParam(defaultValue = "5") int limit) {
+        List<Object[]> rows = entityManager.createNativeQuery(
+                "SELECT p.id, p.name, MIN(pv.price), SUM(oi.quantity) AS total_qty, p.image_urls ->> 0 "
+              + "FROM order_items oi "
+              + "JOIN orders o ON o.id = oi.order_id "
+              + "JOIN product_variants pv ON pv.id = oi.variant_id "
+              + "JOIN products p ON p.id = pv.product_id "
+              + "WHERE o.status <> 'cancelled' "
+              + "GROUP BY p.id, p.name "
+              + "ORDER BY total_qty DESC LIMIT :limit")
+                .setParameter("limit", Math.min(limit, 20))
+                .getResultList();
+        return rows.stream().map(row -> new TopSellerResponse(
+                (UUID) row[0], (String) row[1],
+                (BigDecimal) row[2], ((Number) row[3]).longValue(), (String) row[4]
+        )).toList();
+    }
+
+    public record TopSellerResponse(UUID productId, String name, BigDecimal price, long soldQuantity,
+                                    String imageUrl) {
     }
 
     @GetMapping

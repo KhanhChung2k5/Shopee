@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ApiError, apiFetch } from '../../lib/api'
 import { formatVnd, type GoodsReceipt } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
+import { a, statusPillClass } from '../adminUi'
+import { buttonClass } from '../../components/ui'
 
 interface Warehouse { id: string; name: string }
 interface Variant { id: string; productId: string; sku: string; status: string }
@@ -91,36 +93,36 @@ export default function AdminGoodsReceiptsPage() {
   }
 
   return <div>
-    <div className="admin-toolbar">
-      <h1 style={{ margin: 0 }}>Phiếu nhập hàng ({receipts.length})</h1>
-      <button className="button button--primary" type="button" onClick={() => setShowForm((value) => !value)}>{showForm ? 'Đóng biểu mẫu' : '+ Tạo phiếu nhập'}</button>
+    <div className={a.toolbar}>
+      <h1 className="!mb-0">Phiếu nhập hàng ({receipts.length})</h1>
+      <button className={buttonClass('primary')} type="button" onClick={() => setShowForm((value) => !value)}>{showForm ? 'Đóng biểu mẫu' : '+ Tạo phiếu nhập'}</button>
     </div>
-    {error && <p role="alert" style={{ color: 'var(--color-urgent)' }}>{error}</p>}
-    {showForm && <form className="catalog-form" onSubmit={createReceipt}>
-      <div className="catalog-form__heading"><h2>Phiếu nhập mới</h2></div>
+    {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
+    {showForm && <form className={a.catalogForm} onSubmit={createReceipt}>
+      <div className={a.formHeading}><h2>Phiếu nhập mới</h2></div>
       <label>Kho nhận<select required value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}><option value="">Chọn kho</option>{warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select></label>
       <label>Nhà cung cấp<input maxLength={255} value={supplierName} onChange={(event) => setSupplierName(event.target.value)} /></label>
-      <div className="catalog-form__wide">
+      <div className={a.formWide}>
         <h3>Sản phẩm nhập</h3>
-        {lines.map((line, index) => <div className="receipt-line" key={index}>
+        {lines.map((line, index) => <div className={a.receiptLine} key={index}>
           <label>Biến thể / SKU<select required value={line.variantId} onChange={(event) => updateLine(index, { variantId: event.target.value })}><option value="">Chọn SKU</option>{variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.sku}</option>)}</select></label>
           <label>Số lượng<input required type="number" min="1" step="1" value={line.quantity} onChange={(event) => updateLine(index, { quantity: event.target.value })} /></label>
           <label>Đơn giá nhập<input required type="number" min="0" step="1000" value={line.unitCost} onChange={(event) => updateLine(index, { unitCost: event.target.value })} /></label>
-          <button className="button button--outline" type="button" disabled={lines.length === 1} onClick={() => setLines((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Xoá dòng</button>
+          <button className={buttonClass('outline')} type="button" disabled={lines.length === 1} onClick={() => setLines((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Xoá dòng</button>
         </div>)}
-        <button className="button button--outline" type="button" onClick={() => setLines((current) => [...current, { ...EMPTY_LINE }])}>+ Thêm dòng hàng</button>
+        <button className={buttonClass('outline')} type="button" onClick={() => setLines((current) => [...current, { ...EMPTY_LINE }])}>+ Thêm dòng hàng</button>
       </div>
-      <div className="catalog-form__actions"><button className="button button--primary" disabled={saving || !warehouseId || variants.length === 0}>{saving ? 'Đang tạo…' : 'Tạo phiếu chờ duyệt'}</button></div>
+      <div className={a.formActions}><button className={buttonClass('primary')} disabled={saving || !warehouseId || variants.length === 0}>{saving ? 'Đang tạo…' : 'Tạo phiếu chờ duyệt'}</button></div>
     </form>}
-    {loading ? <p>Đang tải phiếu nhập…</p> : <div className="admin-table-wrap"><table className="admin-table">
+    {loading ? <p>Đang tải phiếu nhập…</p> : <div className={a.tableWrap}><table className={a.table}>
       <thead><tr><th>Mã phiếu</th><th>Thời gian</th><th>Kho / nhà cung cấp</th><th>Sản phẩm</th><th>Tổng giá trị</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
       <tbody>{receipts.map((receipt) => <tr key={receipt.id}>
         <td>{receipt.code}</td><td>{new Date(receipt.receivedAt).toLocaleString('vi-VN')}</td>
         <td>{receipt.warehouseName}<br />{receipt.supplierName ?? '—'}</td>
         <td>{receipt.items.map((item) => `${item.sku} × ${item.quantity}`).join(', ')}</td><td>{formatVnd(receipt.totalCost)}</td>
-        <td><span className={`status-pill status-pill--${receipt.status === 'approved' ? 'active' : receipt.status === 'rejected' ? 'deleted' : 'locked'}`}>{receipt.status === 'pending' ? 'Chờ duyệt' : receipt.status === 'approved' ? 'Đã duyệt' : 'Đã từ chối'}</span></td>
-        <td>{receipt.status === 'pending' ? <div className="admin-row-actions"><button className="button button--primary" type="button" onClick={() => void transition(receipt, 'approve')}>Duyệt</button><button className="button button--outline" type="button" onClick={() => void transition(receipt, 'reject')}>Từ chối</button></div> : '—'}</td>
+        <td><span className={statusPillClass(receipt.status === 'approved' ? 'active' : receipt.status === 'rejected' ? 'deleted' : 'locked')}>{receipt.status === 'pending' ? 'Chờ duyệt' : receipt.status === 'approved' ? 'Đã duyệt' : 'Đã từ chối'}</span></td>
+        <td>{receipt.status === 'pending' ? <div className={a.rowActions}><button className={buttonClass('primary')} type="button" onClick={() => void transition(receipt, 'approve')}>Duyệt</button><button className={buttonClass('outline')} type="button" onClick={() => void transition(receipt, 'reject')}>Từ chối</button></div> : '—'}</td>
       </tr>)}</tbody>
-    </table>{receipts.length === 0 && <p className="admin-empty">Chưa có phiếu nhập nào.</p>}</div>}
+    </table>{receipts.length === 0 && <p className={a.empty}>Chưa có phiếu nhập nào.</p>}</div>}
   </div>
 }

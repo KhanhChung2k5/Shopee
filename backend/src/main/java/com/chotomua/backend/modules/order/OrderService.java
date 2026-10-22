@@ -273,7 +273,7 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public List<OrderSummaryResponse> listForEmployeeUser(UUID employeeUserId, String requestedStatus) {
-        UUID employeeId = requireEmployee(employeeUserId).getId();
+        UUID employeeId = requireOrderViewEmployee(employeeUserId).getId();
         String status = OrderStatus.normalize(requestedStatus);
         List<Order> orders = status == null
                 ? orderRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId)
@@ -283,7 +283,7 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public OrderDetailResponse getForEmployeeUser(UUID employeeUserId, UUID orderId) {
-        UUID employeeId = requireEmployee(employeeUserId).getId();
+        UUID employeeId = requireOrderViewEmployee(employeeUserId).getId();
         Order order = orderRepository.findByIdAndEmployeeId(orderId, employeeId)
                 .orElseThrow(this::orderNotFound);
         return toDetail(order);
@@ -309,6 +309,15 @@ public class OrderService {
     private Employee requireEmployee(UUID employeeUserId) {
         return employeeRepository.findByUserId(employeeUserId)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy hồ sơ nhân viên"));
+    }
+
+    private Employee requireOrderViewEmployee(UUID employeeUserId) {
+        Employee employee = requireEmployee(employeeUserId);
+        if (!employee.getDepartment().equals("sales") && !employee.getDepartment().equals("warehouse")
+                && !employee.getDepartment().equals("admin")) {
+            throw new AccessDeniedException("Bộ phận hiện tại không có quyền xem đơn hàng");
+        }
+        return employee;
     }
 
     private Employee requireShippingEmployee(UUID employeeUserId) {

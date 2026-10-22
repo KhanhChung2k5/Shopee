@@ -61,7 +61,7 @@ export default function AdminMarketingPage() {
     <div>
       <h1>Marketing</h1>
       {loading && <p>Đang tải dữ liệu...</p>}
-      {error && <p role="alert" style={{ color: 'var(--color-urgent)' }}>{error}</p>}
+      {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
       {!loading && !error && token && (
         <>
           <ProgramManager token={token} programs={programs} onChanged={refresh} />

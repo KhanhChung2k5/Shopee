@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
+import { Alert, Badge, Button, ButtonLink, Card, Chip, EmptyState, Loading, Page, PageHeader } from '../components/ui'
 import { formatVnd } from '../lib/catalog'
 import { apiFetch, ApiError } from '../lib/api'
+import { SHIPMENT_LABEL, STATUS_LABEL, STATUS_TONE, formatOrderDate, shortOrderId, type OrderStatus } from '../lib/orderStatus'
 import { useAuth } from '../state/AuthContext'
 
-type OrderStatus = 'pending' | 'confirmed' | 'cancel_requested' | 'shipping' | 'delivered' | 'cancelled'
 type StatusFilter = OrderStatus | 'all'
 
 interface OrderSummary {
@@ -26,42 +27,11 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: 'cancelled', label: 'Đã huỷ' },
 ]
 
-const STATUS_LABEL: Record<OrderStatus, string> = {
-  pending: 'Chờ xác nhận',
-  confirmed: 'Đã xác nhận',
-  cancel_requested: 'Chờ xác nhận huỷ',
-  shipping: 'Đang giao',
-  delivered: 'Đã giao',
-  cancelled: 'Đã huỷ',
-}
-
-const SHIPMENT_LABEL: Record<string, string> = {
-  pending: 'Chờ đóng gói',
-  packed: 'Đã đóng gói',
-  shipping: 'Đang vận chuyển',
-  delivered: 'Đã giao hàng',
-  failed: 'Giao không thành công',
-}
-
-const dateFormatter = new Intl.DateTimeFormat('vi-VN', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-})
-
-function formatOrderDate(value: string) {
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : dateFormatter.format(date)
-}
-
-function shortOrderId(id: string) {
-  return id.slice(0, 8).toUpperCase()
-}
-
 export default function OrderHistoryPage() {
   const { token, user, isAuthenticated, isReady } = useAuth()
 
   if (!isReady) {
-    return <div className="container"><div className="order-history-state">Đang kiểm tra đăng nhập…</div></div>
+    return <Page><Loading>Đang kiểm tra đăng nhập…</Loading></Page>
   }
   if (!isAuthenticated || !token) {
     return <Navigate to="/dang-nhap" replace state={{ from: '/don-hang' }} />
@@ -117,82 +87,83 @@ function OrderHistoryContent({ token }: { token: string }) {
   }
 
   return (
-    <div className="container order-history-page">
-      <div className="order-history-heading">
-        <div>
-          <p className="order-history-eyebrow">Tài khoản của tôi</p>
-          <h1 className="section-title">Lịch sử đơn hàng</h1>
-        </div>
-        <Link className="button button--outline button--sm" to="/">Tiếp tục mua sắm</Link>
-      </div>
+    <Page>
+      <PageHeader
+        breadcrumb={[{ label: 'Tài khoản', to: '/ho-so' }, { label: 'Đơn mua' }]}
+        title="Lịch sử đơn hàng"
+        actions={<ButtonLink variant="outline" size="sm" icon="storefront" to="/">Tiếp tục mua sắm</ButtonLink>}
+      />
 
-      <div className="order-history-filters" role="group" aria-label="Lọc đơn hàng theo trạng thái">
+      <div className="flex items-center gap-space-xs overflow-x-auto pb-1" role="group" aria-label="Lọc đơn hàng theo trạng thái">
         {STATUS_FILTERS.map((filter) => (
-          <button
-            key={filter.value}
-            type="button"
-            className={`order-history-filter${status === filter.value ? ' order-history-filter--active' : ''}`}
-            onClick={() => selectStatus(filter.value)}
-            aria-pressed={status === filter.value}
-          >
+          <Chip key={filter.value} active={status === filter.value} onClick={() => selectStatus(filter.value)}>
             {filter.label}
-          </button>
+          </Chip>
         ))}
       </div>
 
       {error && (
-        <div className="order-history-state order-history-state--error" role="alert">
-          <p>{error}</p>
-          <button className="button button--outline button--sm" type="button" onClick={retry}>
-            Thử lại
-          </button>
-        </div>
+        <Alert>
+          <div className="flex flex-wrap items-center justify-between gap-space-sm">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" icon="refresh" onClick={retry}>Thử lại</Button>
+          </div>
+        </Alert>
       )}
 
-      {!error && isLoading && <div className="order-history-state" aria-live="polite">Đang tải đơn hàng…</div>}
+      {!error && isLoading && <Loading>Đang tải đơn hàng…</Loading>}
 
       {!error && !isLoading && orders.length === 0 && (
-        <div className="order-history-state">
-          <div className="order-history-state__icon" aria-hidden="true">⌁</div>
-          <h2>Chưa có đơn hàng</h2>
-          <p>
-            {status === 'all'
+        <Card>
+          <EmptyState
+            icon="receipt_long"
+            title="Chưa có đơn hàng"
+            description={status === 'all'
               ? 'Các đơn bạn đã đặt sẽ xuất hiện tại đây.'
               : `Không có đơn nào ở trạng thái “${STATUS_FILTERS.find((filter) => filter.value === status)?.label}”.`}
-          </p>
-          <Link className="button button--primary" to="/">Khám phá sản phẩm</Link>
-        </div>
+            action={<ButtonLink to="/">Khám phá sản phẩm</ButtonLink>}
+          />
+        </Card>
       )}
 
       {!error && !isLoading && orders.length > 0 && (
-        <div className="order-history-list">
+        <div className="space-y-space-sm">
           {orders.map((order) => (
-            <article className="order-history-card" key={order.id}>
-              <header className="order-history-card__header">
-                <div>
-                  <span className="order-history-card__label">Mã đơn</span>
-                  <strong title={order.id}>#{shortOrderId(order.id)}</strong>
+            <Card as="article" className="!p-0 overflow-hidden hover:shadow-md transition-shadow" key={order.id}>
+              <header className="flex items-center justify-between gap-space-sm px-space-lg py-space-sm border-b border-line">
+                <div className="flex items-center gap-space-xs">
+                  <span className="font-label-md text-label-md text-on-surface-variant">Mã đơn</span>
+                  <strong className="font-title-md text-title-md text-on-surface" title={order.id}>#{shortOrderId(order.id)}</strong>
                 </div>
-                <span className={`order-status order-status--${order.status}`}>
-                  {STATUS_LABEL[order.status] ?? order.status}
-                </span>
+                <Badge tone={STATUS_TONE[order.status] ?? 'neutral'}>{STATUS_LABEL[order.status] ?? order.status}</Badge>
               </header>
 
-              <div className="order-history-card__body">
-                <div className="order-history-card__metric"><span>Ngày đặt</span><strong>{formatOrderDate(order.createdAt)}</strong></div>
-                <div className="order-history-card__metric"><span>Sản phẩm</span><strong>{order.itemCount} mặt hàng</strong></div>
-                <div className="order-history-card__metric"><span>Vận chuyển</span><strong>{SHIPMENT_LABEL[order.shipmentStatus] ?? order.shipmentStatus}</strong></div>
-                <div className="order-history-card__metric order-history-card__metric--total"><span>Tổng thanh toán</span><strong>{formatVnd(Number(order.totalAmount))}</strong></div>
-              </div>
+              <dl className="grid grid-cols-2 md:grid-cols-4 gap-space-md px-space-lg py-space-md">
+                <Metric label="Ngày đặt" value={formatOrderDate(order.createdAt)} />
+                <Metric label="Sản phẩm" value={`${order.itemCount} mặt hàng`} />
+                <Metric label="Vận chuyển" value={SHIPMENT_LABEL[order.shipmentStatus] ?? order.shipmentStatus} />
+                <Metric label="Tổng thanh toán" value={<span className="font-price-md text-price-md text-primary">{formatVnd(Number(order.totalAmount))}</span>} />
+              </dl>
 
-              <footer className="order-history-card__footer">
-                <span>Mã tham chiếu: {order.id}</span>
-                <Link className="order-history-card__detail" to={`/don-hang/${order.id}`}>Xem chi tiết →</Link>
+              <footer className="flex flex-wrap items-center justify-between gap-space-sm px-space-lg py-space-sm bg-surface-container-low">
+                <span className="font-label-sm text-label-sm text-on-surface-variant break-all">Mã tham chiếu: {order.id}</span>
+                <Link className="flex items-center gap-0.5 font-title-md text-title-md text-primary hover:underline" to={`/don-hang/${order.id}`}>
+                  Xem chi tiết <span className="material-symbols-outlined text-base">chevron_right</span>
+                </Link>
               </footer>
-            </article>
+            </Card>
           ))}
         </div>
       )}
+    </Page>
+  )
+}
+
+function Metric({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="space-y-0.5">
+      <dt className="font-label-md text-label-md text-on-surface-variant">{label}</dt>
+      <dd className="font-title-md text-title-md text-on-surface">{value}</dd>
     </div>
   )
 }

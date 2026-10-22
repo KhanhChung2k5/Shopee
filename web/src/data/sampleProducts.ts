@@ -198,7 +198,7 @@ export interface BannerSlide {
 }
 
 export const BANNER_SLIDES: BannerSlide[] = [
-  { eyebrow: 'Ưu đãi tay cầm chính hãng', title: 'Giảm đến 30% tay cầm không dây', description: 'Áp dụng cho tay cầm PS5, Xbox Series X/S, Switch Pro', ctaLabel: 'Mua ngay', ctaHref: '#suggested-products', variant: 'a' },
+  { eyebrow: 'Sự kiện Gaming tháng 2', title: 'Đại Tiệc Tay Cầm & Đĩa Game 2025', description: 'Giảm đến 30% tay cầm PS5, Xbox Series X/S, Switch Pro và hàng trăm tựa đĩa game bom tấn', ctaLabel: 'Khám phá ngay', ctaHref: '#suggested-products', variant: 'a' },
   { eyebrow: 'Ưu đãi cho thành viên', title: 'Xem voucher đang có', description: 'Đăng nhập để xem mã giảm giá phù hợp với bạn', ctaLabel: 'Xem voucher', ctaHref: '#vouchers', variant: 'b' },
   { eyebrow: 'Đĩa game mới về', title: 'Hàng trăm tựa game mới cập bến', description: 'Giảm thêm 15% cho đơn hàng đầu tiên', ctaLabel: 'Khám phá', ctaHref: '#suggested-products', variant: 'c' },
 ]

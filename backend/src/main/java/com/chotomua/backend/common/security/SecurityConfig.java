@@ -47,6 +47,7 @@ public class SecurityConfig {
                 // Public storefront discovery, while catalog management stays staff-only.
                 .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/catalog/categories", "/api/catalog/categories/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/reviews", "/api/products/top-sellers").permitAll()
                 .requestMatchers("/api/catalog/warehouses/**", "/api/catalog/goods-receipts/**", "/api/catalog/inventory/**")
                 .hasAnyAuthority("DEPT_WAREHOUSE", "DEPT_ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/catalog/product-variants", "/api/catalog/product-variants/**")
@@ -64,8 +65,8 @@ public class SecurityConfig {
                 ).hasRole("STAFF")
                 // Only staff in the "admin" department may create internal employee accounts.
                 .requestMatchers("/employees/**").hasAuthority("DEPT_ADMIN")
-                // CRM "Khách hàng" admin page — admin-only, same as employee management.
-                .requestMatchers("/customers/**").hasAuthority("DEPT_ADMIN")
+                // CRM "Khách hàng" admin page — do CS phụ trách (theo docs/phan-quyen-he-thong.md).
+                .requestMatchers("/customers/**").hasAnyAuthority("DEPT_CS", "DEPT_ADMIN")
                 .requestMatchers("/wallet", "/wallet/**").hasAuthority("ROLE_BUYER")
                 .requestMatchers(HttpMethod.POST, "/refund-returns").hasRole("BUYER")
                 .requestMatchers(HttpMethod.GET, "/refund-returns").hasAnyAuthority("DEPT_CS", "DEPT_ADMIN")

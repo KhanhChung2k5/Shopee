@@ -1,0 +1,315 @@
+/* Web fonts (Be Vietnam Pro + Material Symbols) are linked from index.html so they load in parallel with this CSS. */
+/*
+ * Tailwind CSS v4 entry. Loaded after theme.css (see main.tsx).
+ *
+ * Preflight and utilities are imported WITHOUT a cascade layer on purpose:
+ * site.css is unlayered, and unlayered rules always beat layered ones, so a
+ * layered Tailwind would lose to site.css element selectors (h2, a, button…)
+ * on the Stitch-designed pages. Unlayered keeps the old cascade: plain source
+ * order + specificity, exactly like the precompiled stitch.css it replaces.
+ */
+@layer theme;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css';
+@import 'tailwindcss/utilities.css' source(none);
+
+@source '../**/*.{ts,tsx}';
+/* site.css owns `.container` (used by the non-Stitch pages); don't let Tailwind's container utility fight it. */
+@source not inline('container');
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens from the Stitch export (tailwind.config in the design HTML).
+ * `inline` bakes the values into the utilities instead of referencing
+ * :root variables, because theme.css already defines --color-primary,
+ * --color-surface, --radius-lg… with different values for the other pages.
+ */
+@theme inline {
+  --color-primary: var(--st-primary);
+  --color-on-primary: var(--st-on-primary);
+  --color-primary-container: var(--st-primary-container);
+  --color-on-primary-container: var(--st-on-primary-container);
+  --color-primary-fixed: var(--st-primary-fixed);
+  --color-primary-fixed-dim: var(--st-primary-fixed-dim);
+  --color-on-primary-fixed: var(--st-on-primary-fixed);
+  --color-on-primary-fixed-variant: var(--st-on-primary-fixed-variant);
+  --color-inverse-primary: var(--st-inverse-primary);
+  --color-surface-tint: var(--st-surface-tint);
+
+  --color-secondary: var(--st-secondary);
+  --color-on-secondary: var(--st-on-secondary);
+  --color-secondary-container: var(--st-secondary-container);
+  --color-on-secondary-container: var(--st-on-secondary-container);
+  --color-secondary-fixed: var(--st-secondary-fixed);
+  --color-secondary-fixed-dim: var(--st-secondary-fixed-dim);
+  --color-on-secondary-fixed: var(--st-on-secondary-fixed);
+  --color-on-secondary-fixed-variant: var(--st-on-secondary-fixed-variant);
+
+  --color-tertiary: var(--st-tertiary);
+  --color-on-tertiary: var(--st-on-tertiary);
+  --color-tertiary-container: var(--st-tertiary-container);
+  --color-on-tertiary-container: var(--st-on-tertiary-container);
+  --color-tertiary-fixed: var(--st-tertiary-fixed);
+  --color-tertiary-fixed-dim: var(--st-tertiary-fixed-dim);
+  --color-on-tertiary-fixed: var(--st-on-tertiary-fixed);
+  --color-on-tertiary-fixed-variant: var(--st-on-tertiary-fixed-variant);
+
+  --color-error: var(--st-error);
+  --color-on-error: var(--st-on-error);
+  --color-error-container: var(--st-error-container);
+  --color-on-error-container: var(--st-on-error-container);
+
+  --color-background: var(--st-background);
+  --color-on-background: var(--st-on-background);
+  --color-surface: var(--st-surface);
+  --color-surface-bright: var(--st-surface-bright);
+  --color-surface-dim: var(--st-surface-dim);
+  --color-surface-variant: var(--st-surface-variant);
+  --color-surface-container-lowest: var(--st-surface-container-lowest);
+  --color-surface-container-low: var(--st-surface-container-low);
+  --color-surface-container: var(--st-surface-container);
+  --color-surface-container-high: var(--st-surface-container-high);
+  --color-surface-container-highest: var(--st-surface-container-highest);
+  --color-on-surface: var(--st-on-surface);
+  --color-on-surface-variant: var(--st-on-surface-variant);
+  --color-inverse-surface: var(--st-inverse-surface);
+  --color-inverse-on-surface: var(--st-inverse-on-surface);
+  --color-outline: var(--st-outline);
+  --color-outline-variant: var(--st-outline-variant);
+  /* Neutral hairline for borders/dividers (Stitch outline-variant is tinted). */
+  --color-line: var(--st-line);
+
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.5rem;
+
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 0.75rem;
+  --spacing-space-lg: 1.25rem;
+  --spacing-space-xl: 2rem;
+  --spacing-margin: 1rem;
+  --spacing-margin-desktop: 2rem;
+  --spacing-gutter: 1rem;
+  --spacing-gutter-desktop: 1.25rem;
+
+  --font-body-md: 'Be Vietnam Pro';
+  --font-body-lg: 'Be Vietnam Pro';
+  --font-label-sm: 'Be Vietnam Pro';
+  --font-label-md: 'Be Vietnam Pro';
+  --font-title-md: 'Be Vietnam Pro';
+  --font-title-lg: 'Be Vietnam Pro';
+  --font-headline-md: 'Be Vietnam Pro';
+  --font-headline-lg: 'Be Vietnam Pro';
+  --font-headline-lg-mobile: 'Be Vietnam Pro';
+  --font-headline-xl: 'Be Vietnam Pro';
+  --font-headline-xl-mobile: 'Be Vietnam Pro';
+  --font-price-md: 'Be Vietnam Pro';
+  --font-price-lg: 'Be Vietnam Pro';
+
+  --text-body-md: 13px;
+  --text-body-md--line-height: 18px;
+  --text-body-md--font-weight: 400;
+  --text-body-lg: 15px;
+  --text-body-lg--line-height: 22px;
+  --text-body-lg--font-weight: 400;
+  --text-label-sm: 10px;
+  --text-label-sm--line-height: 14px;
+  --text-label-sm--letter-spacing: 0.02em;
+  --text-label-sm--font-weight: 700;
+  --text-label-md: 12px;
+  --text-label-md--line-height: 16px;
+  --text-label-md--font-weight: 600;
+  --text-title-md: 14px;
+  --text-title-md--line-height: 20px;
+  --text-title-md--font-weight: 600;
+  --text-title-lg: 16px;
+  --text-title-lg--line-height: 22px;
+  --text-title-lg--font-weight: 600;
+  --text-headline-md: 20px;
+  --text-headline-md--line-height: 26px;
+  --text-headline-md--font-weight: 700;
+  --text-headline-lg: 28px;
+  --text-headline-lg--line-height: 36px;
+  --text-headline-lg--letter-spacing: -0.01em;
+  --text-headline-lg--font-weight: 700;
+  --text-headline-lg-mobile: 22px;
+  --text-headline-lg-mobile--line-height: 28px;
+  --text-headline-lg-mobile--font-weight: 700;
+  --text-headline-xl: 36px;
+  --text-headline-xl--line-height: 44px;
+  --text-headline-xl--letter-spacing: -0.02em;
+  --text-headline-xl--font-weight: 800;
+  --text-headline-xl-mobile: 26px;
+  --text-headline-xl-mobile--line-height: 32px;
+  --text-headline-xl-mobile--letter-spacing: -0.01em;
+  --text-headline-xl-mobile--font-weight: 800;
+  --text-price-md: 16px;
+  --text-price-md--line-height: 20px;
+  --text-price-md--font-weight: 700;
+  --text-price-lg: 22px;
+  --text-price-lg--line-height: 26px;
+  --text-price-lg--font-weight: 800;
+
+  /* v3 shadow scale — v4 shifted the names one step (v4 shadow-sm = v3 shadow). */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+
+/* Stitch palette. Utilities read these through var(), so html.dark only swaps values. */
+:root {
+  --st-primary: #af2900;
+  --st-on-primary: #ffffff;
+  --st-primary-container: #d2411a;
+  --st-on-primary-container: #fffbff;
+  --st-primary-fixed: #ffdbd2;
+  --st-primary-fixed-dim: #ffb4a2;
+  --st-on-primary-fixed: #3c0800;
+  --st-on-primary-fixed-variant: #891e00;
+  --st-inverse-primary: #ffb4a2;
+  --st-surface-tint: #b32b02;
+  --st-secondary: #006e2d;
+  --st-on-secondary: #ffffff;
+  --st-secondary-container: #7cf994;
+  --st-on-secondary-container: #007230;
+  --st-secondary-fixed: #7ffc97;
+  --st-secondary-fixed-dim: #62df7d;
+  --st-on-secondary-fixed: #002109;
+  --st-on-secondary-fixed-variant: #005320;
+  --st-tertiary: #00628d;
+  --st-on-tertiary: #ffffff;
+  --st-tertiary-container: #007cb1;
+  --st-on-tertiary-container: #fcfcff;
+  --st-tertiary-fixed: #c9e6ff;
+  --st-tertiary-fixed-dim: #89ceff;
+  --st-on-tertiary-fixed: #001e2f;
+  --st-on-tertiary-fixed-variant: #004c6e;
+  --st-error: #ba1a1a;
+  --st-on-error: #ffffff;
+  --st-error-container: #ffdad6;
+  --st-on-error-container: #93000a;
+  --st-background: #f8f9ff;
+  --st-on-background: #171c23;
+  --st-surface: #f8f9ff;
+  --st-surface-bright: #f8f9ff;
+  --st-surface-dim: #d6dae4;
+  --st-surface-variant: #dee2ec;
+  --st-surface-container-lowest: #ffffff;
+  --st-surface-container-low: #f0f4fd;
+  --st-surface-container: #eaeef8;
+  --st-surface-container-high: #e4e8f2;
+  --st-surface-container-highest: #dee2ec;
+  --st-on-surface: #171c23;
+  --st-on-surface-variant: #5a413a;
+  --st-inverse-surface: #2c3138;
+  --st-inverse-on-surface: #edf1fb;
+  --st-outline: #8e7069;
+  --st-outline-variant: #e3bfb6;
+  --st-line: #e5e7eb;
+}
+
+html.dark {
+  --st-primary: #ff6a3d;
+  --st-on-primary: #1a0600;
+  --st-primary-container: #ff8a65;
+  --st-on-primary-container: #1a0600;
+  --st-primary-fixed: #3a2420;
+  --st-primary-fixed-dim: #5c2a1c;
+  --st-on-primary-fixed: #ffdbd2;
+  --st-on-primary-fixed-variant: #ffb4a2;
+  --st-inverse-primary: #af2900;
+  --st-surface-tint: #ff6a3d;
+  --st-secondary: #4ade80;
+  --st-on-secondary: #002109;
+  --st-secondary-container: #14532d;
+  --st-on-secondary-container: #86efac;
+  --st-secondary-fixed: #14532d;
+  --st-secondary-fixed-dim: #166534;
+  --st-on-secondary-fixed: #dcfce7;
+  --st-on-secondary-fixed-variant: #bbf7d0;
+  --st-tertiary: #7dd3fc;
+  --st-on-tertiary: #001e2f;
+  --st-tertiary-container: #0369a1;
+  --st-on-tertiary-container: #e0f2fe;
+  --st-tertiary-fixed: #0c4a6e;
+  --st-tertiary-fixed-dim: #075985;
+  --st-on-tertiary-fixed: #e0f2fe;
+  --st-on-tertiary-fixed-variant: #bae6fd;
+  --st-error: #fb7185;
+  --st-on-error: #3a0010;
+  --st-error-container: #3a1720;
+  --st-on-error-container: #fecdd3;
+  --st-background: #0b1120;
+  --st-on-background: #f1f5f9;
+  --st-surface: #0b1120;
+  --st-surface-bright: #1e293b;
+  --st-surface-dim: #020617;
+  --st-surface-variant: #334155;
+  --st-surface-container-lowest: #1e293b;
+  --st-surface-container-low: #0f172a;
+  --st-surface-container: #1e293b;
+  --st-surface-container-high: #273449;
+  --st-surface-container-highest: #334155;
+  --st-on-surface: #f8fafc;
+  --st-on-surface-variant: #94a3b8;
+  --st-inverse-surface: #020617;
+  --st-inverse-on-surface: #e2e8f0;
+  --st-outline: #64748b;
+  --st-outline-variant: #334155;
+  --st-line: #334155;
+}
+
+/* The Stitch config overrode DEFAULT and full radii; v4 doesn't take these from the theme. */
+.rounded { border-radius: 0.125rem; }
+.rounded-full { border-radius: 0.75rem; }
+
+/*
+ * Tailwind v3 preflight behaviour that the existing site.css pages were built
+ * against (v4 changed these defaults).
+ */
+*, ::after, ::before, ::backdrop, ::file-selector-button { border-color: var(--st-line); }
+input::placeholder, textarea::placeholder { color: #9ca3af; }
+button, [role='button'] { cursor: pointer; }
+:disabled { cursor: default; }
+
+/* ---- Global styles carried over from the Stitch export ---- */
+
+:root {
+  --font-family-base: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+:focus-visible { outline: 2px solid var(--st-primary); outline-offset: 2px; }
+
+body {
+  font-family: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif !important;
+  background-color: var(--st-surface);
+  color: var(--st-on-surface);
+  overscroll-behavior: none;
+}
+
+main > :first-child { margin-top: 0 !important; }
+main > :last-child { margin-bottom: 0 !important; }
+::-webkit-scrollbar { display: none; }
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined' !important;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
+}
+
+/* Dark mode: useTheme toggles html.dark; the palette variables above do the rest. */
+html.dark { color-scheme: dark; }
+html.dark header.fixed { background-color: var(--st-surface-container-low); border-bottom: 1px solid rgb(255 255 255 / 0.08); }

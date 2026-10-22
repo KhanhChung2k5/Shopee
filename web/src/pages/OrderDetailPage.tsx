@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate, useParams } from 'react-router-dom'
-import { formatVnd } from '../lib/catalog'
+import { Navigate, useParams } from 'react-router-dom'
+import { Alert, Badge, Button, ButtonLink, Card, CardTitle, EmptyState, Loading, Page, PageHeader, SummaryRow, cx, inputClass } from '../components/ui'
+import { formatVnd, resolveCatalogImageUrl } from '../lib/catalog'
 import { apiFetch, ApiError } from '../lib/api'
+import { SHIPMENT_LABEL, STATUS_LABEL, STATUS_TONE, formatOrderDate as formatDate, type OrderStatus } from '../lib/orderStatus'
 import { useAuth } from '../state/AuthContext'
-
-type OrderStatus = 'pending' | 'confirmed' | 'cancel_requested' | 'shipping' | 'delivered' | 'cancelled'
 
 interface OrderItem {
   id: string
@@ -61,31 +61,13 @@ interface ReviewResponse {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-const STATUS_LABEL: Record<OrderStatus, string> = {
-  pending: 'Chờ xác nhận',
-  confirmed: 'Đã xác nhận',
-  cancel_requested: 'Chờ xác nhận huỷ',
-  shipping: 'Đang giao',
-  delivered: 'Đã giao',
-  cancelled: 'Đã huỷ',
-}
-
-const SHIPMENT_LABEL: Record<string, string> = {
-  pending: 'Chờ đóng gói',
-  packed: 'Đã đóng gói',
-  shipping: 'Đang vận chuyển',
-  delivered: 'Đã giao hàng',
-  failed: 'Giao không thành công',
-}
-
-const dateFormatter = new Intl.DateTimeFormat('vi-VN', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-})
-
-function formatDate(value: string) {
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : dateFormatter.format(date)
+const TIMELINE_DOT: Record<OrderStatus, string> = {
+  pending: 'bg-primary',
+  confirmed: 'bg-tertiary',
+  cancel_requested: 'bg-error',
+  shipping: 'bg-tertiary',
+  delivered: 'bg-secondary',
+  cancelled: 'bg-outline',
 }
 
 function formatAttributes(raw: string | null) {
@@ -104,7 +86,7 @@ export default function OrderDetailPage() {
   const { token, user, isAuthenticated, isReady } = useAuth()
 
   if (!isReady) {
-    return <div className="container"><div className="order-detail-state">Đang kiểm tra đăng nhập…</div></div>
+    return <Page><Loading>Đang kiểm tra đăng nhập…</Loading></Page>
   }
   if (!isAuthenticated || !token) {
     return <Navigate to="/dang-nhap" replace state={{ from: id ? `/don-hang/${id}` : '/don-hang' }} />
@@ -114,10 +96,11 @@ export default function OrderDetailPage() {
   }
   if (!id || !UUID_PATTERN.test(id)) {
     return (
-      <div className="container"><div className="order-detail-state">
-        <h1>Đường dẫn đơn hàng không hợp lệ</h1>
-        <Link className="button button--outline" to="/don-hang">Về lịch sử đơn hàng</Link>
-      </div></div>
+      <Page narrow>
+        <Card>
+          <EmptyState icon="link_off" title="Đường dẫn đơn hàng không hợp lệ" action={<ButtonLink variant="outline" to="/don-hang">Về lịch sử đơn hàng</ButtonLink>} />
+        </Card>
+      </Page>
     )
   }
 
@@ -191,59 +174,60 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
   }
 
   if (isLoading) {
-    return <div className="container"><div className="order-detail-state">Đang tải chi tiết đơn hàng…</div></div>
+    return <Page><Loading>Đang tải chi tiết đơn hàng…</Loading></Page>
   }
 
   if (error || !order) {
     return (
-      <div className="container"><div className="order-detail-state order-detail-state--error">
-        <h1>Không thể mở đơn hàng</h1>
-        <p>{error ?? 'Không tìm thấy đơn hàng'}</p>
-        <div className="order-detail-state__actions">
-          <Link className="button button--outline" to="/don-hang">Về lịch sử đơn hàng</Link>
-          <button className="button button--primary" type="button" onClick={retry}>Thử lại</button>
-        </div>
-      </div></div>
+      <Page narrow>
+        <Card>
+          <EmptyState
+            icon="error"
+            title="Không thể mở đơn hàng"
+            description={error ?? 'Không tìm thấy đơn hàng'}
+            action={<div className="flex gap-space-sm">
+              <ButtonLink variant="outline" to="/don-hang">Về lịch sử đơn hàng</ButtonLink>
+              <Button icon="refresh" onClick={retry}>Thử lại</Button>
+            </div>}
+          />
+        </Card>
+      </Page>
     )
   }
 
   const canCancel = order.status === 'pending' || order.status === 'confirmed'
   return (
-    <div className="container order-detail-page">
-      <Link className="order-detail-back" to="/don-hang">← Lịch sử đơn hàng</Link>
+    <Page>
+      <PageHeader
+        breadcrumb={[{ label: 'Đơn mua', to: '/don-hang' }, { label: 'Chi tiết đơn hàng' }]}
+        title={`Đơn #${order.id.slice(0, 8).toUpperCase()}`}
+        subtitle={`Đặt lúc ${formatDate(order.createdAt)}`}
+        actions={<Badge tone={STATUS_TONE[order.status] ?? 'neutral'} className="!text-label-md px-space-sm py-1">{STATUS_LABEL[order.status]}</Badge>}
+      />
 
-      <header className="order-detail-heading">
-        <div>
-          <p className="order-history-eyebrow">Chi tiết đơn hàng</p>
-          <h1>Đơn #{order.id.slice(0, 8).toUpperCase()}</h1>
-          <p>Đặt lúc {formatDate(order.createdAt)}</p>
-        </div>
-        <span className={`order-status order-status--${order.status}`}>{STATUS_LABEL[order.status]}</span>
-      </header>
-
-      <div className="order-detail-layout">
-        <div className="order-detail-main">
-          <section className="order-detail-section">
-            <h2>Sản phẩm ({order.items.length})</h2>
-            <div className="order-detail-items">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop items-start">
+        <div className="lg:col-span-8 space-y-space-md">
+          <Card as="section">
+            <CardTitle icon="inventory_2">Sản phẩm ({order.items.length})</CardTitle>
+            <div className="divide-y divide-line">
               {order.items.map((item, index) => {
                 const attributes = formatAttributes(item.variantAttributesSnapshot)
                 return (
-                  <div className="order-detail-item-group" key={item.id}>
-                    <div className="order-detail-item">
-                      <div className="order-detail-item__thumb">
+                  <div className="py-space-sm space-y-space-sm" key={item.id}>
+                    <div className="flex items-center gap-space-md">
+                      <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-surface-container-low flex items-center justify-center font-title-lg text-title-lg text-on-surface-variant">
                         {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.productNameSnapshot} loading="lazy" />
+                          <img className="w-full h-full object-cover" src={resolveCatalogImageUrl(item.imageUrl, 160)} alt={item.productNameSnapshot} loading="lazy" />
                         ) : (
                           <span aria-hidden="true">{index + 1}</span>
                         )}
                       </div>
-                      <div className="order-detail-item__body">
-                        <strong>{item.productNameSnapshot}</strong>
-                        {attributes && <span>{attributes}</span>}
-                        <span>{formatVnd(Number(item.unitPrice))} × {item.quantity}</span>
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        <strong className="block font-title-md text-title-md text-on-surface">{item.productNameSnapshot}</strong>
+                        {attributes && <span className="block font-body-md text-body-md text-on-surface-variant">{attributes}</span>}
+                        <span className="block font-body-md text-body-md text-on-surface-variant">{formatVnd(Number(item.unitPrice))} × {item.quantity}</span>
                       </div>
-                      <strong className="order-detail-item__total">{formatVnd(Number(item.lineTotal))}</strong>
+                      <strong className="font-price-md text-price-md text-on-surface whitespace-nowrap">{formatVnd(Number(item.lineTotal))}</strong>
                     </div>
                     {order.status === 'delivered' && (
                       <OrderItemReview orderItemId={item.id} productName={item.productNameSnapshot} token={token} />
@@ -252,57 +236,54 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
                 )
               })}
             </div>
-          </section>
+          </Card>
 
-          <section className="order-detail-section">
-            <h2>Hành trình đơn hàng</h2>
-            <ol className="order-timeline">
+          <Card as="section">
+            <CardTitle icon="timeline">Hành trình đơn hàng</CardTitle>
+            <ol className="relative ml-1.5 border-l-2 border-line space-y-space-md">
               {order.statusHistory.map((entry) => (
-                <li key={entry.id} className={`order-timeline__item order-timeline__item--${entry.status}`}>
-                  <div className="order-timeline__dot" aria-hidden="true" />
-                  <div>
-                    <strong>{STATUS_LABEL[entry.status] ?? entry.status}</strong>
-                    <span>{formatDate(entry.changedAt)} · {entry.changedByType === 'buyer' ? 'Khách hàng' : 'Nhân viên'}</span>
-                    {entry.reason && <p>{entry.reason}</p>}
-                  </div>
+                <li key={entry.id} className="relative pl-space-lg">
+                  <span className={cx('absolute -left-[7px] top-1 w-3 h-3 rounded-full ring-4 ring-surface-container-lowest', TIMELINE_DOT[entry.status] ?? 'bg-outline')} aria-hidden="true" />
+                  <strong className="block font-title-md text-title-md text-on-surface">{STATUS_LABEL[entry.status] ?? entry.status}</strong>
+                  <span className="block font-label-md text-label-md text-on-surface-variant">{formatDate(entry.changedAt)} · {entry.changedByType === 'buyer' ? 'Khách hàng' : 'Nhân viên'}</span>
+                  {entry.reason && <p className="mt-1 font-body-md text-body-md text-on-surface bg-surface-container-low rounded-lg px-space-sm py-space-xs">{entry.reason}</p>}
                 </li>
               ))}
             </ol>
-          </section>
+          </Card>
         </div>
 
-        <aside className="order-detail-side">
-          <section className="order-detail-section">
-            <h2>Giao hàng</h2>
-            <dl className="order-detail-info">
-              <div><dt>Địa chỉ</dt><dd>{order.shippingAddressSnapshot}</dd></div>
-              <div><dt>Trạng thái</dt><dd>{SHIPMENT_LABEL[order.shipmentStatus] ?? order.shipmentStatus}</dd></div>
-              {order.shippingProviderName && <div><dt>Đơn vị vận chuyển</dt><dd>{order.shippingProviderName}</dd></div>}
-              {order.trackingNo && <div><dt>Mã vận đơn</dt><dd><code>{order.trackingNo}</code></dd></div>}
+        <aside className="lg:col-span-4 space-y-space-md">
+          <Card as="section">
+            <CardTitle icon="local_shipping">Giao hàng</CardTitle>
+            <dl className="space-y-space-sm font-body-md text-body-md">
+              <InfoRow label="Địa chỉ">{order.shippingAddressSnapshot}</InfoRow>
+              <InfoRow label="Trạng thái">{SHIPMENT_LABEL[order.shipmentStatus] ?? order.shipmentStatus}</InfoRow>
+              {order.shippingProviderName && <InfoRow label="Đơn vị vận chuyển">{order.shippingProviderName}</InfoRow>}
+              {order.trackingNo && <InfoRow label="Mã vận đơn"><code className="font-mono bg-surface-container-low rounded px-1">{order.trackingNo}</code></InfoRow>}
             </dl>
-          </section>
+          </Card>
 
-          <section className="order-detail-section">
-            <h2>Thanh toán</h2>
-            <div className="order-detail-prices">
-              <div><span>Tạm tính</span><span>{formatVnd(Number(order.subtotalAmount))}</span></div>
-              <div><span>Giảm giá</span><span>− {formatVnd(Number(order.discountAmount))}</span></div>
-              <div><span>Phí vận chuyển</span><span>{formatVnd(Number(order.shippingFeeAmount))}</span></div>
-              <div className="order-detail-prices__total"><span>Tổng cộng</span><strong>{formatVnd(Number(order.totalAmount))}</strong></div>
-            </div>
-          </section>
+          <Card as="section" className="space-y-space-sm">
+            <CardTitle icon="payments">Thanh toán</CardTitle>
+            <SummaryRow label="Tạm tính" value={formatVnd(Number(order.subtotalAmount))} />
+            <SummaryRow label="Giảm giá" value={`− ${formatVnd(Number(order.discountAmount))}`} />
+            <SummaryRow label="Phí vận chuyển" value={formatVnd(Number(order.shippingFeeAmount))} />
+            <SummaryRow strong label="Tổng cộng" value={formatVnd(Number(order.totalAmount))} />
+          </Card>
 
           {canCancel && (
-            <section className="order-detail-section order-detail-cancel">
+            <Card as="section">
               {!showCancelForm ? (
-                <button className="button button--outline order-detail-cancel__open" type="button" onClick={() => setShowCancelForm(true)}>
+                <Button variant="outline" className="w-full" icon="cancel" onClick={() => setShowCancelForm(true)}>
                   Gửi yêu cầu huỷ đơn
-                </button>
+                </Button>
               ) : (
-                <div className="order-detail-cancel__form">
-                  <label htmlFor="cancel-reason">Lý do huỷ đơn</label>
+                <div className="space-y-space-sm">
+                  <label className="block font-title-md text-title-md text-on-surface" htmlFor="cancel-reason">Lý do huỷ đơn</label>
                   <textarea
                     id="cancel-reason"
+                    className={inputClass}
                     maxLength={500}
                     rows={4}
                     value={cancelReason}
@@ -310,27 +291,36 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
                     placeholder="Cho chúng tôi biết lý do bạn muốn huỷ…"
                     disabled={isCancelling}
                   />
-                  <span className="order-detail-cancel__count">{cancelReason.length}/500</span>
-                  {cancelError && <p role="alert">{cancelError}</p>}
-                  <div>
-                    <button className="button button--outline button--sm" type="button" disabled={isCancelling} onClick={() => { setShowCancelForm(false); setCancelError(null) }}>Giữ đơn</button>
-                    <button className="button button--primary button--sm" type="button" disabled={isCancelling || !cancelReason.trim()} onClick={() => void cancelOrder()}>
+                  <span className="block text-right font-label-sm text-label-sm text-on-surface-variant">{cancelReason.length}/500</span>
+                  {cancelError && <Alert>{cancelError}</Alert>}
+                  <div className="flex justify-end gap-space-sm">
+                    <Button variant="outline" size="sm" disabled={isCancelling} onClick={() => { setShowCancelForm(false); setCancelError(null) }}>Giữ đơn</Button>
+                    <Button variant="danger" size="sm" disabled={isCancelling || !cancelReason.trim()} onClick={() => void cancelOrder()}>
                       {isCancelling ? 'Đang gửi…' : 'Gửi yêu cầu huỷ'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
-            </section>
+            </Card>
           )}
 
           {order.status === 'cancel_requested' && (
-            <section className="order-detail-section order-detail-cancel-waiting">
-              <strong>Yêu cầu huỷ đang chờ xác nhận</strong>
-              <p>Đơn hàng chưa bị huỷ. Người bán hoặc nhân viên phụ trách sẽ xem xét và xác nhận yêu cầu.</p>
-            </section>
+            <Alert tone="info">
+              <strong className="block font-title-md text-title-md">Yêu cầu huỷ đang chờ xác nhận</strong>
+              Đơn hàng chưa bị huỷ. Người bán hoặc nhân viên phụ trách sẽ xem xét và xác nhận yêu cầu.
+            </Alert>
           )}
         </aside>
       </div>
+    </Page>
+  )
+}
+
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="font-label-md text-label-md text-on-surface-variant">{label}</dt>
+      <dd className="text-on-surface">{children}</dd>
     </div>
   )
 }
@@ -369,44 +359,47 @@ function OrderItemReview({ orderItemId, productName, token }: { orderItemId: str
 
   if (submitted) {
     return (
-      <div className="order-item-review order-item-review--submitted">
-        <span className="order-item-review__stars" aria-label={`Đã đánh giá ${submitted.rating} sao`}>
-          {'★'.repeat(submitted.rating)}{'☆'.repeat(5 - submitted.rating)}
+      <div className="ml-20 rounded-lg bg-secondary-container/40 px-space-md py-space-sm space-y-0.5">
+        <span className="flex text-primary" aria-label={`Đã đánh giá ${submitted.rating} sao`}>
+          {[1, 2, 3, 4, 5].map((star) => (
+            <span key={star} className="material-symbols-outlined text-base" style={star <= submitted.rating ? { fontVariationSettings: "'FILL' 1" } : undefined}>star</span>
+          ))}
         </span>
-        {submitted.comment && <p>{submitted.comment}</p>}
-        <span className="order-item-review__thanks">Cảm ơn bạn đã đánh giá {productName}!</span>
+        {submitted.comment && <p className="font-body-md text-body-md text-on-surface">{submitted.comment}</p>}
+        <span className="block font-label-md text-label-md text-on-secondary-container">Cảm ơn bạn đã đánh giá {productName}!</span>
       </div>
     )
   }
 
   if (!open) {
     return (
-      <div className="order-item-review">
-        <button className="button button--outline button--sm" type="button" onClick={() => setOpen(true)}>
+      <div className="ml-20">
+        <Button variant="outline" size="sm" icon="rate_review" onClick={() => setOpen(true)}>
           Viết đánh giá
-        </button>
+        </Button>
       </div>
     )
   }
 
   return (
-    <div className="order-item-review order-item-review--form">
-      <div className="order-item-review__picker" role="radiogroup" aria-label="Chọn số sao">
+    <div className="ml-20 rounded-lg border border-line p-space-md space-y-space-sm">
+      <div className="flex gap-0.5" role="radiogroup" aria-label="Chọn số sao">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
             type="button"
-            className="order-item-review__star"
+            className="text-primary cursor-pointer disabled:cursor-not-allowed hover:scale-110 transition-transform"
             aria-pressed={star <= rating}
             aria-label={`${star} sao`}
             onClick={() => setRating(star)}
             disabled={submitting}
           >
-            {star <= rating ? '★' : '☆'}
+            <span className="material-symbols-outlined text-3xl" style={star <= rating ? { fontVariationSettings: "'FILL' 1" } : undefined}>star</span>
           </button>
         ))}
       </div>
       <textarea
+        className={inputClass}
         maxLength={2000}
         rows={3}
         value={comment}
@@ -414,14 +407,14 @@ function OrderItemReview({ orderItemId, productName, token }: { orderItemId: str
         placeholder="Sản phẩm dùng thế nào? Chia sẻ để người mua sau tham khảo…"
         disabled={submitting}
       />
-      {error && <p role="alert">{error}</p>}
-      <div className="order-item-review__actions">
-        <button className="button button--outline button--sm" type="button" disabled={submitting} onClick={() => { setOpen(false); setError(null) }}>
+      {error && <Alert>{error}</Alert>}
+      <div className="flex justify-end gap-space-sm">
+        <Button variant="outline" size="sm" disabled={submitting} onClick={() => { setOpen(false); setError(null) }}>
           Huỷ
-        </button>
-        <button className="button button--primary button--sm" type="button" disabled={submitting} onClick={() => void submitReview()}>
+        </Button>
+        <Button size="sm" disabled={submitting} onClick={() => void submitReview()}>
           {submitting ? 'Đang gửi…' : 'Gửi đánh giá'}
-        </button>
+        </Button>
       </div>
     </div>
   )

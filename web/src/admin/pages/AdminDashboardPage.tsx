@@ -8,6 +8,7 @@ import { useAuth } from '../../state/AuthContext'
 import { apiFetch } from '../../lib/api'
 import LineChart from '../components/LineChart'
 import DonutChart from '../components/DonutChart'
+import { a } from '../adminUi'
 
 // Mock 7-period LTV trend — stands in for a real time-series query (needs the Order module).
 const LTV_TREND = [38, 42, 39, 47, 52, 49, 61.84]
@@ -51,56 +52,60 @@ export default function AdminDashboardPage() {
     <div>
       <h1>Tổng quan</h1>
 
-      <div className="admin-hero-grid">
-        <div className="admin-stat-card admin-stat-card--hero">
-          <div className="admin-toolbar" style={{ marginBottom: 0 }}>
-            <div className="admin-stat-card__label">Tổng giá trị vòng đời khách hàng (LTV)</div>
-            <span className="delta-badge delta-badge--up">▲ {LTV_DELTA_PCT}% so với kỳ trước</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-space-md mb-space-lg">
+        <div className={`${a.card} lg:col-span-2 flex flex-col`}>
+          <div className="flex flex-wrap items-center justify-between gap-space-md">
+            <div className={a.statLabel}>Tổng giá trị vòng đời khách hàng (LTV)</div>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-md text-label-md whitespace-nowrap">
+              <span className="material-symbols-outlined text-sm">trending_up</span> {LTV_DELTA_PCT}% so với kỳ trước
+            </span>
           </div>
-          <div className="admin-stat-card__value admin-stat-card__value--xl">{formatVnd(totalLtv)}</div>
-          <LineChart values={LTV_TREND} labels={LTV_LABELS} color="var(--color-primary)" height={180} />
+          <div className="font-headline-xl text-headline-xl text-primary my-space-sm">{formatVnd(totalLtv)}</div>
+          <LineChart values={LTV_TREND} labels={LTV_LABELS} color="var(--st-primary)" height={180} />
         </div>
 
-        <div className="admin-mini-stack">
-          <div className="admin-stat-card">
-            <div className="admin-stat-card__label">Tổng khách hàng</div>
-            <div className="admin-stat-card__value">{total}</div>
+        <div className="flex flex-col gap-space-md">
+          <div className={`${a.card} flex-1 flex flex-col justify-center`}>
+            <div className={a.statLabel}>Tổng khách hàng</div>
+            <div className={a.statValue}>{total}</div>
           </div>
-          <div className="admin-stat-card">
-            <div className="admin-stat-card__label">Đang hoạt động</div>
-            <div className="admin-stat-card__value" style={{ color: 'var(--color-trust)' }}>{active}</div>
+          <div className={`${a.card} flex-1 flex flex-col justify-center`}>
+            <div className={a.statLabel}>Đang hoạt động</div>
+            <div className={`${a.statValue} !text-secondary`}>{active}</div>
           </div>
-          <div className="admin-stat-card">
-            <div className="admin-stat-card__label">Đã khoá / xoá mềm</div>
-            <div className="admin-stat-card__value" style={{ color: '#EAB308' }}>
-              {locked} <span style={{ fontSize: 16, color: 'var(--color-urgent)' }}>/ {deleted}</span>
+          <div className={`${a.card} flex-1 flex flex-col justify-center`}>
+            <div className={a.statLabel}>Đã khoá / xoá mềm</div>
+            <div className={`${a.statValue} !text-[#ca8a04]`}>
+              {locked} <span className="font-title-lg text-title-lg text-error">/ {deleted}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="admin-toolbar">
-        <div className="filter-bar" style={{ marginBottom: 0 }}>
-          {orderStatusCounts.map(({ status, count }) => (
-            <span key={status} className="order-pill" style={{ '--pill-color': ORDER_STATUS_COLOR[status] } as CSSProperties}>
-              {ORDER_STATUS_LABEL[status]} <strong>{count}</strong>
-            </span>
-          ))}
-        </div>
+      <div className={`${a.filterBar} mb-space-md`}>
+        {orderStatusCounts.map(({ status, count }) => (
+          <span
+            key={status}
+            className="inline-flex items-center gap-1.5 px-space-md py-1.5 rounded-full font-label-md text-label-md text-[var(--pill-color)] bg-[color-mix(in_srgb,var(--pill-color)_14%,transparent)] border border-[color-mix(in_srgb,var(--pill-color)_35%,transparent)]"
+            style={{ '--pill-color': ORDER_STATUS_COLOR[status] } as CSSProperties}
+          >
+            {ORDER_STATUS_LABEL[status]} <strong className="font-extrabold">{count}</strong>
+          </span>
+        ))}
       </div>
 
-      <div className="admin-dashboard-grid">
-        <div className="admin-stat-card">
-          <div className="admin-stat-card__label" style={{ marginBottom: 'var(--space-3)' }}>Top 5 khách hàng theo LTV</div>
-          <table className="admin-table admin-table--compact">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-space-md items-start">
+        <div className={`${a.card} lg:col-span-2`}>
+          <div className={`${a.statLabel} !mb-space-md`}>Top 5 khách hàng theo LTV</div>
+          <table className={a.tableCompact}>
             <tbody>
               {topCustomers.length === 0 ? (
-                <tr><td style={{ color: 'var(--color-muted-foreground)' }}>Chưa có khách hàng nào</td></tr>
+                <tr><td className="text-on-surface-variant">Chưa có khách hàng nào</td></tr>
               ) : (
                 topCustomers.map((c) => (
                   <tr key={c.id}>
                     <td>{c.fullName ?? c.email}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatVnd(c.ltv)}</td>
+                    <td className="text-right font-bold">{formatVnd(c.ltv)}</td>
                   </tr>
                 ))
               )}
@@ -108,39 +113,39 @@ export default function AdminDashboardPage() {
           </table>
         </div>
 
-        <div className="admin-stat-card">
-          <div className="admin-stat-card__label" style={{ marginBottom: 'var(--space-3)' }}>Trạng thái tài khoản khách hàng</div>
+        <div className={a.card}>
+          <div className={`${a.statLabel} !mb-space-md`}>Trạng thái tài khoản khách hàng</div>
           <DonutChart
             segments={[
-              { label: 'Hoạt động', value: active, color: 'var(--color-trust)' },
+              { label: 'Hoạt động', value: active, color: 'var(--st-secondary)' },
               { label: 'Đã khoá', value: locked, color: '#EAB308' },
-              { label: 'Đã xoá mềm', value: deleted, color: 'var(--color-urgent)' },
+              { label: 'Đã xoá mềm', value: deleted, color: 'var(--st-error)' },
             ]}
           />
         </div>
       </div>
 
-      <div className="admin-quick-links" style={{ marginTop: 'var(--space-3)', flexDirection: 'row', flexWrap: 'wrap' }}>
-        <Link className="admin-quick-link" to="/admin/khach-hang">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md mt-space-md">
+        <Link className={a.quickLink} to="/admin/khach-hang">
           <strong>Quản lý khách hàng</strong>
           <span>Thêm mới, khoá/mở, xoá mềm tài khoản</span>
         </Link>
-        <Link className="admin-quick-link" to="/admin/bao-cao">
+        <Link className={a.quickLink} to="/admin/bao-cao">
           <strong>Báo cáo nhân khẩu học</strong>
           <span>Phân bố tuổi, giới tính, ngành hàng ưa thích</span>
         </Link>
-        <Link className="admin-quick-link" to="/admin/san-pham">
+        <Link className={a.quickLink} to="/admin/san-pham">
           <strong>Sản phẩm</strong>
           <span>Danh sách catalog, trạng thái đang bán/ẩn</span>
         </Link>
-        <Link className="admin-quick-link" to="/admin/don-hang">
+        <Link className={a.quickLink} to="/admin/don-hang">
           <strong>Đơn hàng</strong>
           <span>Theo dõi & cập nhật trạng thái xử lý</span>
         </Link>
       </div>
 
-      <p style={{ color: 'var(--color-muted-foreground)', fontSize: 13.5, marginTop: 'var(--space-4)' }}>
-        Số liệu khách hàng là dữ liệu thật từ <code>GET /customers</code>. LTV/đơn hàng luôn là 0 và biểu đồ xu hướng/trạng thái đơn hàng
+      <p className="mt-space-lg font-body-md text-body-md text-on-surface-variant">
+        Số liệu khách hàng là dữ liệu thật từ <code className="font-mono">GET /customers</code>. LTV/đơn hàng luôn là 0 và biểu đồ xu hướng/trạng thái đơn hàng
         vẫn là dữ liệu minh hoạ cho tới khi module Order được xây dựng.
       </p>
     </div>

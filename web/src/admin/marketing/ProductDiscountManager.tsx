@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { apiFetch } from '../../lib/api'
 import type { ProductDiscount, PromotionProgram } from './types'
 import { errorMessage, money } from './types'
+import { a } from '../adminUi'
+import { buttonClass } from '../../components/ui'
 
 interface ProductForm {
   promotionProgramId: string
@@ -89,15 +91,15 @@ export default function ProductDiscountManager({ token, programs, discounts, onC
   }
 
   return (
-    <section className="admin-stat-card" style={{ marginTop: 'var(--space-4)' }}>
-      <h2 style={{ marginTop: 0 }}>Ưu đãi SKU / Flash Sale ({discounts.length})</h2>
-      <p style={{ color: 'var(--color-muted-foreground)', fontSize: 13 }}>
+    <section className={`${a.card} mt-space-lg`}>
+      <h2 className="font-headline-md text-headline-md text-on-surface mb-space-md">Ưu đãi SKU / Flash Sale ({discounts.length})</h2>
+      <p className="font-body-md text-body-md text-on-surface-variant mb-space-md">
         Nhập ID biến thể sản phẩm từ P2. Khi API catalog có sẵn, trường này sẽ đổi thành bộ chọn SKU.
       </p>
-      <form onSubmit={save} className="marketing-form">
+      <form onSubmit={save} className={a.formGrid}>
         <label>
           Chương trình
-          <select className="search__input" required value={form.promotionProgramId}
+          <select className={a.input} required value={form.promotionProgramId}
             onChange={(event) => setForm({ ...form, promotionProgramId: event.target.value })}>
             <option value="">Chọn chương trình</option>
             {programs.map((program) => <option key={program.id} value={program.id}>{program.code} · {program.name}</option>)}
@@ -105,12 +107,12 @@ export default function ProductDiscountManager({ token, programs, discounts, onC
         </label>
         <label>
           ID biến thể (SKU)
-          <input className="search__input" required placeholder="UUID của product_variants"
+          <input className={a.input} required placeholder="UUID của product_variants"
             value={form.variantId} onChange={(event) => setForm({ ...form, variantId: event.target.value })} />
         </label>
         <label>
           Kiểu ưu đãi
-          <select className="search__input" value={form.kind}
+          <select className={a.input} value={form.kind}
             onChange={(event) => setForm({ ...form, kind: event.target.value as ProductForm['kind'], amount: '', limitQty: '' })}>
             <option value="flash">Giá Flash Sale</option>
             <option value="percentage">Giảm phần trăm</option>
@@ -118,28 +120,28 @@ export default function ProductDiscountManager({ token, programs, discounts, onC
         </label>
         <label>
           {form.kind === 'flash' ? 'Giá Flash Sale' : 'Phần trăm giảm'}
-          <input className="search__input" type="number" required min="0.01"
+          <input className={a.input} type="number" required min="0.01"
             max={form.kind === 'flash' ? '9999999999.99' : '100'} step="0.01"
             value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
         </label>
         {form.kind === 'flash' && (
           <label>
             Giới hạn số lượng
-            <input className="search__input" type="number" required min="1" step="1"
+            <input className={a.input} type="number" required min="1" step="1"
               value={form.limitQty} onChange={(event) => setForm({ ...form, limitQty: event.target.value })} />
           </label>
         )}
-        {error && <p role="alert" className="marketing-form__message">{error}</p>}
-        <div className="marketing-form__actions">
-          <button className="button button--primary" type="submit" disabled={busy || programs.length === 0}>
+        {error && <p role="alert" className={a.formMessage}>{error}</p>}
+        <div className={a.formActions}>
+          <button className={buttonClass('primary')} type="submit" disabled={busy || programs.length === 0}>
             {busy ? 'Đang lưu...' : editingId ? 'Lưu ưu đãi' : 'Thêm ưu đãi'}
           </button>
-          {editingId && <button className="button button--outline" type="button" onClick={reset}>Huỷ sửa</button>}
+          {editingId && <button className={buttonClass('outline')} type="button" onClick={reset}>Huỷ sửa</button>}
         </div>
       </form>
 
-      <div className="admin-table-wrap">
-        <table className="admin-table">
+      <div className={a.tableWrap}>
+        <table className={a.table}>
           <thead><tr><th>Chương trình</th><th>SKU</th><th>Mức giảm</th><th>Đã bán / Giới hạn</th><th>Thao tác</th></tr></thead>
           <tbody>
             {discounts.map((discount) => (
@@ -149,9 +151,9 @@ export default function ProductDiscountManager({ token, programs, discounts, onC
                 <td>{discount.flashPrice === null ? `${discount.discountPercent}%` : money.format(discount.flashPrice)}</td>
                 <td>{discount.limitQty === null ? '—' : `${discount.soldQty}/${discount.limitQty}`}</td>
                 <td>
-                  <div className="marketing-actions">
-                    <button className="button button--outline" type="button" onClick={() => edit(discount)} disabled={discount.soldQty > 0}>Sửa</button>
-                    <button className="button button--outline" type="button" onClick={() => remove(discount)} disabled={discount.soldQty > 0}>Xóa</button>
+                  <div className={a.rowActions}>
+                    <button className={buttonClass('outline')} type="button" onClick={() => edit(discount)} disabled={discount.soldQty > 0}>Sửa</button>
+                    <button className={buttonClass('outline')} type="button" onClick={() => remove(discount)} disabled={discount.soldQty > 0}>Xóa</button>
                   </div>
                 </td>
               </tr>

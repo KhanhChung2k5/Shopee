@@ -1,20 +1,21 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@600;700;800;900&display=swap" rel="stylesheet" />
-    <title>Chợ Tốt Mua</title>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block" rel="stylesheet" />
+    <title>Chợ Tốt Mua - Gaming Gear & Discs</title>
     <script>
-      // Set data-theme before first paint to avoid a light-mode flash.
       try {
         var t = localStorage.getItem('chotomua-theme');
-        document.documentElement.dataset.theme = (t === 'light' || t === 'dark') ? t : 'dark';
+        document.documentElement.dataset.theme = (t === 'light' || t === 'dark') ? t : 'light';
+        if (t === 'dark') document.documentElement.classList.add('dark');
       } catch (e) {
-        document.documentElement.dataset.theme = 'dark';
+        document.documentElement.dataset.theme = 'light';
       }
     </script>
   </head>

@@ -138,8 +138,13 @@ export const fetchProduct = (id: string) => apiFetch<CatalogProduct>(`/api/produ
 export const formatVnd = (amount: number | null | undefined) =>
   amount == null ? 'Chưa có giá' : `${amount.toLocaleString('vi-VN')} ₫`
 
-export function resolveCatalogImageUrl(url: string | null | undefined) {
+// Product photos are multi-MB PNG originals on Cloudinary; ask its CDN for a
+// resized WebP/AVIF instead (~1.4 MB → ~40 KB per card image).
+const CLOUDINARY_UPLOAD = /^(https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\/)(?!f_auto)/
+
+export function resolveCatalogImageUrl(url: string | null | undefined, width = 600) {
   if (!url) return undefined
+  if (CLOUDINARY_UPLOAD.test(url)) return url.replace(CLOUDINARY_UPLOAD, `$1f_auto,q_auto,w_${width}/`)
   return /^(https?:|data:|blob:)/i.test(url)
     ? url
     : `${API_BASE}${url.startsWith('/') ? url : `/${url}`}`

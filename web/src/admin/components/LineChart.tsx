@@ -4,7 +4,7 @@
 export default function LineChart({
   values,
   labels,
-  color = 'var(--color-primary)',
+  color = 'var(--st-primary)',
   height = 160,
 }: {
   values: number[]
@@ -42,12 +42,12 @@ export default function LineChart({
         </linearGradient>
       </defs>
       {gridLines.map((y) => (
-        <line key={y} x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="var(--color-border)" strokeWidth="1" />
+        <line key={y} x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="var(--st-line)" strokeWidth="1" />
       ))}
       <path d={areaPath} fill="url(#lc-fill)" />
       <path d={linePath} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
       {points.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r={i === points.length - 1 ? 4 : 0} fill={color} stroke="var(--color-surface)" strokeWidth="2" />
+        <circle key={i} cx={p.x} cy={p.y} r={i === points.length - 1 ? 4 : 0} fill={color} stroke="var(--st-surface-container-lowest)" strokeWidth="2" />
       ))}
       {labels.map((label, i) => (
         <text
@@ -55,7 +55,7 @@ export default function LineChart({
           x={padding.left + i * step}
           y={height - 6}
           fontSize="11"
-          fill="var(--color-muted-foreground)"
+          fill="var(--st-on-surface-variant)"
           textAnchor={i === 0 ? 'start' : i === labels.length - 1 ? 'end' : 'middle'}
         >
           {label}
