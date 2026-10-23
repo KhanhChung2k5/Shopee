@@ -4,6 +4,7 @@ import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -19,8 +20,14 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  * "Authorization: Bearer <token>" (see JwtAuthenticationFilter); there is no
  * session/cookie state. Authorities are ROLE_BUYER / ROLE_STAFF and, for
  * staff, DEPT_SALES / DEPT_WAREHOUSE / DEPT_ADMIN / DEPT_CS.
+ *
+ * CRM APIs (/api/customers, /api/segments, /api/campaigns, /api/surveys,
+ * /api/conversations, /api/notifications, /api/crm/**) only require a login
+ * here; the department rules live on each CRM controller as @PreAuthorize
+ * (see docs/phan-quyen-he-thong.md, mục 2.1), hence @EnableMethodSecurity.
  */
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -43,7 +50,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/health", "/auth/register", "/auth/login", "/flash-sales").permitAll()
+                .requestMatchers("/health", "/api/crm/health", "/auth/register", "/auth/login", "/flash-sales").permitAll()
                 // Public storefront discovery, while catalog management stays staff-only.
                 .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/catalog/categories", "/api/catalog/categories/**").permitAll()

@@ -9,6 +9,7 @@ import { apiFetch } from '../../lib/api'
 import LineChart from '../components/LineChart'
 import DonutChart from '../components/DonutChart'
 import { a } from '../adminUi'
+import { canAccessSection, type Department } from '../access'
 
 // Mock 7-period LTV trend — stands in for a real time-series query (needs the Order module).
 const LTV_TREND = [38, 42, 39, 47, 52, 49, 61.84]
@@ -23,14 +24,24 @@ const ORDER_STATUS_COLOR: Record<OrderStatus, string> = {
   cancelled: '#DC2626',
 }
 
+const QUICK_LINKS = [
+  { to: '/admin/khach-hang', title: 'Quản lý khách hàng', hint: 'Thêm mới, khoá/mở, xoá mềm tài khoản' },
+  { to: '/admin/bao-cao', title: 'Báo cáo nhân khẩu học', hint: 'Phân bố tuổi, giới tính, ngành hàng ưa thích' },
+  { to: '/admin/san-pham', title: 'Sản phẩm', hint: 'Danh sách catalog, trạng thái đang bán/ẩn' },
+  { to: '/admin/don-hang', title: 'Đơn hàng', hint: 'Theo dõi & cập nhật trạng thái xử lý' },
+]
+
 export default function AdminDashboardPage() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
+  const department = (user?.department ?? null) as Department | null
+  // GET /customers is cs/admin only — other departments would just get a 403.
+  const canSeeCustomers = canAccessSection('/admin/khach-hang', department)
   const [customers, setCustomers] = useState<Customer[]>([])
 
   useEffect(() => {
-    if (!token) return
+    if (!token || !canSeeCustomers) return
     apiFetch<Customer[]>('/customers', {}, token).then(setCustomers).catch(() => setCustomers([]))
-  }, [token])
+  }, [token, canSeeCustomers])
 
   const total = customers.length
   const active = customers.filter((c) => c.status === 'active').length
@@ -52,6 +63,7 @@ export default function AdminDashboardPage() {
     <div>
       <h1>Tổng quan</h1>
 
+      {canSeeCustomers && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-space-md mb-space-lg">
         <div className={`${a.card} lg:col-span-2 flex flex-col`}>
           <div className="flex flex-wrap items-center justify-between gap-space-md">
@@ -81,6 +93,7 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </div>
+      )}
 
       <div className={`${a.filterBar} mb-space-md`}>
         {orderStatusCounts.map(({ status, count }) => (
@@ -94,6 +107,7 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
+      {canSeeCustomers && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-space-md items-start">
         <div className={`${a.card} lg:col-span-2`}>
           <div className={`${a.statLabel} !mb-space-md`}>Top 5 khách hàng theo LTV</div>
@@ -124,24 +138,15 @@ export default function AdminDashboardPage() {
           />
         </div>
       </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md mt-space-md">
-        <Link className={a.quickLink} to="/admin/khach-hang">
-          <strong>Quản lý khách hàng</strong>
-          <span>Thêm mới, khoá/mở, xoá mềm tài khoản</span>
-        </Link>
-        <Link className={a.quickLink} to="/admin/bao-cao">
-          <strong>Báo cáo nhân khẩu học</strong>
-          <span>Phân bố tuổi, giới tính, ngành hàng ưa thích</span>
-        </Link>
-        <Link className={a.quickLink} to="/admin/san-pham">
-          <strong>Sản phẩm</strong>
-          <span>Danh sách catalog, trạng thái đang bán/ẩn</span>
-        </Link>
-        <Link className={a.quickLink} to="/admin/don-hang">
-          <strong>Đơn hàng</strong>
-          <span>Theo dõi & cập nhật trạng thái xử lý</span>
-        </Link>
+        {QUICK_LINKS.filter((l) => canAccessSection(l.to, department)).map((l) => (
+          <Link key={l.to} className={a.quickLink} to={l.to}>
+            <strong>{l.title}</strong>
+            <span>{l.hint}</span>
+          </Link>
+        ))}
       </div>
 
       <p className="mt-space-lg font-body-md text-body-md text-on-surface-variant">

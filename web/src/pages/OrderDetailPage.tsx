@@ -310,6 +310,10 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
             <SummaryRow strong label="Tổng cộng" value={formatVnd(Number(order.totalAmount))} />
           </Card>
 
+          <ButtonLink variant="outline" className="w-full" icon="support_agent" to={`/ho-tro?order=${order.id}`}>
+            Cần hỗ trợ về đơn này
+          </ButtonLink>
+
           {canCancel && (
             <Card as="section">
               {!showCancelForm ? (

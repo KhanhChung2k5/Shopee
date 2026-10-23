@@ -24,7 +24,9 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
     let message = `Lỗi ${res.status}`
     try {
       const body = await res.json()
+      // Backend modules answer {message}; the CRM module answers {error:{code,message}}.
       if (body?.message) message = body.message
+      else if (body?.error?.message) message = body.error.message
     } catch {
       // response wasn't JSON — keep the generic message
     }

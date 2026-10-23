@@ -39,7 +39,7 @@ const DEFAULT_FLASH_ITEMS = [
     productId: '976110cc-8f9c-519e-91e1-1cfebf415135',
     productName: 'Tay Cầm DualSense - Chroma Pearl (Bộ Sưu Tập Đổi Màu)',
     imageUrl:
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759864/chotomua/products/gallery/sp-c2-1.jpg',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-c2-1.webp',
     originalPrice: 1590000,
     flashPrice: 1339900,
     soldPercent: 88,
@@ -53,7 +53,7 @@ const DEFAULT_FLASH_ITEMS = [
     productId: 'ed6de72d-7afd-5f30-bd3a-e4ad9db6411e',
     productName: 'Đĩa PS5 Astro Bot (Bản Vật Lý Chính Hãng Sealed)',
     imageUrl:
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759703/chotomua/products/gallery/sp-d4-1.png',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d4-1.webp',
     originalPrice: 1790000,
     flashPrice: 1499000,
     soldPercent: 94,
@@ -67,7 +67,7 @@ const DEFAULT_FLASH_ITEMS = [
     productId: 'eb538024-56e6-5134-aef6-927c163ac9aa',
     productName: 'Đĩa PS5 Stellar Blade (Bản Đĩa Vật Lý Sealed 100%)',
     imageUrl:
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759707/chotomua/products/gallery/sp-d5-1.png',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d5-1.webp',
     originalPrice: 1990000,
     flashPrice: 1799000,
     soldPercent: 75,
@@ -81,7 +81,7 @@ const DEFAULT_FLASH_ITEMS = [
     productId: 'da16eedf-0a60-525c-855c-6783bd9af2bb',
     productName: 'Tay Cầm Không Dây DualSense - Chroma Indigo',
     imageUrl:
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759850/chotomua/products/gallery/sp-c1-1.jpg',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-c1-1.webp',
     originalPrice: 2490000,
     flashPrice: 2299000,
     soldPercent: 82,
@@ -95,7 +95,7 @@ const DEFAULT_FLASH_ITEMS = [
     productId: '916871f7-a4b6-51e6-afb8-fa8f8d9c6aef',
     productName: 'Đế Sạc Nhanh Cho Tay Cầm DualSense PS5',
     imageUrl:
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759940/chotomua/products/gallery/sp-a5-1.jpg',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-a5-1.webp',
     originalPrice: 990000,
     flashPrice: 799000,
     soldPercent: 60,

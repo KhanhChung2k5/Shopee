@@ -5,6 +5,7 @@ import com.chotomua.backend.modules.identity.AddressRepository;
 import com.chotomua.backend.modules.identity.Employee;
 import com.chotomua.backend.modules.identity.EmployeeRepository;
 import com.chotomua.backend.modules.marketing.VoucherQuoteService;
+import com.chotomua.backend.modules.crm.application.CrmOrderEvents;
 import com.chotomua.backend.modules.marketing.LoyaltyAwardService;
 import com.chotomua.backend.modules.marketing.FlashSaleCheckoutService;
 import com.chotomua.backend.modules.marketing.VoucherUsage;
@@ -48,6 +49,13 @@ public class OrderService {
     private final CheckoutPaymentService checkoutPaymentService;
     private final LoyaltyAwardService loyaltyAwardService;
     private final FlashSaleCheckoutService flashSaleCheckoutService;
+    /** Optional so the focused unit-test constructors below keep working without CRM. */
+    private CrmOrderEvents crmOrderEvents;
+
+    @Autowired(required = false)
+    void setCrmOrderEvents(CrmOrderEvents crmOrderEvents) {
+        this.crmOrderEvents = crmOrderEvents;
+    }
 
     @Autowired
     public OrderService(
@@ -245,6 +253,7 @@ public class OrderService {
         order.setStatus(nextOrderStatus);
         Order saved = orderRepository.save(order);
         if ("delivered".equals(nextOrderStatus) && loyaltyAwardService != null) loyaltyAwardService.award(saved);
+        if ("delivered".equals(nextOrderStatus) && crmOrderEvents != null) crmOrderEvents.onOrderDelivered(saved.getUserId(), saved.getId());
         orderStatusHistoryRepository.save(new OrderStatusHistory(
                 order.getId(),
                 nextOrderStatus,

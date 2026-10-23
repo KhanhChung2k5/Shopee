@@ -36,7 +36,7 @@ const DEFAULT_TOP_SELLERS = [
     sub: 'Bản Đĩa PS5 Chính Hãng Sealed',
     price: 1499000,
     imageUrl:
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759703/chotomua/products/gallery/sp-d4-1.png',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d4-1.webp',
     trend: 'up',
   },
   {
@@ -46,7 +46,7 @@ const DEFAULT_TOP_SELLERS = [
     sub: 'Bản Đĩa PS5 Chính Hãng Sealed',
     price: 1799000,
     imageUrl:
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759707/chotomua/products/gallery/sp-d5-1.png',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d5-1.webp',
     trend: 'up',
   },
   {
@@ -56,7 +56,7 @@ const DEFAULT_TOP_SELLERS = [
     sub: 'Tay Cầm Pro Cao Cấp Cho PS5',
     price: 5699000,
     imageUrl:
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759886/chotomua/products/gallery/sp-c5-1.jpg',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-c5-1.webp',
     trend: 'up',
   },
 ]
@@ -69,7 +69,7 @@ const DEFAULT_REVIEWS = [
     comment:
       'Đĩa PS5 Astro Bot sealed nguyên bọc nilon, tem chính hãng Sony. Đặt hỏa tốc 2 tiếng là shipper giao đến tận bàn. Game chơi quá hay và mượt mà!',
     photoUrl:
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759703/chotomua/products/gallery/sp-d4-1.png',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d4-1.webp',
     photoCaption: 'Ảnh unbox thật từ khách hàng',
   },
   {
@@ -79,7 +79,7 @@ const DEFAULT_REVIEWS = [
     comment:
       'Tay cầm DualSense Edge cầm đầm tay cực kỳ, nút gạt trigger và phím sau lưng siêu nhạy. Đóng gói 3 lớp bóng khí rất kỹ càng.',
     photoUrl:
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759886/chotomua/products/gallery/sp-c5-1.jpg',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-c5-1.webp',
     photoCaption: 'Hộp chống sốc chuẩn sàn',
   },
 ]
@@ -129,7 +129,7 @@ export default function LeaderboardReviews() {
           {topSellers && topSellers.length > 0 ? (
             topSellers.map((game, index) => {
               const rank = index + 1
-              const image = resolveCatalogImageUrl(game.imageUrl, 160)
+              const image = resolveCatalogImageUrl(game.imageUrl)
               return (
                 <Link
                   key={game.productId}
