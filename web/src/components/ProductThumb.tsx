@@ -15,14 +15,14 @@ export default function ProductThumb({
   seed,
   productType: _productType = 'accessory',
   imageUrl,
-  appearance = 'default',
+  appearance: _appearance = 'default',
 }: {
   seed: number
   productType?: ProductType
   imageUrl?: string
   appearance?: 'default' | 'detail'
 }) {
-  const resolvedImageUrl = resolveCatalogImageUrl(imageUrl, appearance === 'detail' ? 1000 : 600)
+  const resolvedImageUrl = resolveCatalogImageUrl(imageUrl)
   const [imageFailed, setImageFailed] = useState(false)
 
   useEffect(() => setImageFailed(false), [resolvedImageUrl])

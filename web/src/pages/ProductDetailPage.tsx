@@ -165,7 +165,7 @@ export default function ProductDetailPage() {
                 aria-label={`Xem ảnh ${index + 1}`}
                 aria-current={index === activeImg}
               >
-                <img className="w-full h-full object-cover" src={resolveCatalogImageUrl(url, 200)} alt="" loading="lazy" />
+                <img className="w-full h-full object-cover" src={resolveCatalogImageUrl(url)} alt="" loading="lazy" />
               </button>
             ))}
           </div>}

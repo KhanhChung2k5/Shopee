@@ -49,6 +49,11 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/admin/khach-hang', label: 'Khách hàng', icon: <path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM20 19v-1.2a3 3 0 0 0-2.2-2.9M15 4.2a3 3 0 0 1 0 5.8" /> },
       { to: '/admin/bao-cao', label: 'Báo cáo nhân khẩu học', icon: <path d="M4 20V10M10 20V4M16 20v-7M4 20h16" /> },
+      { to: '/admin/crm', label: 'Hồ sơ & RFM', icon: <path d="M12 3 4 7v6c0 4 3.4 7.4 8 8 4.6-.6 8-4 8-8V7l-8-4ZM9 12l2 2 4-4" /> },
+      { to: '/admin/ho-tro', label: 'Hỗ trợ khách hàng', icon: <path d="M4 5h16v11H8l-4 4V5ZM8 9h8M8 12h5" /> },
+      { to: '/admin/khao-sat', label: 'Khảo sát', icon: <path d="M9 4h6v3H9zM6 6H5v15h14V6h-1M8 12l2 2 4-4M8 17h8" /> },
+      { to: '/admin/phan-khuc', label: 'Phân khúc', icon: <path d="M12 3v9h9A9 9 0 1 1 12 3ZM15 3.5A9 9 0 0 1 20.5 9H15V3.5Z" /> },
+      { to: '/admin/chien-dich', label: 'Chiến dịch', icon: <path d="M4 10v4h3l6 4V6L7 10H4ZM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12" /> },
     ],
   },
   {
@@ -68,6 +73,11 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/marketing': 'Marketing',
   '/admin/khach-hang': 'Quản lý khách hàng',
   '/admin/bao-cao': 'Báo cáo nhân khẩu học',
+  '/admin/crm': 'Hồ sơ & RFM khách hàng',
+  '/admin/ho-tro': 'Hỗ trợ khách hàng',
+  '/admin/khao-sat': 'Khảo sát khách hàng',
+  '/admin/phan-khuc': 'Phân khúc khách hàng',
+  '/admin/chien-dich': 'Chiến dịch chăm sóc',
   '/admin/nhan-vien': 'Nhân viên',
 }
 

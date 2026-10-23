@@ -43,7 +43,7 @@ const STITCH_DEFAULT_PRODUCTS: CatalogProductSummary[] = [
     price: 1249000,
     comparePrice: 1249000,
     imageUrls: [
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759683/chotomua/products/gallery/sp-d1-1.png',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d1-1.webp',
     ],
     platforms: ['PS5'],
   },
@@ -56,7 +56,7 @@ const STITCH_DEFAULT_PRODUCTS: CatalogProductSummary[] = [
     price: 2299000,
     comparePrice: 2299000,
     imageUrls: [
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759850/chotomua/products/gallery/sp-c1-1.jpg',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-c1-1.webp',
     ],
     platforms: ['PS5/PC'],
   },
@@ -69,7 +69,7 @@ const STITCH_DEFAULT_PRODUCTS: CatalogProductSummary[] = [
     price: 1499000,
     comparePrice: 1499000,
     imageUrls: [
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759703/chotomua/products/gallery/sp-d4-1.png',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d4-1.webp',
     ],
     platforms: ['PS5'],
   },
@@ -82,7 +82,7 @@ const STITCH_DEFAULT_PRODUCTS: CatalogProductSummary[] = [
     price: 1339900,
     comparePrice: 1339900,
     imageUrls: [
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759864/chotomua/products/gallery/sp-c2-1.jpg',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-c2-1.webp',
     ],
     platforms: ['PS5/PC'],
   },
@@ -95,7 +95,7 @@ const STITCH_DEFAULT_PRODUCTS: CatalogProductSummary[] = [
     price: 1799000,
     comparePrice: 1799000,
     imageUrls: [
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759707/chotomua/products/gallery/sp-d5-1.png',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d5-1.webp',
     ],
     platforms: ['PS5'],
   },
@@ -108,7 +108,7 @@ const STITCH_DEFAULT_PRODUCTS: CatalogProductSummary[] = [
     price: 14499000,
     comparePrice: 14499000,
     imageUrls: [
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759768/chotomua/products/gallery/sp-d9-1.png',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d9-1.webp',
     ],
     platforms: ['PS5'],
   },
@@ -121,7 +121,7 @@ const STITCH_DEFAULT_PRODUCTS: CatalogProductSummary[] = [
     price: 5699000,
     comparePrice: 5699000,
     imageUrls: [
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759886/chotomua/products/gallery/sp-c5-1.jpg',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-c5-1.webp',
     ],
     platforms: ['PS5/PC'],
   },
@@ -134,7 +134,7 @@ const STITCH_DEFAULT_PRODUCTS: CatalogProductSummary[] = [
     price: 799000,
     comparePrice: 799000,
     imageUrls: [
-      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759940/chotomua/products/gallery/sp-a5-1.jpg',
+      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-a5-1.webp',
     ],
     platforms: ['PS5'],
   },

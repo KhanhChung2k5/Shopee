@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useCart } from '../state/CartContext'
 import { useTheme } from '../state/useTheme'
 import { useAuth } from '../state/AuthContext'
+import NotificationBell from './NotificationBell'
 import { cacheCategories, fetchCategories, getCachedCategories, type CatalogCategory } from '../lib/catalog'
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -253,6 +254,8 @@ export default function Header() {
             >
               <span className="material-symbols-outlined text-xl">{theme === 'dark' ? 'dark_mode' : 'light_mode'}</span>
             </button>
+            <NotificationBell />
+
             {/* Cart */}
             <Link
               className="relative flex flex-col items-center text-on-surface hover:text-primary transition-colors p-space-xs"
@@ -299,6 +302,12 @@ export default function Header() {
                     </Link>
                     <Link to="/kho-voucher" className="block px-4 py-2 hover:bg-surface-container text-title-md">
                       Kho voucher
+                    </Link>
+                    <Link to="/thong-bao" className="block px-4 py-2 hover:bg-surface-container text-title-md">
+                      Thông báo
+                    </Link>
+                    <Link to="/ho-tro" className="block px-4 py-2 hover:bg-surface-container text-title-md">
+                      Hỗ trợ khách hàng
                     </Link>
                     {user.role === 'staff' && (
                       <Link to="/admin" className="block px-4 py-2 text-primary hover:bg-surface-container text-title-md font-bold">

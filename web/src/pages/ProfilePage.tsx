@@ -183,6 +183,12 @@ function ProfilePageContent({ token, logout, isBuyer }: { token: string; logout:
             <Link className="flex items-center gap-space-sm px-space-sm py-2 rounded-lg font-title-md text-title-md whitespace-nowrap text-on-surface hover:bg-surface-container" to="/kho-voucher">
               <span className="material-symbols-outlined text-xl">confirmation_number</span>Kho voucher
             </Link>
+            <Link className="flex items-center gap-space-sm px-space-sm py-2 rounded-lg font-title-md text-title-md whitespace-nowrap text-on-surface hover:bg-surface-container" to="/thong-bao">
+              <span className="material-symbols-outlined text-xl">notifications</span>Thông báo
+            </Link>
+            <Link className="flex items-center gap-space-sm px-space-sm py-2 rounded-lg font-title-md text-title-md whitespace-nowrap text-on-surface hover:bg-surface-container" to="/ho-tro">
+              <span className="material-symbols-outlined text-xl">support_agent</span>Hỗ trợ
+            </Link>
           </nav>
 
           <Button variant="outline" className="w-full" icon="logout" onClick={logout}>Đăng xuất</Button>

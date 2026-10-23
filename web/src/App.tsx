@@ -22,6 +22,14 @@ import AdminGoodsReceiptsPage from './admin/pages/AdminGoodsReceiptsPage'
 import AdminOrdersPage from './admin/pages/AdminOrdersPage'
 import AdminMarketingPage from './admin/pages/AdminMarketingPage'
 import AdminEmployeesPage from './admin/pages/AdminEmployeesPage'
+import AdminCrmProfilesPage from './admin/pages/crm/AdminCrmProfilesPage'
+import AdminSupportPage from './admin/pages/crm/AdminSupportPage'
+import AdminSurveysPage from './admin/pages/crm/AdminSurveysPage'
+import AdminSegmentsPage from './admin/pages/crm/AdminSegmentsPage'
+import AdminCampaignsPage from './admin/pages/crm/AdminCampaignsPage'
+import NotificationsPage from './pages/NotificationsPage'
+import SurveyPage from './pages/SurveyPage'
+import SupportPage from './pages/SupportPage'
 import { CartProvider } from './state/CartContext'
 import { AuthProvider } from './state/AuthContext'
 import ProfilePage from './pages/ProfilePage'
@@ -52,6 +60,9 @@ function CustomerShell() {
           <Route path="/tim-kiem" element={<SearchPage />} />
           <Route path="/dang-nhap" element={<LoginPage />} />
           <Route path="/ho-so" element={<ProfilePage />} />
+          <Route path="/thong-bao" element={<NotificationsPage />} />
+          <Route path="/khao-sat/:id" element={<SurveyPage />} />
+          <Route path="/ho-tro" element={<SupportPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
@@ -84,6 +95,11 @@ function App() {
           <Route path="khach-hang" element={<RequireDepartment><AdminCustomersPage /></RequireDepartment>} />
           <Route path="bao-cao" element={<RequireDepartment><AdminDemographicsPage /></RequireDepartment>} />
           <Route path="nhan-vien" element={<RequireDepartment><AdminEmployeesPage /></RequireDepartment>} />
+          <Route path="crm" element={<RequireDepartment><AdminCrmProfilesPage /></RequireDepartment>} />
+          <Route path="ho-tro" element={<RequireDepartment><AdminSupportPage /></RequireDepartment>} />
+          <Route path="khao-sat" element={<RequireDepartment><AdminSurveysPage /></RequireDepartment>} />
+          <Route path="phan-khuc" element={<RequireDepartment><AdminSegmentsPage /></RequireDepartment>} />
+          <Route path="chien-dich" element={<RequireDepartment><AdminCampaignsPage /></RequireDepartment>} />
         </Route>
         <Route path="/*" element={<CustomerShell />} />
       </Routes>

@@ -12,7 +12,7 @@ export type Department = 'sales' | 'warehouse' | 'admin' | 'cs'
  * - don-hang   : cả sales (xử lý/xuất hoá đơn) lẫn warehouse (đóng gói/xuất kho) đều thao tác trên Order
  * - marketing  : voucher/flash sale là quyết định kinh doanh của sales
  * - khach-hang : quản lý khách hàng (thêm/khoá/xoá mềm) thuộc CRM, do CS phụ trách
- * - bao-cao    : báo cáo demographic là dữ liệu tổng hợp cấp quản trị
+ * - bao-cao    : báo cáo khách hàng — admin + CS (CS chỉ xem, phục vụ chăm sóc khách hàng)
  * - nhan-vien  : chỉ admin — đã enforce ở backend (DEPT_ADMIN)
  *
  * "admin" luôn có mặt ở mọi mục — quản trị hệ thống có quyền cao nhất, xem được tất cả.
@@ -25,7 +25,13 @@ export const ADMIN_SECTION_ACCESS: Record<string, Department[]> = {
   '/admin/don-hang': ['sales', 'warehouse', 'admin'],
   '/admin/marketing': ['sales', 'admin'],
   '/admin/khach-hang': ['cs', 'admin'],
-  '/admin/bao-cao': ['admin'],
+  '/admin/bao-cao': ['cs', 'admin'],
+  // Phân hệ CRM — docs/phan-quyen-he-thong.md mục 2.1
+  '/admin/crm': ['cs', 'admin'],
+  '/admin/ho-tro': ['cs', 'admin'],
+  '/admin/khao-sat': ['cs', 'admin'],
+  '/admin/phan-khuc': ['sales', 'cs', 'admin'],
+  '/admin/chien-dich': ['sales', 'admin'],
   '/admin/nhan-vien': ['admin'],
 }
 
