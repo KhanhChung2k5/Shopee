@@ -77,7 +77,7 @@ public class CrmFakeConversationSeeder implements ApplicationRunner {
                 ConversationText.STATUS_IN_PROGRESS,
                 ConversationText.PRIORITY_NORMAL,
                 now.minus(230, ChronoUnit.MINUTES),
-                CrmDemoActors.CRM_ID,
+                CrmDemoActors.CS_LEAD_ID,
                 "Đơn đĩa game của mình giao chậm hơn dự kiến.",
                 false);
         // Dũng · high · vượt SLA (SLA 1h)

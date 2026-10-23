@@ -76,7 +76,6 @@ public final class ConversationText {
         }
         return switch (department) {
             case "admin" -> "Quản trị viên";
-            case "crm" -> "Quản lý CRM";
             case "cs" -> "CSKH";
             default -> "CSKH";
         };

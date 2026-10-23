@@ -234,7 +234,7 @@ class CampaignControllerTest {
     }
 
     @Test
-    @WithMockUser(username = CS_ID, authorities = "cs")
+    @WithMockUser(username = SALES_ID, authorities = "sales")
     void surveySendUsesSurveyReferenceAndSkipsMail() throws Exception {
         LocalDate young = LocalDate.now().minusYears(20);
         identity.seedCustomer(
@@ -421,8 +421,8 @@ class CampaignControllerTest {
     }
 
     @Test
-    @WithMockUser(username = SALES_ID, authorities = "sales")
-    void salesStaffCannotSend() throws Exception {
+    @WithMockUser(username = CS_ID, authorities = "cs")
+    void customerServiceStaffCannotSend() throws Exception {
         mockMvc.perform(post("/api/campaigns")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""

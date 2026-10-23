@@ -1,6 +1,6 @@
 const ROLES = [
   { login: "admin", label: "Quản trị viên", initials: "QT" },
-  { login: "crm", label: "CRM Manager", initials: "CM" },
+  { login: "cslead", label: "Trưởng nhóm CSKH", initials: "TN" },
   { login: "cs", label: "CSKH", initials: "CS" },
   { login: "sales", label: "NV Kinh doanh", initials: "KD" }
 ];

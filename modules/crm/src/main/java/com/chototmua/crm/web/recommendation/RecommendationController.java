@@ -35,7 +35,7 @@ public class RecommendationController {
             "/api/crm/customers/{userId}/recommendations",
             "/api/customers/{userId}/recommendations"
     })
-    @PreAuthorize("hasAnyAuthority('admin', 'crm', 'cs', 'customer')")
+    @PreAuthorize("hasAnyAuthority('admin', 'cs', 'customer')")
     public RecommendationListResponse list(
             @PathVariable UUID userId,
             @RequestParam(defaultValue = "10") int limit
@@ -47,7 +47,7 @@ public class RecommendationController {
             "/api/crm/customers/{userId}/recommendations/notify",
             "/api/customers/{userId}/recommendations/notify"
     })
-    @PreAuthorize("hasAnyAuthority('admin', 'crm', 'cs')")
+    @PreAuthorize("hasAnyAuthority('admin', 'cs')")
     public RecommendationPushResponse notifyCustomer(
             @PathVariable UUID userId,
             @RequestParam(defaultValue = "10") int limit,

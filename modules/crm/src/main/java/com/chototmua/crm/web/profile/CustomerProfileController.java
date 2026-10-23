@@ -18,7 +18,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/crm/profiles")
-@PreAuthorize("hasAnyAuthority('admin', 'crm', 'cs')")
+@PreAuthorize("hasAnyAuthority('admin', 'cs')")
 public class CustomerProfileController {
 
     private final CustomerProfileService profiles;

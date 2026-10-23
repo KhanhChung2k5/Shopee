@@ -71,7 +71,7 @@ public class CrmFakeDataSeeder implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         identity.seedStaff(CrmDemoActors.ADMIN_ID, StaffDepartment.ADMIN);
-        identity.seedStaff(CrmDemoActors.CRM_ID, StaffDepartment.CRM);
+        identity.seedStaff(CrmDemoActors.CS_LEAD_ID, StaffDepartment.CS);
         identity.seedStaff(CrmDemoActors.CS_ID, StaffDepartment.CS);
         identity.seedStaff(CrmDemoActors.SALES_ID, StaffDepartment.SALES);
 

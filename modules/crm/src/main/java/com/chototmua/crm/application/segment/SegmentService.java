@@ -115,7 +115,7 @@ public class SegmentService {
 
     /** Câu chuyện 4–7: quản trị, quản lý CRM hoặc CSKH. */
     public SegmentListResponse list(UUID actorId) {
-        identity.requireCrmStaff(actorId);
+        identity.requireAudienceReader(actorId);
         List<SegmentResponse> rows = store.findAll().stream()
                 .map(segment -> toResponse(segment, store.membersOf(segment.id())))
                 .toList();
@@ -124,13 +124,13 @@ public class SegmentService {
 
     /** Chi tiết một phân khúc kèm thành viên. */
     public SegmentResponse get(UUID actorId, UUID segmentId) {
-        identity.requireCrmStaff(actorId);
+        identity.requireAudienceReader(actorId);
         return toResponse(require(segmentId), store.membersOf(segmentId));
     }
 
     /** Tạo phân khúc từ {@code ruleDefinition} (age / rfm / category) và tính thành viên ngay. */
     public SegmentResponse create(UUID actorId, String name, Map<String, Object> ruleDefinition) {
-        identity.requireCrmStaff(actorId);
+        identity.requireMarketingStaff(actorId);
         SegmentRule rule = SegmentRules.parse(ruleDefinition);
         Instant now = Instant.now(clock);
         CustomerSegment segment = new CustomerSegment(UUID.randomUUID(), name.trim(), rule, now);
@@ -141,7 +141,7 @@ public class SegmentService {
 
     /** Sửa tên và rule; phân khúc RFM mặc định bị khóa. Giữ {@code addedAt} cũ nếu khách vẫn khớp. */
     public SegmentResponse update(UUID actorId, UUID segmentId, String name, Map<String, Object> ruleDefinition) {
-        identity.requireCrmStaff(actorId);
+        identity.requireMarketingStaff(actorId);
         CustomerSegment current = require(segmentId);
         requireMutable(current.id());
         SegmentRule rule = SegmentRules.parse(ruleDefinition);
@@ -154,7 +154,7 @@ public class SegmentService {
 
     /** Xóa phân khúc do người dùng tạo; không xóa preset RFM. */
     public void delete(UUID actorId, UUID segmentId) {
-        identity.requireCrmStaff(actorId);
+        identity.requireMarketingStaff(actorId);
         require(segmentId);
         requireMutable(segmentId);
         store.delete(segmentId);
@@ -162,7 +162,7 @@ public class SegmentService {
 
     /** Tính lại thành viên. Khách vừa khóa hoặc xóa không được thêm lại. */
     public SegmentResponse refresh(UUID actorId, UUID segmentId) {
-        identity.requireCrmStaff(actorId);
+        identity.requireMarketingStaff(actorId);
         CustomerSegment current = require(segmentId);
         Instant now = Instant.now(clock);
         List<SegmentMember> members = match(current.id(), current.rule(), now, addedAtByUser(current.id()));

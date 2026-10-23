@@ -44,7 +44,7 @@ class FakeIdentityPortTest {
 
     @Test
     void crmManagerCanLockAndUnlockCustomer() {
-        UUID crm = identity.seedStaff(StaffDepartment.CRM);
+        UUID crm = identity.seedStaff(StaffDepartment.CS);
         CustomerView customer = identity.seedCustomer(
                 "Tran Thi B", "female", LocalDate.of(2002, 1, 15), CustomerStatus.ACTIVE);
 
@@ -57,12 +57,10 @@ class FakeIdentityPortTest {
     }
 
     @Test
-    void customerServiceStaffIsRejectedFromLockUnlock() {
+    void customerServiceStaffCanManageCustomers() {
         UUID cs = identity.seedStaff(StaffDepartment.CS);
 
-        assertThatThrownBy(() -> identity.requireCustomerAdmin(cs))
-                .isInstanceOf(CrmForbiddenException.class)
-                .hasMessageContaining("CRM");
+        identity.requireCustomerAdmin(cs);
     }
 
     @Test
@@ -76,7 +74,7 @@ class FakeIdentityPortTest {
     @Test
     void requireCrmStaffAllowsAdminCrmAndCsButNotSales() {
         identity.requireCrmStaff(identity.seedStaff(StaffDepartment.ADMIN));
-        identity.requireCrmStaff(identity.seedStaff(StaffDepartment.CRM));
+        identity.requireCrmStaff(identity.seedStaff(StaffDepartment.CS));
         identity.requireCrmStaff(identity.seedStaff(StaffDepartment.CS));
 
         assertThatThrownBy(() -> identity.requireCrmStaff(identity.seedStaff(StaffDepartment.SALES)))
@@ -130,7 +128,7 @@ class FakeIdentityPortTest {
     @Test
     void onlyAdminMayRestore() {
         UUID admin = identity.seedStaff(StaffDepartment.ADMIN);
-        UUID crm = identity.seedStaff(StaffDepartment.CRM);
+        UUID crm = identity.seedStaff(StaffDepartment.CS);
 
         identity.requireAdmin(admin);
         assertThatThrownBy(() -> identity.requireAdmin(crm))

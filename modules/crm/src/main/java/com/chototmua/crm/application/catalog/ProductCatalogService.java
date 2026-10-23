@@ -46,7 +46,7 @@ public class ProductCatalogService {
 
     /** Tìm sản phẩm theo bộ lọc, cắt tại {@link #MAX_RESULTS}. */
     public ProductListResponse search(UUID actorId, ProductFilter filter) {
-        identity.requireCrmStaff(actorId);
+        identity.requireAudienceReader(actorId);
         List<ProductView> all = products.search(filter);
         List<ProductView> page = all.size() > MAX_RESULTS ? all.subList(0, MAX_RESULTS) : all;
         return new ProductListResponse(List.copyOf(page), all.size());
@@ -54,7 +54,7 @@ public class ProductCatalogService {
 
     /** Tra tên các sản phẩm đã gắn theo id; id không còn trong catalog thì bỏ qua. */
     public ProductListResponse lookup(UUID actorId, Collection<UUID> ids) {
-        identity.requireCrmStaff(actorId);
+        identity.requireAudienceReader(actorId);
         List<ProductView> found = new java.util.ArrayList<>();
         if (ids != null) {
             for (UUID id : new LinkedHashSet<>(ids)) {
@@ -68,7 +68,7 @@ public class ProductCatalogService {
 
     /** Giá trị có thật trong catalog đang bán, dùng cho ô chọn của bộ lọc. */
     public ProductFacetsResponse facets(UUID actorId) {
-        identity.requireCrmStaff(actorId);
+        identity.requireAudienceReader(actorId);
         List<ProductView> published = products.search(
                 new ProductFilter(null, null, null, null, null, null, null, true));
         Set<String> types = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -99,7 +99,7 @@ public class ProductCatalogService {
      * Cùng cách resolve với lúc gửi chiến dịch (id cụ thể ∪ kết quả lọc).
      */
     public AudiencePreviewResponse audiencePreview(UUID actorId, Collection<UUID> productIds, ProductFilter filter) {
-        identity.requireCrmStaff(actorId);
+        identity.requireAudienceReader(actorId);
         Set<UUID> resolved = new LinkedHashSet<>();
         if (productIds != null) {
             for (UUID id : productIds) {
@@ -129,7 +129,7 @@ public class ProductCatalogService {
 
     /** Các đơn đã giao của một khách, để chọn khi chạy hook demo. */
     public List<DeliveredOrderSummary> deliveredOrders(UUID actorId, UUID userId) {
-        identity.requireCrmStaff(actorId);
+        identity.requireAudienceReader(actorId);
         return orders.listDeliveredOrders(userId).stream()
                 .sorted(Comparator.comparing(
                         DeliveredOrderView::deliveredAt,

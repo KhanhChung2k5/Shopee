@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SuppressWarnings("null")
 class AgentAssignmentControllerTest {
 
-    private static final String CRM_ID = "22222222-2222-2222-2222-222222222222";
+    private static final String CS_LEAD_ID = "22222222-2222-2222-2222-222222222222";
     private static final String CS_ID = "33333333-3333-3333-3333-333333333333";
     private static final String SALES_ID = "55555555-5555-5555-5555-555555555555";
     private static final String AN_ID = "aaaa1111-1111-1111-1111-111111111111";
@@ -57,7 +57,7 @@ class AgentAssignmentControllerTest {
         identity.reset();
         conversations.clear();
         presence.clear();
-        identity.seedStaff(UUID.fromString(CRM_ID), "crm");
+        identity.seedStaff(UUID.fromString(CS_LEAD_ID), "cs");
         identity.seedStaff(UUID.fromString(CS_ID), "cs");
         identity.seedStaff(UUID.fromString(SALES_ID), "sales");
         identity.seedCustomer(
@@ -100,14 +100,14 @@ class AgentAssignmentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"employeeId":"%s"}
-                                """.formatted(CRM_ID)))
+                                """.formatted(CS_LEAD_ID)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.assignments", hasSize(2)))
                 .andExpect(jsonPath("$.assignments[0].employeeId").value(CS_ID))
                 .andExpect(jsonPath("$.assignments[0].current").value(false))
-                .andExpect(jsonPath("$.assignments[1].employeeId").value(CRM_ID))
+                .andExpect(jsonPath("$.assignments[1].employeeId").value(CS_LEAD_ID))
                 .andExpect(jsonPath("$.assignments[1].current").value(true))
-                .andExpect(jsonPath("$.assigneeId").value(CRM_ID));
+                .andExpect(jsonPath("$.assigneeId").value(CS_LEAD_ID));
 
         mockMvc.perform(get("/api/conversations/" + id))
                 .andExpect(status().isOk())
@@ -123,7 +123,7 @@ class AgentAssignmentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"employeeId":"%s"}
-                                """.formatted(CRM_ID)))
+                                """.formatted(CS_LEAD_ID)))
                 .andExpect(status().isForbidden());
     }
 

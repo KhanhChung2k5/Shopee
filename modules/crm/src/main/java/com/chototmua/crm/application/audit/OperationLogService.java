@@ -23,7 +23,7 @@ public class OperationLogService {
 
     private static final List<OperationLogActorOption> DEMO_ACTORS = List.of(
             new OperationLogActorOption(CrmDemoActors.ADMIN_LOGIN, "Quản trị viên", StaffDepartment.ADMIN),
-            new OperationLogActorOption(CrmDemoActors.CRM_LOGIN, "CRM Manager", StaffDepartment.CRM),
+            new OperationLogActorOption(CrmDemoActors.CS_LEAD_LOGIN, "Trưởng nhóm CSKH", StaffDepartment.CS),
             new OperationLogActorOption(CrmDemoActors.CS_LOGIN, "CSKH", StaffDepartment.CS),
             new OperationLogActorOption(CrmDemoActors.SALES_LOGIN, "NV Kinh doanh", StaffDepartment.SALES)
     );
@@ -72,7 +72,6 @@ public class OperationLogService {
         TreeSet<String> departments = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         departments.addAll(List.of(
                 StaffDepartment.ADMIN,
-                StaffDepartment.CRM,
                 StaffDepartment.CS,
                 StaffDepartment.SALES));
         departments.addAll(stored.departments());

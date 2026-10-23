@@ -19,7 +19,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping({"/api/crm/surveys", "/api/surveys"})
-@PreAuthorize("hasAnyAuthority('admin', 'crm', 'cs')")
+@PreAuthorize("hasAnyAuthority('admin', 'cs')")
 public class SurveyProductTargetController {
 
     private final SurveyTargetService targets;

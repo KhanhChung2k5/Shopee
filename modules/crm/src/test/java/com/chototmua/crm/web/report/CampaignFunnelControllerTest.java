@@ -49,7 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CampaignFunnelControllerTest {
 
     private static final String ADMIN_ID = "11111111-1111-1111-1111-111111111111";
-    private static final String CRM_ID = "22222222-2222-2222-2222-222222222222";
+    private static final String CS_LEAD_ID = "22222222-2222-2222-2222-222222222222";
     private static final String CS_ID = "33333333-3333-3333-3333-333333333333";
     private static final String SALES_ID = "55555555-5555-5555-5555-555555555555";
     private static final String GUEST_ID = "44444444-4444-4444-4444-444444444444";
@@ -90,7 +90,7 @@ class CampaignFunnelControllerTest {
         products.reset();
         productTargets.clear();
         identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
-        identity.seedStaff(UUID.fromString(CRM_ID), StaffDepartment.CRM);
+        identity.seedStaff(UUID.fromString(CS_LEAD_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(CS_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
         products.seed(new ProductView(
@@ -122,7 +122,7 @@ class CampaignFunnelControllerTest {
     }
 
     @Test
-    @WithMockUser(username = CRM_ID, authorities = "crm")
+    @WithMockUser(username = SALES_ID, authorities = "sales")
     void purchaseBeforeStartAtIsNotConverted() throws Exception {
         CustomerView buyer = identity.seedCustomer(
                 "Binh", "female", LocalDate.now().minusYears(22), CustomerStatus.ACTIVE);
@@ -137,8 +137,8 @@ class CampaignFunnelControllerTest {
     }
 
     @Test
-    @WithMockUser(username = CS_ID, authorities = "cs")
-    void customerServiceStaffCanReadFunnel() throws Exception {
+    @WithMockUser(username = SALES_ID, authorities = "sales")
+    void salesStaffCanReadFunnel() throws Exception {
         CustomerView buyer = identity.seedCustomer(
                 "Chau", "female", LocalDate.now().minusYears(21), CustomerStatus.ACTIVE);
         seedDelivered(buyer.id(), Instant.parse("2026-09-01T10:00:00Z"));
@@ -158,8 +158,8 @@ class CampaignFunnelControllerTest {
     }
 
     @Test
-    @WithMockUser(username = SALES_ID, authorities = "sales")
-    void salesStaffIsForbiddenOnCampaignFunnel() throws Exception {
+    @WithMockUser(username = CS_ID, authorities = "cs")
+    void customerServiceStaffIsForbiddenOnCampaignFunnel() throws Exception {
         mockMvc.perform(get("/api/crm/reports/campaigns/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/funnel"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.message").value(containsString("quyền")));

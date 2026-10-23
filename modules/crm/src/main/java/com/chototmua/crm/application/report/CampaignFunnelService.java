@@ -61,7 +61,7 @@ public class CampaignFunnelService {
 
     /** Quản trị, quản lý CRM và CSKH được xem. */
     public CampaignFunnelResponse build(UUID actorId, UUID campaignId) {
-        identity.requireCrmStaff(actorId);
+        identity.requireMarketingStaff(actorId);
         Campaign campaign = campaigns.find(campaignId)
                 .orElseThrow(() -> new CampaignNotFoundException(campaignId));
         Instant from = CampaignConversionWindow.from(campaign);

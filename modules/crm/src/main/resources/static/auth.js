@@ -20,6 +20,9 @@
     "settings.html"
   ];
 
+  // Phân khúc tạo/sửa và chiến dịch thuộc kinh doanh (sales); CSKH chỉ xem phân khúc.
+  const MARKETING_PAGES = ["campaigns.html", "campaign-edit.html"];
+
   const ACCOUNTS = [
     {
       login: "admin",
@@ -31,13 +34,13 @@
       pages: STAFF_PAGES.concat("logs.html")
     },
     {
-      login: "crm",
-      password: "crm",
-      label: "Quản lý CRM",
-      initials: "CM",
+      login: "cslead",
+      password: "cslead",
+      label: "Trưởng nhóm CSKH",
+      initials: "TN",
       color: "#0f766e",
-      note: "Khách hàng, chiến dịch, khảo sát, phân khúc, báo cáo. Không xem nhật ký.",
-      pages: STAFF_PAGES.slice()
+      note: "Như CSKH, nhận hội thoại được escalate. Không gửi chiến dịch, không xem nhật ký.",
+      pages: STAFF_PAGES.filter((page) => !MARKETING_PAGES.includes(page))
     },
     {
       login: "cs",
@@ -45,8 +48,8 @@
       label: "CSKH",
       initials: "CS",
       color: "#b45309",
-      note: "Hàng đợi hội thoại, xem khách, gửi khảo sát. Không thêm/sửa/xóa khách.",
-      pages: STAFF_PAGES.slice()
+      note: "Khách hàng, hội thoại, khảo sát, báo cáo (chỉ xem). Không gửi chiến dịch.",
+      pages: STAFF_PAGES.filter((page) => !MARKETING_PAGES.includes(page))
     },
     {
       login: "sales",
@@ -54,8 +57,8 @@
       label: "NV Kinh doanh",
       initials: "KD",
       color: "#64748b",
-      note: "Không có chức năng CRM. Chỉ vào trang chủ.",
-      pages: ["home.html"]
+      note: "Phân khúc khách hàng và chiến dịch.",
+      pages: ["home.html", "segments.html"].concat(MARKETING_PAGES)
     }
   ];
 

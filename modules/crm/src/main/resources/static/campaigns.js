@@ -1,8 +1,8 @@
 const ROLES = [
   { login: "admin", label: "Quản trị viên", note: "Gửi chiến dịch được", initials: "QT" },
-  { login: "crm", label: "CRM Manager", note: "Gửi chiến dịch được", initials: "CM" },
-  { login: "cs", label: "CSKH", note: "Gửi chiến dịch được", initials: "CS" },
-  { login: "sales", label: "NV Kinh doanh", note: "Ngoài CRM — 403", initials: "KD" }
+  { login: "cslead", label: "Trưởng nhóm CSKH", note: "Không thuộc CSKH — 403", initials: "TN" },
+  { login: "cs", label: "CSKH", note: "Không thuộc CSKH — 403", initials: "CS" },
+  { login: "sales", label: "NV Kinh doanh", note: "Gửi chiến dịch được", initials: "KD" }
 ];
 
 const STATUS_LABEL = {

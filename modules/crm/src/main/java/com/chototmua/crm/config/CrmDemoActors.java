@@ -10,7 +10,7 @@ import java.util.UUID;
 public final class CrmDemoActors {
 
     public static final UUID ADMIN_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
-    public static final UUID CRM_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    public static final UUID CS_LEAD_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
     public static final UUID CS_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
     public static final UUID SALES_ID = UUID.fromString("55555555-5555-5555-5555-555555555555");
 
@@ -22,7 +22,7 @@ public final class CrmDemoActors {
     public static final UUID CUSTOMER_LINH_ID = UUID.fromString("77777777-7777-7777-7777-777777777777");
 
     public static final String ADMIN_LOGIN = "admin";
-    public static final String CRM_LOGIN = "crm";
+    public static final String CS_LEAD_LOGIN = "cslead";
     public static final String CS_LOGIN = "cs";
     public static final String SALES_LOGIN = "sales";
 
@@ -47,7 +47,7 @@ public final class CrmDemoActors {
         }
         return switch (name) {
             case ADMIN_LOGIN -> ADMIN_ID;
-            case CRM_LOGIN -> CRM_ID;
+            case CS_LEAD_LOGIN -> CS_LEAD_ID;
             case CS_LOGIN -> CS_ID;
             case SALES_LOGIN -> SALES_ID;
             case CUSTOMER_AN_LOGIN -> CUSTOMER_AN_ID;
@@ -69,8 +69,8 @@ public final class CrmDemoActors {
         if (ADMIN_ID.equals(id)) {
             return ADMIN_LOGIN;
         }
-        if (CRM_ID.equals(id)) {
-            return CRM_LOGIN;
+        if (CS_LEAD_ID.equals(id)) {
+            return CS_LEAD_LOGIN;
         }
         if (CS_ID.equals(id)) {
             return CS_LOGIN;
@@ -105,8 +105,8 @@ public final class CrmDemoActors {
         if (ADMIN_ID.equals(id)) {
             return "Quản trị viên";
         }
-        if (CRM_ID.equals(id)) {
-            return "CRM Manager";
+        if (CS_LEAD_ID.equals(id)) {
+            return "Trưởng nhóm CSKH";
         }
         if (CS_ID.equals(id)) {
             return "CSKH";

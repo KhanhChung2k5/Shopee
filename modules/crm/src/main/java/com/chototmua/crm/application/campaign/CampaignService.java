@@ -110,7 +110,7 @@ public class CampaignService {
     /** Danh sách chiến dịch cho nhân viên CRM; phát thư đến hạn trước khi đọc. */
     public CampaignListResponse list(UUID actorId) {
         dispatchDue();
-        identity.requireCrmStaff(actorId);
+        identity.requireMarketingStaff(actorId);
         List<CampaignResponse> rows = campaigns.findAll().stream()
                 .map(this::toResponse)
                 .toList();
@@ -120,14 +120,14 @@ public class CampaignService {
     /** Chi tiết một chiến dịch; 404 nếu không còn trong kho. */
     public CampaignResponse get(UUID actorId, UUID campaignId) {
         dispatchDue();
-        identity.requireCrmStaff(actorId);
+        identity.requireMarketingStaff(actorId);
         return toResponse(require(campaignId));
     }
 
     /** Trang người đã nhận thư. Mỗi lần tối đa 10 người. */
     public CampaignRecipientListResponse recipients(UUID actorId, UUID campaignId, int offset, int limit) {
         dispatchDue();
-        identity.requireCrmStaff(actorId);
+        identity.requireMarketingStaff(actorId);
         Campaign campaign = require(campaignId);
         Reference reference = referenceOf(campaign);
         boolean scheduled = notifications.countStatus(reference.type(), reference.id(), STATUS_SCHEDULED) > 0;
@@ -157,7 +157,7 @@ public class CampaignService {
             List<UUID> productIds,
             ProductFilter filter
     ) {
-        identity.requireCrmStaff(actorId);
+        identity.requireMarketingStaff(actorId);
         Instant now = Instant.now(clock);
         Instant start = startAt == null ? now : startAt;
         if (endAt != null && endAt.isBefore(start)) {
@@ -250,7 +250,7 @@ public class CampaignService {
     /** Sửa tên và nội dung thư đã nằm trong hộp thư. Không gửi thêm. */
     public CampaignResponse update(UUID actorId, UUID campaignId, String name, String content, Instant startAt) {
         dispatchDue();
-        identity.requireCrmStaff(actorId);
+        identity.requireMarketingStaff(actorId);
         Campaign current = require(campaignId);
         Instant nextStart = startAt == null ? current.startAt() : startAt;
         if (current.endAt() != null && current.endAt().isBefore(nextStart)) {
@@ -279,7 +279,7 @@ public class CampaignService {
 
     /** Xóa chiến dịch và thông báo in-app đã sinh cho lượt gửi đó. */
     public void delete(UUID actorId, UUID campaignId) {
-        identity.requireCrmStaff(actorId);
+        identity.requireMarketingStaff(actorId);
         Campaign current = require(campaignId);
         Reference reference = referenceOf(current);
         notifications.deleteByReference(reference.type(), reference.id());
@@ -295,7 +295,7 @@ public class CampaignService {
         dispatchDue();
         UUID target = requestedUserId == null ? actorId : requestedUserId;
         if (!target.equals(actorId)) {
-            identity.requireCrmStaff(actorId);
+            identity.requireMarketingStaff(actorId);
         }
         List<NotificationResponse> rows = notifications.findByUser(target).stream()
                 .filter(row -> STATUS_SENT.equals(row.status()) || STATUS_READ.equals(row.status()))

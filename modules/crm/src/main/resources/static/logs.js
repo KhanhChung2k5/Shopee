@@ -1,6 +1,6 @@
 const ROLES = [
   { login: "admin", label: "Quản trị viên", note: "Xem nhật ký được", initials: "QT" },
-  { login: "crm", label: "CRM Manager", note: "Không xem nhật ký — 403", initials: "CM" },
+  { login: "cslead", label: "Trưởng nhóm CSKH", note: "Không xem nhật ký — 403", initials: "TN" },
   { login: "cs", label: "CSKH", note: "Không xem nhật ký — 403", initials: "CS" },
   { login: "sales", label: "NV Kinh doanh", note: "Không xem nhật ký — 403", initials: "KD" }
 ];
@@ -219,7 +219,7 @@ async function load() {
   filtersEl.hidden = !admin;
   if (!state.login) {
     showBanner("info", "Hãy chọn Quản trị viên để xem nhật ký thao tác.");
-    metaEl.textContent = "CRM Manager, CSKH và NV Kinh doanh không mở được trang này.";
+    metaEl.textContent = "Trưởng nhóm CSKH, CSKH và NV Kinh doanh không mở được trang này.";
     pagerEl.hidden = true;
     emptyRow("Chưa chọn tài khoản.");
     return;

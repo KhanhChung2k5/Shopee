@@ -259,9 +259,9 @@ public class FakeIdentityPort implements IdentityPort {
     @Override
     public void requireCustomerAdmin(UUID actorId) {
         String department = requireKnownStaff(actorId);
-        if (!StaffDepartment.ADMIN.equals(department) && !StaffDepartment.CRM.equals(department)) {
+        if (!StaffDepartment.ADMIN.equals(department) && !StaffDepartment.CS.equals(department)) {
             throw new CrmForbiddenException(
-                    "Chỉ quản trị viên hoặc quản lý CRM được thực hiện thao tác này.");
+                    "Chỉ quản trị viên hoặc nhân viên CSKH được thực hiện thao tác này.");
         }
     }
 
@@ -282,14 +282,34 @@ public class FakeIdentityPort implements IdentityPort {
     }
 
     @Override
-    public void requireCrmStaff(UUID actorId) {
+    public void requireMarketingStaff(UUID actorId) {
+        String department = requireKnownStaff(actorId);
+        if (!StaffDepartment.ADMIN.equals(department) && !StaffDepartment.SALES.equals(department)) {
+            throw new CrmForbiddenException(
+                    "Chỉ quản trị viên hoặc nhân viên kinh doanh được quản lý phân khúc và chiến dịch.");
+        }
+    }
+
+    @Override
+    public void requireAudienceReader(UUID actorId) {
         String department = requireKnownStaff(actorId);
         boolean allowed = StaffDepartment.ADMIN.equals(department)
-                || StaffDepartment.CRM.equals(department)
+                || StaffDepartment.SALES.equals(department)
                 || StaffDepartment.CS.equals(department);
         if (!allowed) {
             throw new CrmForbiddenException(
-                    "Chỉ nhân viên CSKH, quản lý CRM hoặc quản trị viên được thực hiện thao tác này.");
+                    "Chỉ quản trị viên, nhân viên kinh doanh hoặc CSKH được xem dữ liệu này.");
+        }
+    }
+
+    @Override
+    public void requireCrmStaff(UUID actorId) {
+        String department = requireKnownStaff(actorId);
+        boolean allowed = StaffDepartment.ADMIN.equals(department)
+                || StaffDepartment.CS.equals(department);
+        if (!allowed) {
+            throw new CrmForbiddenException(
+                    "Chỉ nhân viên CSKH hoặc quản trị viên được thực hiện thao tác này.");
         }
     }
 

@@ -1,6 +1,6 @@
 const ROLES = [
   { login: "cs", label: "CSKH", note: "Nhận ticket và live chat", initials: "CS" },
-  { login: "crm", label: "CRM Manager", note: "Xử lý và nhận escalate", initials: "CM" },
+  { login: "cslead", label: "Trưởng nhóm CSKH", note: "Xử lý và nhận escalate", initials: "TN" },
   { login: "admin", label: "Quản trị viên", note: "Toàn quyền hội thoại", initials: "QT" },
   { login: "sales", label: "NV Kinh doanh", note: "Không vào được hàng đợi", initials: "KD" }
 ];
@@ -518,7 +518,7 @@ async function beat(online) {
 async function boot() {
   renderRoles();
   if (!state.login) {
-    showBanner("info", "Chọn CSKH, CRM Manager hoặc Admin để vào ca.");
+    showBanner("info", "Chọn CSKH, Trưởng nhóm CSKH hoặc Admin để vào ca.");
     return;
   }
   try {

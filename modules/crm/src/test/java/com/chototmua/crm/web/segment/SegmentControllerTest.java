@@ -37,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SegmentControllerTest {
 
     private static final String ADMIN_ID = "11111111-1111-1111-1111-111111111111";
-    private static final String CRM_ID = "22222222-2222-2222-2222-222222222222";
+    private static final String CS_LEAD_ID = "22222222-2222-2222-2222-222222222222";
     private static final String CS_ID = "33333333-3333-3333-3333-333333333333";
     private static final String SALES_ID = "55555555-5555-5555-5555-555555555555";
     private static final String GUEST_ID = "44444444-4444-4444-4444-444444444444";
@@ -64,7 +64,7 @@ class SegmentControllerTest {
         orders.reset();
         segments.clear();
         identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
-        identity.seedStaff(UUID.fromString(CRM_ID), StaffDepartment.CRM);
+        identity.seedStaff(UUID.fromString(CS_LEAD_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(CS_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
         seedAgeFixture();
@@ -89,7 +89,14 @@ class SegmentControllerTest {
 
     @Test
     @WithMockUser(username = CS_ID, authorities = "cs")
-    void customerServiceStaffCanCreateASegment() throws Exception {
+    void customerServiceStaffCanListSegmentsToTargetSurveys() throws Exception {
+        mockMvc.perform(get("/api/segments"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = SALES_ID, authorities = "sales")
+    void salesStaffCanCreateASegment() throws Exception {
         mockMvc.perform(post("/api/segments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(AGE_BODY))
@@ -98,8 +105,8 @@ class SegmentControllerTest {
     }
 
     @Test
-    @WithMockUser(username = CRM_ID, authorities = "crm")
-    void crmManagerCanListTheSegmentJustCreated() throws Exception {
+    @WithMockUser(username = SALES_ID, authorities = "sales")
+    void salesStaffCanListTheSegmentJustCreated() throws Exception {
         String body = mockMvc.perform(post("/api/segments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(AGE_BODY))
@@ -122,8 +129,8 @@ class SegmentControllerTest {
     }
 
     @Test
-    @WithMockUser(username = SALES_ID, authorities = "sales")
-    void salesStaffIsForbidden() throws Exception {
+    @WithMockUser(username = CS_ID, authorities = "cs")
+    void customerServiceStaffCannotCreateASegment() throws Exception {
         mockMvc.perform(post("/api/segments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(AGE_BODY))

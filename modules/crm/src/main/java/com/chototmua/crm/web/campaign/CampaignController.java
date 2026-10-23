@@ -29,7 +29,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/campaigns")
-@PreAuthorize("hasAnyAuthority('admin', 'crm', 'cs')")
+@PreAuthorize("hasAnyAuthority('admin', 'sales')")
 public class CampaignController {
 
     private final CampaignService campaigns;

@@ -1,8 +1,8 @@
 const ROLES = [
   { login: "admin", label: "Quản trị viên", note: "Tạo phân khúc được", initials: "QT" },
-  { login: "crm", label: "CRM Manager", note: "Tạo phân khúc được", initials: "CM" },
-  { login: "cs", label: "CSKH", note: "Đầu vào campaign — được", initials: "CS" },
-  { login: "sales", label: "NV Kinh doanh", note: "Ngoài CRM — 403", initials: "KD" }
+  { login: "cslead", label: "Trưởng nhóm CSKH", note: "Chỉ xem (chọn khi gửi khảo sát)", initials: "TN" },
+  { login: "cs", label: "CSKH", note: "Chỉ xem (chọn khi gửi khảo sát)", initials: "CS" },
+  { login: "sales", label: "NV Kinh doanh", note: "Tạo phân khúc được", initials: "KD" }
 ];
 
 const MEMBER_PAGE_SIZE = 5;

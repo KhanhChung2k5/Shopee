@@ -1,6 +1,6 @@
 const ROLES = [
   { login: "admin", label: "Quản trị viên", note: "Toàn quyền story 1–3", initials: "QT" },
-  { login: "crm", label: "CRM Manager", note: "Thêm / sửa / khóa / xóa mềm được", initials: "CM" },
+  { login: "cslead", label: "Trưởng nhóm CSKH", note: "Thêm / sửa / khóa / xóa mềm được", initials: "TN" },
   { login: "cs", label: "CSKH", note: "Chỉ xem — sửa sẽ 403", initials: "CS" },
   { login: "sales", label: "NV Kinh doanh", note: "Ngoài CRM — danh sách cũng 403", initials: "KD" }
 ];
@@ -215,7 +215,7 @@ function statusBadge(status) {
 }
 
 function canEditProfile() {
-  return state.login === "admin" || state.login === "crm";
+  return state.login === "admin" || state.login === "cs" || state.login === "cslead";
 }
 
 function renderRows(customers) {
@@ -465,7 +465,7 @@ function closeConfirm() {
 function openModal() {
   editingId = null;
   createTitleEl.textContent = "Thêm khách hàng";
-  formHintEl.textContent = "Admin và CRM Manager được. CSKH / NV Kinh doanh sẽ nhận 403.";
+  formHintEl.textContent = "Admin và CSKH được. NV Kinh doanh sẽ nhận 403.";
   saveCustomerEl.textContent = "Thêm khách";
   const form = document.getElementById("create-form");
   form.reset();
@@ -482,7 +482,7 @@ async function openEditModal(id) {
   }
   editingId = id;
   createTitleEl.textContent = "Sửa khách hàng";
-  formHintEl.textContent = "Chỉ Admin và CRM Manager được sửa hồ sơ và địa chỉ. Khách đã xóa phải khôi phục trước.";
+  formHintEl.textContent = "Chỉ Admin và CSKH được sửa hồ sơ và địa chỉ. Khách đã xóa phải khôi phục trước.";
   saveCustomerEl.textContent = "Lưu thay đổi";
   const form = document.getElementById("create-form");
   form.fullName.value = customer.fullName || "";
@@ -542,7 +542,7 @@ function renderViewBody(customer, addresses) {
     ? "Có thể sửa địa chỉ ngay trong khung này. Nút « Sửa hồ sơ » đổi tên / email / SĐT."
     : customer.status === "deleted"
       ? "Khách đã xóa — chỉ xem. Khôi phục trước khi sửa."
-      : "CSKH chỉ xem. Admin / CRM Manager mới sửa được địa chỉ.";
+      : "NV Kinh doanh chỉ xem. Admin / CSKH mới sửa được địa chỉ.";
   viewEditProfileEl.hidden = !canEdit;
   viewSaveAddressEl.hidden = !canEdit;
 

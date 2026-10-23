@@ -36,13 +36,13 @@ public class CustomerReportController {
     }
 
     @GetMapping("/customers")
-    @PreAuthorize("hasAnyAuthority('admin', 'crm', 'cs')")
+    @PreAuthorize("hasAnyAuthority('admin', 'cs')")
     public CustomerReportResponse customers() {
         return reports.build(currentActor.requireUserId());
     }
 
     @GetMapping("/campaigns/{id}/funnel")
-    @PreAuthorize("hasAnyAuthority('admin', 'crm', 'cs')")
+    @PreAuthorize("hasAnyAuthority('admin', 'sales')")
     public CampaignFunnelResponse campaignFunnel(@PathVariable UUID id) {
         return campaignFunnels.build(currentActor.requireUserId(), id);
     }

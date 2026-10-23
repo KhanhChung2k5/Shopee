@@ -121,13 +121,13 @@ public class CustomerAccountService {
                 identity.listAddresses(customerId));
     }
 
-    /** Thêm địa chỉ. Chỉ Admin / CRM Manager. */
+    /** Thêm địa chỉ. Chỉ Admin / CSKH. */
     public AddressView createAddress(UUID actorId, UUID customerId, UpsertAddressCommand command) {
         identity.requireCustomerAdmin(actorId);
         return identity.createAddress(customerId, command);
     }
 
-    /** Sửa địa chỉ. Chỉ Admin / CRM Manager. */
+    /** Sửa địa chỉ. Chỉ Admin / CSKH. */
     public AddressView updateAddress(
             UUID actorId,
             UUID customerId,

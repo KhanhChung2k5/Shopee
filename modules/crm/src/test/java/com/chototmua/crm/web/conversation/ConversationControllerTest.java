@@ -40,7 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ConversationControllerTest {
 
     private static final String ADMIN_ID = "11111111-1111-1111-1111-111111111111";
-    private static final String CRM_ID = "22222222-2222-2222-2222-222222222222";
+    private static final String CS_LEAD_ID = "22222222-2222-2222-2222-222222222222";
     private static final String CS_ID = "33333333-3333-3333-3333-333333333333";
     private static final String SALES_ID = "55555555-5555-5555-5555-555555555555";
     private static final String AN_ID = "aaaa1111-1111-1111-1111-111111111111";
@@ -69,7 +69,7 @@ class ConversationControllerTest {
         conversations.clear();
         presence.clear();
         identity.seedStaff(UUID.fromString(ADMIN_ID), "admin");
-        identity.seedStaff(UUID.fromString(CRM_ID), "crm");
+        identity.seedStaff(UUID.fromString(CS_LEAD_ID), "cs");
         identity.seedStaff(UUID.fromString(CS_ID), "cs");
         identity.seedStaff(UUID.fromString(SALES_ID), "sales");
         identity.seedCustomer(

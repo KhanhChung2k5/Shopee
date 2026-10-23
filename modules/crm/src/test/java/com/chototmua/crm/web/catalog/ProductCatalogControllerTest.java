@@ -157,8 +157,8 @@ class ProductCatalogControllerTest {
     }
 
     @Test
-    @WithMockUser(username = SALES_ID, authorities = "sales")
-    void salesStaffIsForbidden() throws Exception {
+    @WithMockUser(username = SALES_ID, authorities = "warehouse")
+    void warehouseStaffIsForbidden() throws Exception {
         mockMvc.perform(get("/api/crm/products"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.message", containsString("quyền")));

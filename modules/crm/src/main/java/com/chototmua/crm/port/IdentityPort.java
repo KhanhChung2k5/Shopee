@@ -63,4 +63,10 @@ public interface IdentityPort {
 
     /** Câu chuyện 4–7: quản trị, quản lý CRM hoặc CSKH. */
     void requireCrmStaff(UUID actorId);
+
+    /** Quản lý phân khúc / chiến dịch: quản trị viên hoặc nhân viên kinh doanh. */
+    void requireMarketingStaff(UUID actorId);
+
+    /** Xem phân khúc, danh mục sản phẩm để chọn đối tượng: quản trị, kinh doanh hoặc CSKH. */
+    void requireAudienceReader(UUID actorId);
 }

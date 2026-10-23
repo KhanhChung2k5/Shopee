@@ -16,7 +16,7 @@ public class FakeSupportDirectory implements SupportDirectory {
 
     private static final Map<UUID, SupportAgent> AGENTS = Map.of(
             CrmDemoActors.ADMIN_ID, new SupportAgent(CrmDemoActors.ADMIN_ID, "Quản trị viên", "admin"),
-            CrmDemoActors.CRM_ID, new SupportAgent(CrmDemoActors.CRM_ID, "Quản lý CRM", "crm"),
+            CrmDemoActors.CS_LEAD_ID, new SupportAgent(CrmDemoActors.CS_LEAD_ID, "Trưởng nhóm CSKH", "cs"),
             CrmDemoActors.CS_ID, new SupportAgent(CrmDemoActors.CS_ID, "Minh", "cs"));
 
     private static final Map<UUID, String> BRANCHES = Map.of(
@@ -29,7 +29,7 @@ public class FakeSupportDirectory implements SupportDirectory {
     public List<SupportAgent> listAgents() {
         return List.of(
                 AGENTS.get(CrmDemoActors.CS_ID),
-                AGENTS.get(CrmDemoActors.CRM_ID),
+                AGENTS.get(CrmDemoActors.CS_LEAD_ID),
                 AGENTS.get(CrmDemoActors.ADMIN_ID));
     }
 

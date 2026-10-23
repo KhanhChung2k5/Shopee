@@ -22,7 +22,7 @@ public class CrmFakeAuthConfig {
     UserDetailsService crmDemoUsers() {
         return new InMemoryUserDetailsManager(
                 staff(CrmDemoActors.ADMIN_LOGIN, "admin"),
-                staff(CrmDemoActors.CRM_LOGIN, "crm"),
+                staff(CrmDemoActors.CS_LEAD_LOGIN, "cs"),
                 staff(CrmDemoActors.CS_LOGIN, "cs"),
                 staff(CrmDemoActors.SALES_LOGIN, "sales"),
                 customer(CrmDemoActors.CUSTOMER_AN_LOGIN),

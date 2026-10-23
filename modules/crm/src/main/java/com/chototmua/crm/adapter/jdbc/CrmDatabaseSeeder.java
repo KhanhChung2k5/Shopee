@@ -175,16 +175,16 @@ public class CrmDatabaseSeeder implements ApplicationRunner {
                 StaffDepartment.ADMIN,
                 "Quản trị");
         ensureStaff(
-                CrmDemoActors.CRM_ID,
+                CrmDemoActors.CS_LEAD_ID,
                 UUID.fromString("e2222222-2222-2222-2222-222222222222"),
                 roleId,
                 roleName,
                 salaryRequired,
                 "0900000002",
-                "crm@chototmua.local",
-                "Quản lý CRM",
-                StaffDepartment.CRM,
-                "Quản lý CRM");
+                "cslead@chototmua.local",
+                "Trưởng nhóm CSKH",
+                StaffDepartment.CS,
+                "Trưởng nhóm CSKH");
         ensureStaff(
                 CrmDemoActors.CS_ID,
                 UUID.fromString("e3333333-3333-3333-3333-333333333333"),

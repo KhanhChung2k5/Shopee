@@ -40,7 +40,7 @@ class CrmDemoHarnessTest {
     void setUp() {
         identity.reset();
         identity.seedStaff(CrmDemoActors.ADMIN_ID, StaffDepartment.ADMIN);
-        identity.seedStaff(CrmDemoActors.CRM_ID, StaffDepartment.CRM);
+        identity.seedStaff(CrmDemoActors.CS_LEAD_ID, StaffDepartment.CS);
         identity.seedStaff(CrmDemoActors.CS_ID, StaffDepartment.CS);
         identity.seedStaff(CrmDemoActors.SALES_ID, StaffDepartment.SALES);
     }
@@ -76,9 +76,9 @@ class CrmDemoHarnessTest {
     }
 
     @Test
-    void customerServiceBasicAuthIsForbiddenOnCreate() throws Exception {
+    void salesBasicAuthIsForbiddenOnCreate() throws Exception {
         mockMvc.perform(post("/api/customers")
-                        .with(httpBasic("cs", "cs"))
+                        .with(httpBasic("sales", "sales"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {

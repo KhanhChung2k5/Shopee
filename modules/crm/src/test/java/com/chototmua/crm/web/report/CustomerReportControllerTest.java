@@ -39,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CustomerReportControllerTest {
 
     private static final String ADMIN_ID = "11111111-1111-1111-1111-111111111111";
-    private static final String CRM_ID = "22222222-2222-2222-2222-222222222222";
+    private static final String CS_LEAD_ID = "22222222-2222-2222-2222-222222222222";
     private static final String CS_ID = "33333333-3333-3333-3333-333333333333";
     private static final String SALES_ID = "55555555-5555-5555-5555-555555555555";
     private static final String GUEST_ID = "44444444-4444-4444-4444-444444444444";
@@ -60,7 +60,7 @@ class CustomerReportControllerTest {
         identity.reset();
         orders.reset();
         identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
-        identity.seedStaff(UUID.fromString(CRM_ID), StaffDepartment.CRM);
+        identity.seedStaff(UUID.fromString(CS_LEAD_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(CS_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
         seedThreeCustomerFixture();
@@ -85,7 +85,7 @@ class CustomerReportControllerTest {
     }
 
     @Test
-    @WithMockUser(username = CRM_ID, authorities = "crm")
+    @WithMockUser(username = CS_LEAD_ID, authorities = "cs")
     void missingGenderGoesToUnknownBucket() throws Exception {
         mockMvc.perform(get("/api/crm/reports/customers"))
                 .andExpect(status().isOk())
@@ -105,7 +105,7 @@ class CustomerReportControllerTest {
     }
 
     @Test
-    @WithMockUser(username = CRM_ID, authorities = "crm")
+    @WithMockUser(username = CS_LEAD_ID, authorities = "cs")
     void crmManagerCanGetCustomerReport() throws Exception {
         mockMvc.perform(get("/api/crm/reports/customers"))
                 .andExpect(status().isOk())

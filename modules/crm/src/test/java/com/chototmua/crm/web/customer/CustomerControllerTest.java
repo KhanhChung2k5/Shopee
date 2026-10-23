@@ -37,8 +37,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CustomerControllerTest {
 
     private static final String ADMIN_ID = "11111111-1111-1111-1111-111111111111";
-    private static final String CRM_ID = "22222222-2222-2222-2222-222222222222";
+    private static final String CS_LEAD_ID = "22222222-2222-2222-2222-222222222222";
     private static final String CS_ID = "33333333-3333-3333-3333-333333333333";
+    private static final String SALES_ID = "55555555-5555-5555-5555-555555555555";
     private static final String GUEST_ID = "44444444-4444-4444-4444-444444444444";
 
     private static final String CREATE_BODY = """
@@ -71,7 +72,7 @@ class CustomerControllerTest {
     void setUp() {
         identity.reset();
         identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
-        identity.seedStaff(UUID.fromString(CRM_ID), StaffDepartment.CRM);
+        identity.seedStaff(UUID.fromString(CS_LEAD_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(CS_ID), StaffDepartment.CS);
     }
 
@@ -100,7 +101,7 @@ class CustomerControllerTest {
     }
 
     @Test
-    @WithMockUser(username = CRM_ID, authorities = "crm")
+    @WithMockUser(username = CS_LEAD_ID, authorities = "cs")
     void crmManagerCanCreateLockUnlockAndSoftDelete() throws Exception {
         String id = createCustomerAndReturnId();
 
@@ -124,8 +125,8 @@ class CustomerControllerTest {
     }
 
     @Test
-    @WithMockUser(username = CS_ID, authorities = "cs")
-    void customerServiceStaffIsForbiddenOnCreateLockUnlockSoftDelete() throws Exception {
+    @WithMockUser(username = SALES_ID, authorities = "sales")
+    void salesStaffIsForbiddenOnCreateLockUnlockSoftDelete() throws Exception {
         mockMvc.perform(post("/api/customers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(CREATE_BODY))
@@ -219,7 +220,7 @@ class CustomerControllerTest {
     }
 
     @Test
-    @WithMockUser(username = CRM_ID, authorities = "crm")
+    @WithMockUser(username = CS_LEAD_ID, authorities = "cs")
     void crmManagerCannotRestoreDeletedCustomer() throws Exception {
         CustomerView existing = identity.seedCustomer(
                 "Le Van C", "male", LocalDate.of(2000, 12, 12), CustomerStatus.DELETED);
@@ -262,7 +263,7 @@ class CustomerControllerTest {
     }
 
     @Test
-    @WithMockUser(username = CRM_ID, authorities = "crm")
+    @WithMockUser(username = CS_LEAD_ID, authorities = "cs")
     void crmManagerCanUpdateCustomerProfile() throws Exception {
         CustomerView existing = identity.seedCustomer(
                 "Tran Thi B", "female", LocalDate.of(2002, 1, 15), CustomerStatus.LOCKED);
@@ -290,7 +291,7 @@ class CustomerControllerTest {
 
     @Test
     @WithMockUser(username = CS_ID, authorities = "cs")
-    void customerServiceCanViewDetailAndAddressesButCannotMutateAddress() throws Exception {
+    void customerServiceCanViewDetailAndAddAddress() throws Exception {
         CustomerView existing = identity.seedCustomer(
                 "Tran Thi B", "female", LocalDate.of(2002, 1, 15), CustomerStatus.ACTIVE);
         UUID addressId = UUID.fromString("a1000001-0000-4000-8000-000000000099");
@@ -312,7 +313,7 @@ class CustomerControllerTest {
                                   "isDefault": true
                                 }
                                 """))
-                .andExpect(status().isForbidden());
+                .andExpect(status().is2xxSuccessful());
     }
 
     @Test

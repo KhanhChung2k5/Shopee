@@ -43,7 +43,7 @@ public class CustomerController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('admin', 'crm', 'cs')")
+    @PreAuthorize("hasAnyAuthority('admin', 'cs')")
     public CustomerListResponse list(
             @RequestParam(defaultValue = "false") boolean includeDeleted,
             @RequestParam(required = false) String status,
@@ -60,7 +60,7 @@ public class CustomerController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('admin', 'crm')")
+    @PreAuthorize("hasAnyAuthority('admin', 'cs')")
     public ResponseEntity<CustomerView> create(@Valid @RequestBody CreateCustomerRequest request) {
         CustomerView created = customers.create(currentActor.requireUserId(), request.toCommand());
         return ResponseEntity
@@ -69,7 +69,7 @@ public class CustomerController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('admin', 'crm')")
+    @PreAuthorize("hasAnyAuthority('admin', 'cs')")
     public CustomerView update(
             @PathVariable UUID id,
             @Valid @RequestBody CreateCustomerRequest request
@@ -78,7 +78,7 @@ public class CustomerController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('admin', 'crm')")
+    @PreAuthorize("hasAnyAuthority('admin', 'cs')")
     public CustomerView patch(
             @PathVariable UUID id,
             @Valid @RequestBody PatchCustomerRequest request
@@ -93,13 +93,13 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('admin', 'crm', 'cs')")
+    @PreAuthorize("hasAnyAuthority('admin', 'cs')")
     public CustomerDetailResponse detail(@PathVariable UUID id) {
         return customers.detail(currentActor.requireUserId(), id);
     }
 
     @PostMapping("/{id}/addresses")
-    @PreAuthorize("hasAnyAuthority('admin', 'crm')")
+    @PreAuthorize("hasAnyAuthority('admin', 'cs')")
     public ResponseEntity<AddressView> createAddress(
             @PathVariable UUID id,
             @Valid @RequestBody UpsertAddressRequest request
@@ -114,7 +114,7 @@ public class CustomerController {
     }
 
     @PutMapping("/{id}/addresses/{addressId}")
-    @PreAuthorize("hasAnyAuthority('admin', 'crm')")
+    @PreAuthorize("hasAnyAuthority('admin', 'cs')")
     public AddressView updateAddress(
             @PathVariable UUID id,
             @PathVariable UUID addressId,
