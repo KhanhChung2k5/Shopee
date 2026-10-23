@@ -31,33 +31,33 @@ function timeAgo(iso: string) {
 const DEFAULT_TOP_SELLERS = [
   {
     rank: 1,
-    productId: 'sp-d10',
-    name: 'EA SPORTS FC 25',
-    sub: 'Bản PS5 Vật Lý Sealed',
-    price: 1390000,
+    productId: 'ed6de72d-7afd-5f30-bd3a-e4ad9db6411e',
+    name: 'Đĩa PS5 Astro Bot',
+    sub: 'Bản Đĩa PS5 Chính Hãng Sealed',
+    price: 1499000,
     imageUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBZFRzlTvpNsuF5fXzIODphTT0dQ9CUfJ1IqXy_O8LrHvGshCAb6wWn0dnRV0UztSWn_uROQNY-x90CZ2pXiuuR7qMttDOWcTk26OAxV1R1JNeuMFD4B2tndV8IXdVEjxGSz3DOb7E2AaLhwvgD2DvD5KQV1N9lXQ0kyxBCxgvJpSJGPen8dtQK2XIYk2-Ef7DIAiCcS3t1EL85Bjxi3Tu-ihR27_rdxLXHbfBiB5erkJHt-NSjPpsT',
+      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759703/chotomua/products/gallery/sp-d4-1.png',
     trend: 'up',
   },
   {
     rank: 2,
-    productId: 'sp-d5',
-    name: 'Black Myth: Wukong',
-    sub: 'Hệ US/EU Đĩa Gốc',
-    price: 1350000,
+    productId: 'eb538024-56e6-5134-aef6-927c163ac9aa',
+    name: 'Đĩa PS5 Stellar Blade',
+    sub: 'Bản Đĩa PS5 Chính Hãng Sealed',
+    price: 1799000,
     imageUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAM3wUxxiYFEOwbWRpAFVEV9B6iTifVVsUkOgZw2PkGBBSCNwS11J6Z6foW0bFC2j6ZWxf9jJtbWZ6oehj8ZtJ8Olsfbjt54Lf0k4bz8kGKDLprJ-_SZUzblLPzOp2o7Tr38xm-8__NeHa5A3bzmHZzQOBoVaXqlaL_iOOT912cah4yTYGg0ZjSjrkktedFpIQm0PYhJBSdVcABBpfQ3gwiAKCmzfgm4e7o9931zlXvOtNANdA7WJHN',
+      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759707/chotomua/products/gallery/sp-d5-1.png',
     trend: 'up',
   },
   {
     rank: 3,
-    productId: 'sp-d1',
-    name: 'Elden Ring: Shadow of the Erdtree',
-    sub: 'Tặng Kèm Art Card Bản Quyền',
-    price: 1450000,
+    productId: '0a13b6d2-1e8a-51c3-91c8-310351af0c60',
+    name: 'Tay Cầm DualSense Edge',
+    sub: 'Tay Cầm Pro Cao Cấp Cho PS5',
+    price: 5699000,
     imageUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuDT13x_B0t-qQ57U7h_K2J7q4s04bC7N-f1bJm58k55-x9L2zN189fS1qU71Q-qP3lP09eE9eD6b5832uD2kH9rF7aM6eP_Q3fR4xL1zM8oP0qR3kS2uD8aK4hL9jH6rE7fM2eQ',
-    trend: 'neutral',
+      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759886/chotomua/products/gallery/sp-c5-1.jpg',
+    trend: 'up',
   },
 ]
 
@@ -67,9 +67,9 @@ const DEFAULT_REVIEWS = [
     name: 'Trần Quang Huy',
     location: 'Hà Nội • Mua 2 ngày trước',
     comment:
-      'Đĩa PS5 Wukong sealed nguyên bọc nilon, tem chính hãng Sony. Đặt hỏa tốc 2 tiếng là shipper giao đến tận bàn. Sẽ tiếp tục ủng hộ Chợ Tốt Mua!',
+      'Đĩa PS5 Astro Bot sealed nguyên bọc nilon, tem chính hãng Sony. Đặt hỏa tốc 2 tiếng là shipper giao đến tận bàn. Game chơi quá hay và mượt mà!',
     photoUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAM3wUxxiYFEOwbWRpAFVEV9B6iTifVVsUkOgZw2PkGBBSCNwS11J6Z6foW0bFC2j6ZWxf9jJtbWZ6oehj8ZtJ8Olsfbjt54Lf0k4bz8kGKDLprJ-_SZUzblLPzOp2o7Tr38xm-8__NeHa5A3bzmHZzQOBoVaXqlaL_iOOT912cah4yTYGg0ZjSjrkktedFpIQm0PYhJBSdVcABBpfQ3gwiAKCmzfgm4e7o9931zlXvOtNANdA7WJHN',
+      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759703/chotomua/products/gallery/sp-d4-1.png',
     photoCaption: 'Ảnh unbox thật từ khách hàng',
   },
   {
@@ -77,9 +77,9 @@ const DEFAULT_REVIEWS = [
     name: 'Lê Hoàng Long',
     location: 'TP.HCM • Mua hôm qua',
     comment:
-      'Tay cầm DualSense Edge cầm đầm tay cực kỳ, cần Hall Effect rê mượt không chút deadzone. Đóng gói 3 lớp bóng khí rất kỹ càng.',
+      'Tay cầm DualSense Edge cầm đầm tay cực kỳ, nút gạt trigger và phím sau lưng siêu nhạy. Đóng gói 3 lớp bóng khí rất kỹ càng.',
     photoUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBNlww-GvuA9PXl2L6YC3hdBiKU_v8ukqp3OMhbGACT-KkkOUEyMlZkArRhRVd6KdbgCCnnmx-uXCP6vlOq3MkzUPxXoZu3MxgQupr6GXzYYL9Qne9MA1vhugpTKJnz_hnmf-FORjSAchZo0ACP2KECR2y9U4yYoX8a3_HcBCSFB-9c0EOQu9gcIsMZE0l57dGGyBg4KUM2UXvg-IyJw2K5CJ1Jxj5peLYcOxys-yz_Zy1RYaTCazsC',
+      'https://res.cloudinary.com/ze2slibo/image/upload/v1790759886/chotomua/products/gallery/sp-c5-1.jpg',
     photoCaption: 'Hộp chống sốc chuẩn sàn',
   },
 ]

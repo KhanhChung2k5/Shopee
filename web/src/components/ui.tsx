@@ -1,4 +1,5 @@
-import type { ButtonHTMLAttributes, ComponentProps, HTMLAttributes, ReactNode } from 'react'
+import { useRef, useState } from 'react'
+import type { ButtonHTMLAttributes, ComponentProps, HTMLAttributes, KeyboardEvent, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 /** Shared Tailwind building blocks so storefront pages match the Stitch homepage. */
@@ -263,22 +264,85 @@ export function Modal({ title, eyebrow, onClose, children, footer }: {
   )
 }
 
-export function QtyStepper({ value, onDecrease, onIncrease, decreaseDisabled, increaseDisabled, label = 'số lượng' }: {
-  value: ReactNode
-  onDecrease: () => void
-  onIncrease: () => void
-  decreaseDisabled?: boolean
-  increaseDisabled?: boolean
+/**
+ * −/+ stepper with a typeable number in the middle. Typing is kept as a draft
+ * and committed on blur/Enter (Esc reverts), clamped to [min, max].
+ */
+export function QtyStepper({ value, onChange, min = 1, max, disabled, label = 'số lượng' }: {
+  value: number
+  onChange: (next: number) => void
+  min?: number
+  max?: number | null
+  disabled?: boolean
   label?: string
 }) {
+  const [draft, setDraft] = useState(String(value))
+  const [syncedValue, setSyncedValue] = useState(value)
+  // Esc blurs the input; the blur must not commit the draft it just discarded.
+  const skipNextCommit = useRef(false)
+  if (value !== syncedValue) {
+    // Parent changed the value (stepper click, variant switch, server update): show it.
+    setSyncedValue(value)
+    setDraft(String(value))
+  }
+
+  const clamp = (n: number) => Math.max(min, max == null ? n : Math.min(n, max))
+
+  const commit = () => {
+    if (skipNextCommit.current) {
+      skipNextCommit.current = false
+      setDraft(String(value))
+      return
+    }
+    const parsed = Number(draft)
+    if (draft === '' || !Number.isSafeInteger(parsed)) {
+      setDraft(String(value))
+      return
+    }
+    const next = clamp(parsed)
+    setDraft(String(next))
+    if (next !== value) onChange(next)
+  }
+
+  const step = (delta: number) => {
+    const next = clamp(value + delta)
+    if (next !== value) onChange(next)
+  }
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') event.currentTarget.blur()
+    if (event.key === 'Escape') {
+      skipNextCommit.current = true
+      setDraft(String(value))
+      event.currentTarget.blur()
+    }
+  }
+
   const stepClass = 'w-8 h-8 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed'
   return (
-    <div className="inline-flex items-center rounded-lg border border-line bg-surface-container-lowest overflow-hidden">
-      <button type="button" className={stepClass} disabled={decreaseDisabled} onClick={onDecrease} aria-label={`Giảm ${label}`}>
+    <div className={cx('inline-flex items-center rounded-lg border border-line bg-surface-container-lowest overflow-hidden', disabled && 'opacity-60')}>
+      <button type="button" className={stepClass} disabled={disabled || value <= min} onClick={() => step(-1)} aria-label={`Giảm ${label}`}>
         <span className="material-symbols-outlined text-base">remove</span>
       </button>
-      <span className="min-w-10 px-space-xs text-center font-title-md text-title-md text-on-surface border-x border-line leading-8">{value}</span>
-      <button type="button" className={stepClass} disabled={increaseDisabled} onClick={onIncrease} aria-label={`Tăng ${label}`}>
+      <input
+        className="w-12 h-8 text-center font-title-md text-title-md text-on-surface bg-transparent border-x border-line focus:outline-none focus:bg-surface-container-low disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={max ?? undefined}
+        step={1}
+        value={draft}
+        disabled={disabled}
+        aria-label={label.charAt(0).toUpperCase() + label.slice(1)}
+        onFocus={(event) => event.currentTarget.select()}
+        onChange={(event) => {
+          const next = event.currentTarget.value
+          if (next === '' || /^\d+$/.test(next)) setDraft(next)
+        }}
+        onBlur={commit}
+        onKeyDown={handleKeyDown}
+      />
+      <button type="button" className={stepClass} disabled={disabled || (max != null && value >= max)} onClick={() => step(1)} aria-label={`Tăng ${label}`}>
         <span className="material-symbols-outlined text-base">add</span>
       </button>
     </div>

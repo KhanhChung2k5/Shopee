@@ -10,6 +10,12 @@ import {
 import type { Product, ProductType } from '../data/sampleProducts'
 import { apiFetch, ApiError } from '../lib/api'
 import { useAuth } from './AuthContext'
+import {
+  CartCenteredToast,
+  FlyAnimationOverlay,
+  emitCartToast,
+  emitFlyAnimation,
+} from '../components/AddToCartModalAndFly'
 
 interface CartItemApiResponse {
   id: string
@@ -46,10 +52,16 @@ interface CartContextValue {
   busyIds: ReadonlySet<string>
   addItem: (variantId: string, quantity?: number) => Promise<boolean>
   removeItem: (lineId: string) => Promise<void>
+  removeSelected: () => Promise<void>
   setQuantity: (lineId: string, quantity: number) => Promise<void>
   setSelected: (lineId: string, selected: boolean) => Promise<void>
+  selectAll: (selected: boolean) => Promise<void>
+  buyNow: (variantId: string, quantity?: number) => Promise<boolean>
   clearCart: () => Promise<void>
   refreshCart: () => Promise<void>
+  showToast: (title: string, subtitle?: string) => void
+  triggerFlyAnimation: (startRect: DOMRect, imageUrl?: string) => void
+  isBumping: boolean
 }
 
 const CartContext = createContext<CartContextValue | null>(null)
@@ -97,6 +109,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
+  const [isBumping, setIsBumping] = useState(false)
+
+  const showToast = useCallback((title: string, subtitle?: string) => {
+    emitCartToast(title, subtitle)
+  }, [])
+
+  const triggerFlyAnimation = useCallback((startRect: DOMRect, imageUrl?: string) => {
+    emitFlyAnimation(startRect, imageUrl)
+  }, [])
+
+  const triggerBump = useCallback(() => {
+    setIsBumping(true)
+    setTimeout(() => setIsBumping(false), 400)
+  }, [])
 
   const refreshCart = useCallback(async () => {
     if (!token) {
@@ -173,6 +199,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const removeSelected = async () => {
+    if (!token) return
+    const targets = apiLines.filter((line) => line.isSelected)
+    if (targets.length === 0) return
+
+    setError(null)
+    targets.forEach((line) => markBusy(line.id, true))
+    // Optimistic remove
+    const targetIds = new Set(targets.map((t) => t.id))
+    setApiLines((current) => current.filter((l) => !targetIds.has(l.id)))
+
+    try {
+      await Promise.allSettled(
+        targets.map((line) => apiFetch(`/cart-items/${line.id}`, { method: 'DELETE' }, token))
+      )
+    } catch {
+      void refreshCart()
+    } finally {
+      targets.forEach((line) => markBusy(line.id, false))
+    }
+  }
+
   const setQuantity = async (lineId: string, quantity: number) => {
     if (quantity <= 0) {
       await removeItem(lineId)
@@ -189,7 +237,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ quantity }),
       }, token)
       const line = apiLine(item)
-      setApiLines((current) => current.map((entry) => entry.id === lineId ? line : entry))
+      setApiLines((current) => current.map((entry) => (entry.id === lineId ? line : entry)))
     } catch (requestError) {
       setError(errorMessage(requestError, 'Không thể cập nhật số lượng'))
     } finally {
@@ -208,11 +256,99 @@ export function CartProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ isSelected: selected }),
       }, token)
       const line = apiLine(item)
-      setApiLines((current) => current.map((entry) => entry.id === lineId ? line : entry))
+      setApiLines((current) => current.map((entry) => (entry.id === lineId ? line : entry)))
     } catch (requestError) {
       setError(errorMessage(requestError, 'Không thể cập nhật lựa chọn'))
     } finally {
       markBusy(lineId, false)
+    }
+  }
+
+  const selectAll = async (selected: boolean) => {
+    if (!token) return
+
+    const targets = apiLines.filter((l) => {
+      if (selected) {
+        return l.available && (l.availableQuantity === null || l.quantity <= l.availableQuantity)
+      }
+      return true
+    })
+
+    // Optimistic update
+    setApiLines((current) =>
+      current.map((line) => {
+        if (selected && (!line.available || (line.availableQuantity !== null && line.quantity > line.availableQuantity))) {
+          return line
+        }
+        return { ...line, isSelected: selected }
+      })
+    )
+
+    try {
+      await Promise.allSettled(
+        targets
+          .filter((line) => line.isSelected !== selected)
+          .map((line) =>
+            apiFetch<CartItemApiResponse>(
+              `/cart-items/${line.id}/selection`,
+              {
+                method: 'PATCH',
+                body: JSON.stringify({ isSelected: selected }),
+              },
+              token
+            )
+          )
+      )
+    } catch {
+      void refreshCart()
+    }
+  }
+
+  const buyNow = async (variantId: string, quantity = 1) => {
+    if (!token) return false
+    if (!UUID_PATTERN.test(variantId)) return false
+
+    try {
+      // 1. Ensure item is added
+      await apiFetch<CartItemApiResponse>('/cart-items', {
+        method: 'POST',
+        body: JSON.stringify({ variantId, quantity }),
+      }, token)
+
+      // 2. Fetch fresh cart list
+      const items = await apiFetch<CartItemApiResponse[]>('/cart-items', {}, token)
+      const linesData = items.map(apiLine)
+
+      // 3. Mark target variant as selected, all other items as unselected
+      await Promise.allSettled(
+        linesData.map((line) => {
+          const shouldSelect = line.variantId === variantId
+          if (line.isSelected !== shouldSelect) {
+            return apiFetch<CartItemApiResponse>(
+              `/cart-items/${line.id}/selection`,
+              {
+                method: 'PATCH',
+                body: JSON.stringify({ isSelected: shouldSelect }),
+              },
+              token
+            )
+          }
+          return Promise.resolve(null)
+        })
+      )
+
+      // 4. Update local state
+      setApiLines(
+        linesData.map((line) => ({
+          ...line,
+          isSelected: line.variantId === variantId,
+        }))
+      )
+
+      return true
+    } catch (requestError) {
+      setError(errorMessage(requestError, 'Không thể xử lý yêu cầu Mua ngay'))
+      return false
     }
   }
 
@@ -233,13 +369,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
     busyIds,
     addItem,
     removeItem,
+    removeSelected,
     setQuantity,
     setSelected,
+    selectAll,
+    buyNow,
     clearCart,
     refreshCart,
+    showToast,
+    triggerFlyAnimation,
+    isBumping,
   }
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>
+  return (
+    <CartContext.Provider value={value}>
+      {children}
+      <CartCenteredToast />
+      <FlyAnimationOverlay onBump={triggerBump} />
+    </CartContext.Provider>
+  )
 }
 
 export function useCart() {

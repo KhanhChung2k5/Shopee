@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import ProductThumb from './ProductThumb'
 import { formatPrice } from './ui'
@@ -7,7 +6,6 @@ import { useQuickAdd } from '../state/useQuickAdd'
 
 /** Product card used by the homepage suggestions, category and search grids. */
 export default function ProductTile({ product, index = 0 }: { product: CatalogProductSummary; index?: number }) {
-  const [favorite, setFavorite] = useState(false)
   const { quickAdd, busyId } = useQuickAdd()
   const discount = product.price != null && product.comparePrice != null && product.comparePrice > product.price
     ? Math.round((1 - product.price / product.comparePrice) * 100)
@@ -32,20 +30,6 @@ export default function ProductTile({ product, index = 0 }: { product: CatalogPr
                 -{discount}%
               </span>
             )}
-            <button
-              onClick={(e) => { e.preventDefault(); setFavorite((value) => !value) }}
-              className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-surface-container-lowest/90 hover:bg-surface-container-lowest flex items-center justify-center shadow-sm transition-colors cursor-pointer"
-              title="Thêm vào yêu thích"
-              aria-pressed={favorite}
-              type="button"
-            >
-              <span
-                className={`material-symbols-outlined text-lg ${favorite ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}
-                style={favorite ? { fontVariationSettings: "'FILL' 1" } : undefined}
-              >
-                favorite
-              </span>
-            </button>
           </div>
         </Link>
 
@@ -86,7 +70,14 @@ export default function ProductTile({ product, index = 0 }: { product: CatalogPr
         </div>
         <div className="grid grid-cols-2 gap-space-xs">
           <button
-            onClick={() => quickAdd(product.id)}
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect()
+              quickAdd(product.id, {
+                startRect: rect,
+                imageUrl: product.imageUrls?.[0],
+                productName: product.name,
+              })
+            }}
             disabled={disabled}
             className="py-2 px-space-xs bg-primary-fixed hover:bg-primary-fixed-dim text-on-primary-fixed font-title-md text-title-md rounded transition-colors flex items-center justify-center gap-1 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             type="button"
@@ -95,7 +86,7 @@ export default function ProductTile({ product, index = 0 }: { product: CatalogPr
             <span className="text-xs">Giỏ Hàng</span>
           </button>
           <button
-            onClick={() => quickAdd(product.id, { goToCart: true })}
+            onClick={() => quickAdd(product.id, { goToCart: true, productName: product.name })}
             disabled={disabled}
             className="py-2 px-space-xs bg-primary hover:bg-primary-container text-on-primary font-title-md text-title-md rounded transition-colors text-center cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             type="button"

@@ -24,7 +24,7 @@ const CONNECTION_LABELS: Record<NonNullable<CatalogProduct['connectionType']>, s
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { addItem, error: cartError } = useCart()
+  const { addItem, buyNow, showToast, triggerFlyAnimation, error: cartError } = useCart()
   const { token } = useAuth()
   const [product, setProduct] = useState<CatalogProduct | null>(null)
   const [selectedVariantId, setSelectedVariantId] = useState('')
@@ -95,7 +95,7 @@ export default function ProductDetailPage() {
     },
   ].filter((row): row is { label: string; value: string } => typeof row.value === 'string' && row.value.trim().length > 0)
 
-  const purchase = async (goToCart: boolean) => {
+  const purchase = async (goToCart: boolean, e?: React.MouseEvent) => {
     if (!token) {
       navigate('/dang-nhap', { state: { from: `/san-pham/${id}` } })
       return
@@ -103,8 +103,22 @@ export default function ProductDetailPage() {
     if (!product || !canBuy || !variant) return
     setIsAdding(true)
     try {
-      const added = await addItem(variant.id, qty)
-      if (added && goToCart) navigate('/gio-hang')
+      if (goToCart) {
+        // Exclusively select this variant for "Mua ngay"
+        const success = await buyNow(variant.id, qty)
+        if (success) {
+          navigate('/gio-hang')
+        }
+      } else {
+        if (e) {
+          const rect = e.currentTarget.getBoundingClientRect()
+          triggerFlyAnimation(rect, variant.imageUrl || product.imageUrls?.[0])
+        }
+        const added = await addItem(variant.id, qty)
+        if (added) {
+          showToast('Đã thêm vào giỏ hàng thành công!', product.name)
+        }
+      }
     } finally {
       setIsAdding(false)
     }
@@ -199,15 +213,16 @@ export default function ProductDetailPage() {
               <span className="font-title-md text-title-md text-on-surface">Số lượng</span>
               <QtyStepper
                 value={qty}
-                decreaseDisabled={!canBuy || qty <= 1}
-                increaseDisabled={!canBuy || qty >= available}
-                onDecrease={() => setQty((value) => Math.max(1, value - 1))}
-                onIncrease={() => setQty((value) => Math.min(available, value + 1))}
+                onChange={setQty}
+                max={available}
+                disabled={!variant || available <= 0}
+                label="số lượng sản phẩm"
               />
+              {available > 0 && <span className="font-label-md text-label-md text-on-surface-variant">Tối đa {available}</span>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
-              <Button variant="secondary" size="lg" icon="add_shopping_cart" disabled={!canBuy || isAdding} onClick={() => void purchase(false)}>Thêm vào giỏ hàng</Button>
+              <Button variant="secondary" size="lg" icon="add_shopping_cart" disabled={!canBuy || isAdding} onClick={(e) => void purchase(false, e)}>Thêm vào giỏ hàng</Button>
               <Button size="lg" icon="shopping_bag" disabled={!canBuy || isAdding} onClick={() => void purchase(true)}>Mua ngay</Button>
             </div>
             {cartError && <Alert>{cartError}</Alert>}

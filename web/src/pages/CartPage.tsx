@@ -1,8 +1,8 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatVnd } from '../lib/catalog'
 import ProductThumb from '../components/ProductThumb'
-import { Alert, Button, ButtonLink, Card, EmptyState, Loading, Page, PageHeader, SummaryRow, cx } from '../components/ui'
+import { Alert, Button, ButtonLink, Card, EmptyState, Loading, Page, PageHeader, QtyStepper, SummaryRow, cx } from '../components/ui'
 import { useCart } from '../state/CartContext'
 
 interface QuantityControlProps {
@@ -14,72 +14,42 @@ interface QuantityControlProps {
   onCommit: (lineId: string, quantity: number) => Promise<void>
 }
 
-const stepClass = 'w-8 h-8 flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed'
-
 function QuantityControl({ lineId, quantity, busy, available, availableQuantity, onCommit }: QuantityControlProps) {
-  const [draft, setDraft] = useState(String(quantity))
-
-  const commitDraft = () => {
-    const nextQuantity = Number(draft)
-    if (!Number.isSafeInteger(nextQuantity) || nextQuantity < 1) {
-      setDraft(String(quantity))
-      return
-    }
-    const limitedQuantity = availableQuantity === null ? nextQuantity : Math.min(nextQuantity, availableQuantity)
-    setDraft(String(limitedQuantity))
-    if (limitedQuantity !== quantity) void onCommit(lineId, limitedQuantity)
-  }
-
-  const adjustQuantity = (nextQuantity: number) => {
-    if (nextQuantity < 1 || (availableQuantity !== null && nextQuantity > availableQuantity)) return
-    setDraft(String(nextQuantity))
-    void onCommit(lineId, nextQuantity)
-  }
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') event.currentTarget.blur()
-    if (event.key === 'Escape') {
-      setDraft(String(quantity))
-      event.currentTarget.blur()
-    }
-  }
-
   return (
-    <div className="inline-flex items-center rounded-lg border border-line bg-surface-container-lowest overflow-hidden">
-      <button type="button" className={stepClass} disabled={busy || !available || quantity <= 1} onClick={() => adjustQuantity(quantity - 1)} aria-label="Giảm số lượng">
-        <span className="material-symbols-outlined text-base">remove</span>
-      </button>
-      <input
-        className="w-12 h-8 text-center font-title-md text-title-md text-on-surface bg-transparent border-x border-line focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-        type="number"
-        inputMode="numeric"
-        min="1"
-        max={availableQuantity ?? undefined}
-        step="1"
-        value={draft}
-        disabled={busy || !available}
-        aria-label="Số lượng sản phẩm"
-        onFocus={(event) => event.currentTarget.select()}
-        onChange={(event) => {
-          const nextValue = event.currentTarget.value
-          if (nextValue === '' || /^\d+$/.test(nextValue)) setDraft(nextValue)
-        }}
-        onBlur={commitDraft}
-        onKeyDown={handleKeyDown}
-      />
-      <button type="button" className={stepClass} disabled={busy || !available || (availableQuantity !== null && quantity >= availableQuantity)} onClick={() => adjustQuantity(quantity + 1)} aria-label="Tăng số lượng">
-        <span className="material-symbols-outlined text-base">add</span>
-      </button>
-    </div>
+    <QtyStepper
+      value={quantity}
+      onChange={(next) => void onCommit(lineId, next)}
+      max={availableQuantity}
+      disabled={busy || !available}
+      label="số lượng sản phẩm"
+    />
   )
 }
 
 export default function CartPage() {
   const navigate = useNavigate()
-  const { lines, setQuantity, removeItem, setSelected, isLoading, error, busyIds } = useCart()
+  const { lines, setQuantity, removeItem, removeSelected, setSelected, selectAll, isLoading, error, busyIds } = useCart()
+
+  const selectAllRef = useRef<HTMLInputElement>(null)
+
+  const selectableLines = lines.filter(
+    (line) => line.available && (line.availableQuantity === null || line.quantity <= line.availableQuantity)
+  )
+  const allSelected = selectableLines.length > 0 && selectableLines.every((line) => line.isSelected)
+  const isIndeterminate = selectableLines.some((line) => line.isSelected) && !allSelected
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = isIndeterminate
+    }
+  }, [isIndeterminate])
 
   if (isLoading && lines.length === 0) {
-    return <Page><Loading>Đang tải giỏ hàng…</Loading></Page>
+    return (
+      <Page>
+        <Loading>Đang tải giỏ hàng…</Loading>
+      </Page>
+    )
   }
 
   if (lines.length === 0) {
@@ -98,24 +68,85 @@ export default function CartPage() {
     )
   }
 
-  const selectedLines = lines.filter((line) =>
-    line.isSelected
-      && line.available
-      && (line.availableQuantity === null || line.quantity <= line.availableQuantity),
+  const selectedLines = lines.filter(
+    (line) =>
+      line.isSelected &&
+      line.available &&
+      (line.availableQuantity === null || line.quantity <= line.availableQuantity)
   )
   const subtotal = selectedLines.reduce((sum, line) => sum + line.product.price * line.quantity, 0)
 
   return (
     <Page>
-      <PageHeader breadcrumb={[{ label: 'Trang chủ', to: '/' }, { label: 'Giỏ hàng' }]} title={`Giỏ hàng (${lines.length})`} />
+      <PageHeader
+        breadcrumb={[{ label: 'Trang chủ', to: '/' }, { label: 'Giỏ hàng' }]}
+        title={`Giỏ hàng (${lines.length})`}
+      />
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop items-start">
         <div className="lg:col-span-8 space-y-space-sm">
           {error && <Alert>{error}</Alert>}
+
+          {/* Master Toolbar: Chọn tất cả & Xoá các sản phẩm đã chọn */}
+          <Card className="flex flex-wrap items-center justify-between gap-space-sm !p-space-md bg-surface-container-low border border-line">
+            <label className="flex items-center gap-space-sm cursor-pointer select-none">
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                className="w-4 h-4 accent-primary cursor-pointer"
+                checked={allSelected}
+                onChange={(event) => void selectAll(event.target.checked)}
+                aria-label={`Chọn tất cả ${lines.length} sản phẩm`}
+              />
+              <span className="font-title-md text-title-md text-on-surface font-medium">
+                Chọn tất cả ({lines.length} sản phẩm)
+              </span>
+            </label>
+
+            <div className="flex items-center gap-space-sm">
+              {selectedLines.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon="delete_sweep"
+                  className="text-error hover:bg-error-container/20 !px-space-sm"
+                  onClick={() => void removeSelected()}
+                >
+                  Xóa ({selectedLines.length} sản phẩm đã chọn)
+                </Button>
+              )}
+              {allSelected ? (
+                <button
+                  type="button"
+                  className="text-xs text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+                  onClick={() => void selectAll(false)}
+                >
+                  Bỏ chọn tất cả
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline cursor-pointer"
+                  onClick={() => void selectAll(true)}
+                >
+                  Chọn tất cả
+                </button>
+              )}
+            </div>
+          </Card>
+
+          {/* Cart Item Cards */}
           {lines.map((line) => {
             const busy = busyIds.has(line.id)
             const withinStock = line.availableQuantity === null || line.quantity <= line.availableQuantity
             return (
-              <Card key={line.id} className={cx('flex flex-wrap sm:flex-nowrap items-start gap-space-md !p-space-md', !line.available && 'opacity-60')}>
+              <Card
+                key={line.id}
+                className={cx(
+                  'flex flex-wrap sm:flex-nowrap items-start gap-space-md !p-space-md transition-colors',
+                  line.isSelected && line.available && withinStock && 'border-primary/40 bg-primary/5',
+                  !line.available && 'opacity-60'
+                )}
+              >
                 <input
                   className="mt-8 w-4 h-4 accent-primary cursor-pointer disabled:cursor-not-allowed"
                   type="checkbox"
@@ -125,12 +156,29 @@ export default function CartPage() {
                   aria-label={`Chọn ${line.product.name}`}
                 />
                 <div className="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 rounded-lg overflow-hidden bg-surface-container-low">
-                  <ProductThumb seed={line.product.thumbSeed} productType={line.product.productType} imageUrl={line.product.imageUrl} />
+                  <ProductThumb
+                    seed={line.product.thumbSeed}
+                    productType={line.product.productType}
+                    imageUrl={line.product.imageUrl}
+                  />
                 </div>
                 <div className="flex-1 min-w-0 space-y-space-xs">
-                  <p className="font-title-md text-title-md text-on-surface line-clamp-2">{line.product.name}</p>
-                  <p className="font-body-md text-body-md text-on-surface-variant">Đơn giá {formatVnd(line.product.price)}</p>
-                  {!line.available && <p className="font-label-md text-label-md text-error">{line.availableQuantity === 0 ? 'Sản phẩm đã hết hàng' : 'Sản phẩm hiện không còn bán'}</p>}
+                  <div className="flex items-center gap-2">
+                    <p className="font-title-md text-title-md text-on-surface line-clamp-2">{line.product.name}</p>
+                    {line.isSelected && line.available && withinStock && (
+                      <span className="hidden sm:inline-block text-[11px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                        Đã chọn
+                      </span>
+                    )}
+                  </div>
+                  <p className="font-body-md text-body-md text-on-surface-variant">
+                    Đơn giá {formatVnd(line.product.price)}
+                  </p>
+                  {!line.available && (
+                    <p className="font-label-md text-label-md text-error">
+                      {line.availableQuantity === 0 ? 'Sản phẩm đã hết hàng' : 'Sản phẩm hiện không còn bán'}
+                    </p>
+                  )}
                   <div className="flex flex-wrap items-center gap-space-sm">
                     <QuantityControl
                       key={`${line.id}:${line.quantity}`}
@@ -142,15 +190,24 @@ export default function CartPage() {
                       onCommit={setQuantity}
                     />
                     {line.availableQuantity !== null && (
-                      <span className={cx('font-label-md text-label-md', line.quantity > line.availableQuantity ? 'text-error' : 'text-on-surface-variant')}>
+                      <span
+                        className={cx(
+                          'font-label-md text-label-md',
+                          line.quantity > line.availableQuantity ? 'text-error' : 'text-on-surface-variant'
+                        )}
+                      >
                         Kho còn {line.availableQuantity} sản phẩm
                       </span>
                     )}
                   </div>
                 </div>
                 <div className="w-full sm:w-auto flex sm:flex-col items-center sm:items-end justify-between gap-space-sm pt-space-xs sm:pt-0 border-t sm:border-t-0 border-line">
-                  <p className="font-price-md text-price-md text-primary whitespace-nowrap">{formatVnd(line.product.price * line.quantity)}</p>
-                  <Button variant="ghost" size="sm" icon="delete" disabled={busy} onClick={() => void removeItem(line.id)}>Xoá</Button>
+                  <p className="font-price-md text-price-md text-primary whitespace-nowrap">
+                    {formatVnd(line.product.price * line.quantity)}
+                  </p>
+                  <Button variant="ghost" size="sm" icon="delete" disabled={busy} onClick={() => void removeItem(line.id)}>
+                    Xoá
+                  </Button>
                 </div>
               </Card>
             )
@@ -159,12 +216,18 @@ export default function CartPage() {
 
         <Card as="aside" className="lg:col-span-4 lg:sticky lg:top-44 space-y-space-sm">
           <h2 className="font-headline-md text-headline-md text-on-surface">Tóm tắt đơn hàng</h2>
-          <SummaryRow label="Đã chọn" value={`${selectedLines.length} sản phẩm`} />
+          <SummaryRow label="Đã chọn" value={`${selectedLines.length} / ${lines.length} sản phẩm`} />
           <SummaryRow label="Tạm tính" value={formatVnd(subtotal)} />
           <SummaryRow label="Phí vận chuyển" value="Tính khi đặt hàng" />
           <SummaryRow strong label="Tổng cộng" value={formatVnd(subtotal)} />
-          <Button size="lg" className="w-full mt-space-sm" icon="shopping_cart_checkout" onClick={() => navigate('/thanh-toan')} disabled={selectedLines.length === 0}>
-            Tiến hành thanh toán
+          <Button
+            size="lg"
+            className="w-full mt-space-sm"
+            icon="shopping_cart_checkout"
+            onClick={() => navigate('/thanh-toan')}
+            disabled={selectedLines.length === 0}
+          >
+            Tiến hành thanh toán ({selectedLines.length})
           </Button>
         </Card>
       </div>
