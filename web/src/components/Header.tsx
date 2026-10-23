@@ -166,14 +166,14 @@ export default function Header() {
                 onChange={(e) => setCategory(e.target.value)}
               >
                 <option value="all">Tất cả danh mục</option>
-                <option value="tay-cam">Tay cầm PS5 / Xbox</option>
-                <option value="dia-game">Đĩa game PS5 / Switch</option>
-                <option value="phu-kien">Phụ kiện &amp; Bọc cần</option>
+                <option value="tay-cam">Tay cầm DualSense PS5</option>
+                <option value="dia-game">Đĩa game PS5 bản quyền</option>
+                <option value="phu-kien">Phụ kiện &amp; Ốp bọc PS5</option>
               </select>
               <div className="hidden md:block h-5 w-px bg-outline-variant"></div>
               <input
                 className="flex-1 min-w-0 h-full px-space-md bg-transparent text-on-surface placeholder:text-on-surface-variant font-body-md text-body-md border-0 focus:ring-0 outline-none"
-                placeholder="Tìm kiếm tay cầm DualSense, đĩa game PS5, Zelda, Xbox controller..."
+                placeholder="Tìm kiếm tay cầm DualSense, đĩa game PS5, Astro Bot, Spider-Man 2..."
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -193,30 +193,6 @@ export default function Header() {
               <span className="text-on-surface-variant">Xu hướng:</span>
               <button
                 type="button"
-                onClick={() => goSearch('Tay cầm PS5')}
-                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-              >
-                Tay cầm PS5
-              </button>
-              <span className="text-outline-variant">•</span>
-              <button
-                type="button"
-                onClick={() => goSearch('FC 25')}
-                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-              >
-                FC 25
-              </button>
-              <span className="text-outline-variant">•</span>
-              <button
-                type="button"
-                onClick={() => goSearch('Black Myth Wukong')}
-                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-              >
-                Black Myth Wukong
-              </button>
-              <span className="text-outline-variant">•</span>
-              <button
-                type="button"
                 onClick={() => goSearch('DualSense Edge')}
                 className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
               >
@@ -225,18 +201,42 @@ export default function Header() {
               <span className="text-outline-variant">•</span>
               <button
                 type="button"
-                onClick={() => goSearch('Joy-Con OLED')}
+                onClick={() => goSearch('Spider-Man 2')}
                 className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
               >
-                Joy-Con OLED
+                Spider-Man 2
               </button>
               <span className="text-outline-variant">•</span>
               <button
                 type="button"
-                onClick={() => goSearch('Xbox Series X Controller')}
+                onClick={() => goSearch('Astro Bot')}
                 className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
               >
-                Xbox Series X Controller
+                Astro Bot
+              </button>
+              <span className="text-outline-variant">•</span>
+              <button
+                type="button"
+                onClick={() => goSearch('Stellar Blade')}
+                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+              >
+                Stellar Blade
+              </button>
+              <span className="text-outline-variant">•</span>
+              <button
+                type="button"
+                onClick={() => goSearch('God of War')}
+                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+              >
+                God of War
+              </button>
+              <span className="text-outline-variant">•</span>
+              <button
+                type="button"
+                onClick={() => goSearch('Đế sạc')}
+                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+              >
+                Đế sạc DualSense
               </button>
             </div>
           </div>
@@ -253,16 +253,6 @@ export default function Header() {
             >
               <span className="material-symbols-outlined text-xl">{theme === 'dark' ? 'dark_mode' : 'light_mode'}</span>
             </button>
-            {/* Wishlist */}
-            <a
-              className="relative hidden md:flex flex-col items-center text-on-surface hover:text-primary transition-colors p-space-xs"
-              href="#goi-y"
-              title="Danh sách yêu thích"
-            >
-              <span className="material-symbols-outlined text-2xl">favorite</span>
-              <span className="font-label-sm text-label-sm mt-0.5">Yêu thích</span>
-            </a>
-
             {/* Cart */}
             <Link
               className="relative flex flex-col items-center text-on-surface hover:text-primary transition-colors p-space-xs"

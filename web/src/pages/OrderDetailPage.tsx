@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { Alert, Badge, Button, ButtonLink, Card, CardTitle, EmptyState, Loading, Page, PageHeader, SummaryRow, cx, inputClass } from '../components/ui'
-import { formatVnd, resolveCatalogImageUrl } from '../lib/catalog'
+import ProductThumb from '../components/ProductThumb'
+import { fetchProducts, formatVnd } from '../lib/catalog'
 import { apiFetch, ApiError } from '../lib/api'
 import { SHIPMENT_LABEL, STATUS_LABEL, STATUS_TONE, formatOrderDate as formatDate, type OrderStatus } from '../lib/orderStatus'
 import { useAuth } from '../state/AuthContext'
@@ -70,6 +71,10 @@ const TIMELINE_DOT: Record<OrderStatus, string> = {
   cancelled: 'bg-outline',
 }
 
+function seedFromId(value: string) {
+  return [...value].reduce((sum, character) => sum + character.charCodeAt(0), 0) % 6
+}
+
 function formatAttributes(raw: string | null) {
   if (!raw) return null
   try {
@@ -116,6 +121,38 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
   const [cancelReason, setCancelReason] = useState('')
   const [isCancelling, setIsCancelling] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
+  const [catalogMap, setCatalogMap] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    fetchProducts(new URLSearchParams({ size: '100' }))
+      .then((res) => {
+        const map: Record<string, string> = {}
+        for (const prod of res.content) {
+          if (prod.imageUrls && prod.imageUrls.length > 0) {
+            const mainUrl = prod.imageUrls[0]
+            map[prod.id] = mainUrl
+            map[prod.name.trim().toLowerCase()] = mainUrl
+          }
+        }
+        setCatalogMap(map)
+      })
+      .catch(() => {
+        // non-blocking fallback
+      })
+  }, [])
+
+  const resolveItemImage = (item: OrderItem) => {
+    if (item.imageUrl) return item.imageUrl
+    if (catalogMap[item.variantId]) return catalogMap[item.variantId]
+    const normalizedName = item.productNameSnapshot.trim().toLowerCase()
+    if (catalogMap[normalizedName]) return catalogMap[normalizedName]
+    for (const [key, url] of Object.entries(catalogMap)) {
+      if (key.length > 4 && (normalizedName.includes(key) || key.includes(normalizedName))) {
+        return url
+      }
+    }
+    return undefined
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -210,17 +247,18 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
           <Card as="section">
             <CardTitle icon="inventory_2">Sản phẩm ({order.items.length})</CardTitle>
             <div className="divide-y divide-line">
-              {order.items.map((item, index) => {
+              {order.items.map((item) => {
                 const attributes = formatAttributes(item.variantAttributesSnapshot)
+                const itemImg = resolveItemImage(item)
                 return (
                   <div className="py-space-sm space-y-space-sm" key={item.id}>
                     <div className="flex items-center gap-space-md">
                       <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-surface-container-low flex items-center justify-center font-title-lg text-title-lg text-on-surface-variant">
-                        {item.imageUrl ? (
-                          <img className="w-full h-full object-cover" src={resolveCatalogImageUrl(item.imageUrl, 160)} alt={item.productNameSnapshot} loading="lazy" />
-                        ) : (
-                          <span aria-hidden="true">{index + 1}</span>
-                        )}
+                        <ProductThumb
+                          seed={seedFromId(item.variantId || item.id)}
+                          productType="accessory"
+                          imageUrl={itemImg}
+                        />
                       </div>
                       <div className="flex-1 min-w-0 space-y-0.5">
                         <strong className="block font-title-md text-title-md text-on-surface">{item.productNameSnapshot}</strong>

@@ -9,14 +9,14 @@ interface Hub {
 }
 
 const CATEGORY_HUBS: Hub[] = [
-  { name: 'Tay Cầm PS5 DualSense', icon: 'sports_esports', tab: 'controller', platform: 'PS5' },
-  { name: 'Tay Cầm Xbox Wireless', icon: 'gamepad', tab: 'controller', platform: 'Xbox' },
-  { name: 'Tay Joy-Con Switch', icon: 'videogame_asset', tab: 'controller', platform: 'Switch' },
-  { name: 'Tay Cầm Hall Effect', icon: 'tune', tab: 'controller' },
-  { name: 'Đĩa Game PS5 Mới', icon: 'album', tab: 'game_disc', platform: 'PS5' },
-  { name: 'Băng Game Switch', icon: 'sd_card', tab: 'game_disc', platform: 'Switch' },
-  { name: 'Đĩa Xbox Series X', icon: 'disc_full', tab: 'game_disc', platform: 'Xbox' },
-  { name: 'Phụ Kiện & Bọc Cần', icon: 'extension', tab: 'accessory', isSecondary: true },
+  { name: 'Tay Cầm DualSense', icon: 'sports_esports', tab: 'controller', platform: 'PS5' },
+  { name: 'DualSense Edge Pro', icon: 'tune', tab: 'controller' },
+  { name: 'PS5 Access Controller', icon: 'videogame_asset', tab: 'controller' },
+  { name: 'Đĩa Game Hành Động', icon: 'local_fire_department', tab: 'game_disc', platform: 'PS5' },
+  { name: 'Đĩa Game Phiêu Lưu', icon: 'explore', tab: 'game_disc', platform: 'PS5' },
+  { name: 'Đĩa Game Đua Xe', icon: 'sports_score', tab: 'game_disc', platform: 'PS5' },
+  { name: 'Ốp Bọc Máy PS5', icon: 'devices', tab: 'accessory' },
+  { name: 'Đế Sạc & Phụ Kiện', icon: 'power', tab: 'accessory', isSecondary: true },
 ]
 
 export default function CategoryGrid() {
@@ -64,7 +64,7 @@ export default function CategoryGrid() {
         <div>
           <h2 className="font-headline-lg text-headline-lg text-on-surface">Danh Mục Nổi Bật</h2>
           <p className="font-body-md text-body-md text-on-surface-variant">
-            Lựa chọn nền tảng và phụ kiện bạn đang tìm kiếm
+            Lựa chọn thiết bị tay cầm &amp; đĩa game PS5 chính hãng
           </p>
         </div>
         <button

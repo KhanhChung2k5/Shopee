@@ -54,7 +54,7 @@ public class SecurityConfig {
                 .hasAnyAuthority("DEPT_SALES", "DEPT_WAREHOUSE", "DEPT_ADMIN")
                 .requestMatchers("/api/catalog/categories/**", "/api/catalog/products/**", "/api/catalog/product-variants/**")
                 .hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
-                .requestMatchers("/cart-items/**").hasRole("BUYER")
+                .requestMatchers("/cart-items", "/cart-items/**").hasRole("BUYER")
                 .requestMatchers(HttpMethod.POST, "/orders").hasRole("BUYER")
                 .requestMatchers(HttpMethod.GET, "/orders/**").hasAnyRole("BUYER", "STAFF")
                 .requestMatchers(HttpMethod.PATCH, "/orders/*/status").hasAnyRole("BUYER", "STAFF")
