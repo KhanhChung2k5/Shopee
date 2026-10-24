@@ -29,10 +29,14 @@ export const ADMIN_SECTION_ACCESS: Record<string, Department[]> = {
   // Phân hệ CRM — docs/phan-quyen-he-thong.md mục 2.1
   '/admin/crm': ['cs', 'admin'],
   '/admin/ho-tro': ['cs', 'admin'],
+  // Phản hồi đánh giá sản phẩm — khớp quyền PATCH /reviews/*/reply ở backend (sales/cs/admin)
+  '/admin/danh-gia': ['sales', 'cs', 'admin'],
   '/admin/khao-sat': ['cs', 'admin'],
   '/admin/phan-khuc': ['sales', 'cs', 'admin'],
   '/admin/chien-dich': ['sales', 'admin'],
   '/admin/nhan-vien': ['admin'],
+  // Nhật ký thao tác — API /api/crm/audit-logs chỉ cho DEPT_ADMIN
+  '/admin/nhat-ky': ['admin'],
 }
 
 export function canAccessSection(path: string, department: Department | null): boolean {

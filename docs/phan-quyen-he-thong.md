@@ -32,14 +32,26 @@
 | Đơn hàng | ✅ | ✅ | ✅ | ❌ | Sales xử lý đơn, warehouse đóng gói/xuất kho |
 | Marketing | ✅ | ❌ | ✅ | ❌ | Voucher/flash sale là quyết định kinh doanh |
 | Khách hàng | ❌ | ❌ | ✅ | ✅ | Quản lý khách hàng thuộc CRM, do CS phụ trách |
-| Báo cáo | ❌ | ❌ | ✅ | ❌ | Báo cáo demographic — cấp quản trị |
+| Báo cáo | ❌ | ❌ | ✅ | ✅ (chỉ xem) | Báo cáo khách hàng — CS cần để chăm sóc khách |
 | Nhân viên | ❌ | ❌ | ✅ | ❌ | Chỉ admin tạo/sửa nhân viên |
 
 **Admin luôn thấy mọi mục** — quyền cao nhất trong hệ thống.
 
-> ⚠️ Bảng này là **đề xuất mặc định** tôi tự suy ra từ mô tả nghiệp vụ đã thống nhất
-> trước đó (VD: "CRUD Product do nhân viên bán hàng", "CRUD Warehouse do nhân viên
-> kho"...) — **chưa được nhóm chốt chính thức**. Đây chính là phần cần bàn bạc.
+> ✅ **Đã chốt (23/10/2026):** giữ đúng 4 bộ phận `sales` / `warehouse` / `admin` / `cs` —
+> **không thêm bộ phận `crm`**. Phân hệ CRM do Phòng CSKH (`cs`) phụ trách, khớp cơ cấu
+> tổ chức trong báo cáo HTTTDN và class diagram.
+
+### 2.1 Phân quyền chức năng phân hệ CRM (module `modules/crm`)
+
+| Chức năng CRM | sales | warehouse | admin | cs | Ghi chú |
+|---|:---:|:---:|:---:|:---:|---|
+| Hồ sơ khách hàng, LTV / RFM | ❌ | ❌ | ✅ | ✅ | |
+| Thêm / khoá / xoá mềm khách hàng | ❌ | ❌ | ✅ | ✅ | |
+| Hội thoại / ticket, assign, escalate | ❌ | ❌ | ✅ | ✅ | Đúng vai trò Phòng CSKH |
+| Khảo sát: tạo, gửi, xem kết quả | ❌ | ❌ | ✅ | ✅ | |
+| Phân khúc khách hàng & chiến dịch | ✅ | ❌ | ✅ | ❌ | Quyết định kinh doanh, giống Marketing/voucher |
+| Báo cáo khách hàng | ❌ | ❌ | ✅ | ✅ (chỉ xem) | |
+| Nhật ký thao tác (audit log) | ❌ | ❌ | ✅ | ❌ | Chỉ quản trị hệ thống |
 
 ## 3. Cách chặn đang thực thi (đã code + test thật)
 
