@@ -4,6 +4,11 @@ import type { PromotionProgram, Voucher } from './types'
 import { dateTime, errorMessage, money, toIso, toLocalInput } from './types'
 import { a } from '../adminUi'
 import { buttonClass } from '../../components/ui'
+import { typeLabel, type ProductType } from '../../lib/catalog'
+import { audienceLabel } from '../../lib/loyalty'
+import { useDialog } from '../../state/DialogContext'
+
+const PRODUCT_TYPES: ProductType[] = ['game_disc', 'controller', 'accessory']
 
 interface VoucherForm {
   promotionProgramId: string
@@ -11,10 +16,11 @@ interface VoucherForm {
   type: Voucher['type']
   value: string
   expiresAt: string
+  targetProductTypes: string[]
 }
 
 const EMPTY_FORM: VoucherForm = {
-  promotionProgramId: '', code: '', type: 'percentage', value: '', expiresAt: '',
+  promotionProgramId: '', code: '', type: 'percentage', value: '', expiresAt: '', targetProductTypes: [],
 }
 
 interface Props {
@@ -25,10 +31,12 @@ interface Props {
 }
 
 export default function VoucherManager({ token, programs, vouchers, onChanged }: Props) {
+  const { confirm } = useDialog()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<VoucherForm>(EMPTY_FORM)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const selectedProgram = programs.find((program) => program.id === form.promotionProgramId)
 
   const edit = (voucher: Voucher) => {
     setEditingId(voucher.id)
@@ -38,6 +46,7 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
       type: voucher.type,
       value: String(voucher.value),
       expiresAt: toLocalInput(voucher.expiresAt),
+      targetProductTypes: voucher.targetProductTypes ?? [],
     })
     setError(null)
   }
@@ -72,7 +81,7 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
   }
 
   const remove = async (voucher: Voucher) => {
-    if (!window.confirm(`Xóa voucher ${voucher.code}?`)) return
+    if (!(await confirm({ title: 'Xoá voucher', message: <>Xoá voucher <strong>{voucher.code}</strong>? Khách sẽ không dùng được mã này nữa.</>, confirmLabel: 'Xoá', tone: 'danger' }))) return
     setError(null)
     try {
       await apiFetch(`/marketing/vouchers/${voucher.id}`, { method: 'DELETE' }, token)
@@ -120,6 +129,28 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
           <input className={a.input} type="datetime-local"
             value={form.expiresAt} onChange={(event) => setForm({ ...form, expiresAt: event.target.value })} />
         </label>
+        {selectedProgram && (
+          <p className="md:col-span-2 font-body-md text-body-md text-on-surface-variant">
+            Chương trình <strong>{selectedProgram.name}</strong>: {dateTime.format(new Date(selectedProgram.startAt))} → {dateTime.format(new Date(selectedProgram.endAt))}
+            {' · '}{audienceLabel(selectedProgram.targetLoyaltyTier)}. Hạn voucher phải nằm trong thời gian này.
+          </p>
+        )}
+        <fieldset className="md:col-span-2">
+          <legend className="font-label-md text-label-md text-on-surface-variant mb-1">Áp dụng cho loại sản phẩm (bỏ trống = mọi sản phẩm)</legend>
+          <div className="flex flex-wrap gap-space-xs">
+            {PRODUCT_TYPES.map((type) => {
+              const on = form.targetProductTypes.includes(type)
+              return (
+                <button key={type} type="button" className={buttonClass(on ? 'primary' : 'outline', 'sm')} aria-pressed={on}
+                  onClick={() => setForm({ ...form, targetProductTypes: on
+                    ? form.targetProductTypes.filter((t) => t !== type)
+                    : [...form.targetProductTypes, type] })}>
+                  {typeLabel[type]}
+                </button>
+              )
+            })}
+          </div>
+        </fieldset>
         {error && <p role="alert" className={a.formMessage}>{error}</p>}
         <div className={a.formActions}>
           <button className={buttonClass('primary')} type="submit" disabled={busy || programs.length === 0}>
@@ -131,12 +162,16 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
 
       <div className={a.tableWrap}>
         <table className={a.table}>
-          <thead><tr><th>Mã</th><th>Chương trình</th><th>Mức giảm</th><th>Hết hạn</th><th>Thao tác</th></tr></thead>
+          <thead><tr><th>Mã</th><th>Chương trình</th><th>Khách hàng</th><th>Sản phẩm</th><th>Mức giảm</th><th>Hết hạn</th><th>Thao tác</th></tr></thead>
           <tbody>
             {vouchers.map((voucher) => (
               <tr key={voucher.id}>
                 <td>{voucher.code}</td>
                 <td>{programs.find((program) => program.id === voucher.promotionProgramId)?.name ?? '—'}</td>
+                <td>{audienceLabel(programs.find((program) => program.id === voucher.promotionProgramId)?.targetLoyaltyTier)}</td>
+                <td>{voucher.targetProductTypes?.length
+                  ? voucher.targetProductTypes.map((t) => typeLabel[t as ProductType] ?? t).join(', ')
+                  : 'Mọi sản phẩm'}</td>
                 <td>{voucher.type === 'percentage' ? `${voucher.value}%` : money.format(voucher.value)}</td>
                 <td>{voucher.expiresAt ? dateTime.format(new Date(voucher.expiresAt)) : 'Theo chương trình'}</td>
                 <td>
@@ -147,7 +182,7 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
                 </td>
               </tr>
             ))}
-            {vouchers.length === 0 && <tr><td colSpan={5}>Chưa có voucher nào.</td></tr>}
+            {vouchers.length === 0 && <tr><td colSpan={7}>Chưa có voucher nào.</td></tr>}
           </tbody>
         </table>
       </div>

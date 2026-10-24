@@ -1,5 +1,6 @@
 package com.chotomua.backend.modules.identity;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import com.chotomua.backend.modules.identity.dto.AddressRequest;
 import com.chotomua.backend.modules.identity.dto.AddressResponse;
 import java.util.List;
@@ -58,7 +59,13 @@ public class AddressService {
     @Transactional
     public void delete(UUID userId, UUID addressId) {
         Address address = requireOwnedByUser(userId, addressId);
-        addressRepository.delete(address);
+        try {
+            addressRepository.delete(address);
+            addressRepository.flush();
+        } catch (DataIntegrityViolationException usedByAnOrder) {
+            throw new IllegalStateException("Địa chỉ này đã được dùng cho đơn hàng nên không xoá được. "
+                    + "Bạn có thể sửa nội dung địa chỉ hoặc chọn địa chỉ khác làm mặc định.");
+        }
     }
 
     private Address requireOwnedByUser(UUID userId, UUID addressId) {

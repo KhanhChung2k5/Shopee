@@ -7,10 +7,12 @@ import {
   type Campaign, type CampaignFunnel, type Segment,
 } from '../../../lib/crm'
 import { useAuth } from '../../../state/AuthContext'
+import { useDialog } from '../../../state/DialogContext'
 
 /** Chiến dịch in-app tới phân khúc (p5-03/p5-11) + phễu chuyển đổi. Sales + admin. */
 export default function AdminCampaignsPage() {
   const { token } = useAuth()
+  const { confirm } = useDialog()
   const [campaigns, setCampaigns] = useState<Campaign[] | null>(null)
   const [segments, setSegments] = useState<Segment[]>([])
   const [error, setError] = useState('')
@@ -63,7 +65,7 @@ export default function AdminCampaignsPage() {
   }
 
   const remove = async (c: Campaign) => {
-    if (!token || !confirm(`Xoá chiến dịch "${c.name}"?`)) return
+    if (!token || !(await confirm({ title: 'Xoá chiến dịch', message: <>Xoá chiến dịch <strong>{c.name}</strong>?</>, confirmLabel: 'Xoá', tone: 'danger' }))) return
     try { await deleteCampaign(token, c.id); load() } catch (e) { setError(e instanceof ApiError ? e.message : 'Không xoá được') }
   }
 

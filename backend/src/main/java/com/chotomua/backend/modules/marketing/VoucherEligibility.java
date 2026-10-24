@@ -13,8 +13,17 @@ final class VoucherEligibility {
                 && (voucher.getExpiresAt() == null || now.isBefore(voucher.getExpiresAt()));
     }
 
-    static boolean allowsTier(PromotionProgram program, String tier) {
-        return program.getTargetLoyaltyTier() == null
-                || (tier != null && program.getTargetLoyaltyTier().equalsIgnoreCase(tier));
+    /** A program aimed at a tier is open to that tier and every tier above it; buyers without a tier count as bronze. */
+    static boolean allowsTier(PromotionProgram program, String userTier) {
+        if (program.getTargetLoyaltyTier() == null) return true;
+        return LoyaltyTier.fromCode(program.getTargetLoyaltyTier())
+                .map(minimum -> LoyaltyTier.ofUser(userTier).atLeast(minimum))
+                .orElse(false);
+    }
+
+    /** Product types a voucher is limited to — empty means every product. */
+    static boolean coversProductType(Voucher voucher, String productType) {
+        return voucher.getTargetProductTypes().isEmpty()
+                || (productType != null && voucher.getTargetProductTypes().contains(productType));
     }
 }

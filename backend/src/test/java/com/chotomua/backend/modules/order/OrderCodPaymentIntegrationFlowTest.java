@@ -38,14 +38,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 /**
- * KAN-284: checkout paid by wallet debits the buyer immediately, and walking the order to
- * delivered awards loyalty points exactly once. (Refunds were dropped from the system.)
+ * KAN-284: a COD checkout records a pending payment, and walking the order to delivered collects it
+ * and awards loyalty points exactly once. (Refunds and the wallet were dropped from the system.)
  * Repository answers keep state in memory; no shared database is touched.
  */
-class OrderWalletPaymentIntegrationFlowTest {
+class OrderCodPaymentIntegrationFlowTest {
 
     @Test
-    void walletCheckoutThenDeliveryDebitsOnceAndAwardsLoyaltyOnce() throws Exception {
+    void codCheckoutIsCollectedOnDeliveryAndAwardsLoyaltyOnce() throws Exception {
         UUID buyerId = UUID.randomUUID();
         UUID salesUserId = UUID.randomUUID();
         UUID warehouseUserId = UUID.randomUUID();
@@ -63,24 +63,20 @@ class OrderWalletPaymentIntegrationFlowTest {
         VoucherQuoteService voucherQuoteService = mock(VoucherQuoteService.class);
         VoucherUsageRepository voucherUsageRepository = mock(VoucherUsageRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
-        WalletTransactionRepository walletTransactionRepository = mock(WalletTransactionRepository.class);
         PaymentRepository paymentRepository = mock(PaymentRepository.class);
         LoyaltyTransactionRepository loyaltyTransactionRepository = mock(LoyaltyTransactionRepository.class);
 
-        // In-memory buyer wallet: starts with just enough to pay for the order.
         User buyer = new User("buyer", "hash");
         setId(buyer, buyerId);
-        buyer.setWalletBalance(new BigDecimal("500000"));
         when(userRepository.findByIdForUpdate(buyerId)).thenReturn(Optional.of(buyer));
-        when(walletTransactionRepository.save(any(WalletTransaction.class))).thenAnswer(invocation -> {
-            WalletTransaction transaction = invocation.getArgument(0);
-            setId(transaction, UUID.randomUUID());
-            return transaction;
+        List<Payment> storedPayments = new ArrayList<>();
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
+            storedPayments.add(invocation.getArgument(0));
+            return invocation.getArgument(0);
         });
-        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(paymentRepository.findByOrderIdAndPurpose(any(UUID.class), any(String.class))).thenAnswer(invocation -> storedPayments);
 
-        CheckoutPaymentService checkoutPaymentService =
-                new CheckoutPaymentService(userRepository, walletTransactionRepository, paymentRepository);
+        CheckoutPaymentService checkoutPaymentService = new CheckoutPaymentService(paymentRepository);
         LoyaltyAwardService loyaltyAwardService = new LoyaltyAwardService(userRepository, loyaltyTransactionRepository);
 
         AtomicReference<Order> storedOrder = new AtomicReference<>();
@@ -144,15 +140,18 @@ class OrderWalletPaymentIntegrationFlowTest {
         Authentication salesAuth = authentication(salesUserId, "ROLE_STAFF");
         Authentication warehouseAuth = authentication(warehouseUserId, "ROLE_STAFF");
 
-        // 1) Checkout, paid from the wallet — must debit the buyer immediately.
+        // 1) Checkout with cash on delivery — nothing is collected yet.
         mvc.perform(post("/orders")
                         .principal(buyerAuth)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressId\":\"" + addressId + "\",\"paymentMethod\":\"wallet\"}"))
+                        .content("{\"addressId\":\"" + addressId + "\",\"paymentMethod\":\"cod\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.totalAmount").value(500000.0));
 
-        assertThat(buyer.getWalletBalance()).isEqualByComparingTo("0"); // 500,000 - 500,000 paid
+        assertThat(storedPayments).singleElement().satisfies(payment -> {
+            assertThat(payment.getMethod()).isEqualTo("cod");
+            assertThat(payment.getStatus()).isEqualTo("pending");
+        });
 
         UUID orderId = storedOrder.get().getId();
 
@@ -175,9 +174,9 @@ class OrderWalletPaymentIntegrationFlowTest {
                         .content("{\"trackingNo\":\"GHN-284\",\"shipmentStatus\":\"delivered\"}"))
                 .andExpect(status().isOk());
 
-        // 3) Delivered: the wallet stays debited and loyalty is credited exactly once (500,000đ → 50 points).
+        // 3) Delivered: the cash is collected and loyalty is credited exactly once (500,000đ → 50 points).
         assertThat(storedOrder.get().getStatus()).isEqualTo("delivered");
-        assertThat(buyer.getWalletBalance()).isEqualByComparingTo("0");
+        assertThat(storedPayments.getFirst().getStatus()).isEqualTo("paid");
         assertThat(buyer.getLoyaltyBalance()).isEqualTo(50);
         verify(loyaltyTransactionRepository, times(1)).save(any(LoyaltyTransaction.class));
     }

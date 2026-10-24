@@ -42,7 +42,7 @@ public class CategoryController {
     public CategoryResponse create(@Valid @RequestBody CategoryRequest request) {
         String slug = request.slug().trim();
         if (categories.existsBySlug(slug)) {
-            throw new org.springframework.dao.DuplicateKeyException("Category slug already exists.");
+            throw new org.springframework.dao.DuplicateKeyException("Đường dẫn (slug) danh mục đã tồn tại.");
         }
         Category category = new Category(request.name().trim(), slug);
         category.setParent(parent(request.parentId()));
@@ -54,10 +54,10 @@ public class CategoryController {
         Category category = find(id);
         String slug = request.slug().trim();
         if (categories.existsBySlugAndIdNot(slug, id)) {
-            throw new org.springframework.dao.DuplicateKeyException("Category slug already exists.");
+            throw new org.springframework.dao.DuplicateKeyException("Đường dẫn (slug) danh mục đã tồn tại.");
         }
         if (id.equals(request.parentId())) {
-            throw new IllegalArgumentException("A category cannot be its own parent.");
+            throw new IllegalArgumentException("Danh mục không thể là danh mục cha của chính nó.");
         }
         category.setName(request.name().trim());
         category.setSlug(slug);
@@ -73,13 +73,13 @@ public class CategoryController {
 
     private Category find(UUID id) {
         return categories.findById(id)
-                .orElseThrow(() -> new CatalogNotFoundException("Category not found: " + id));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy danh mục: " + id));
     }
 
     private Category parent(UUID id) {
         if (id == null) return null;
         return categories.findById(id)
-                .orElseThrow(() -> new CatalogNotFoundException("Parent category not found: " + id));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy danh mục cha: " + id));
     }
 
     public record CategoryRequest(

@@ -1,164 +1,121 @@
-import { useMemo, useState } from 'react'
-import { INITIAL_ORDERS, ORDER_STATUS_LABEL, type OrderRow, type OrderStatus } from '../data/sampleOrders'
-import { formatVnd } from '../../data/sampleProducts'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ApiError, apiFetch } from '../../lib/api'
+import { formatVnd } from '../../lib/catalog'
+import { useAuth } from '../../state/AuthContext'
 import { a, chipClass, statusPillClass, pageButtonClass } from '../adminUi'
+import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE, orderCode, type OrderStatus, type StaffOrderSummary } from '../orders'
 
 const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Tất cả' },
   { value: 'pending', label: 'Chờ xác nhận' },
+  { value: 'cancel_requested', label: 'Yêu cầu huỷ' },
   { value: 'confirmed', label: 'Đã xác nhận' },
   { value: 'shipping', label: 'Đang giao' },
   { value: 'delivered', label: 'Đã giao' },
   { value: 'cancelled', label: 'Đã huỷ' },
 ]
 
-const STATUS_PILL_TONE: Record<OrderStatus, 'active' | 'locked' | 'deleted' | 'info'> = {
-  pending: 'locked',
-  confirmed: 'info',
-  shipping: 'info',
-  delivered: 'active',
-  cancelled: 'deleted',
-}
+const PAGE_SIZE = 10
+const dateTime = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
 
+/** Real order board for sales / warehouse / admin; click a row to open the order. */
 export default function AdminOrdersPage() {
-  const [orders, setOrders] = useState<OrderRow[]>(INITIAL_ORDERS)
+  const { token } = useAuth()
+  const navigate = useNavigate()
+  const [orders, setOrders] = useState<StaffOrderSummary[] | null>(null)
+  const [error, setError] = useState('')
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 8
+
+  useEffect(() => {
+    if (!token) return
+    apiFetch<StaffOrderSummary[]>('/orders', {}, token)
+      .then((data) => { setOrders(data); setError('') })
+      .catch((e) => setError(e instanceof ApiError ? e.message : 'Không tải được đơn hàng'))
+  }, [token])
+
+  const counts = useMemo(() => {
+    const result: Partial<Record<OrderStatus, number>> = {}
+    for (const order of orders ?? []) result[order.status] = (result[order.status] ?? 0) + 1
+    return result
+  }, [orders])
 
   const filtered = useMemo(() => {
-    return orders.filter((o) => {
+    const term = searchQuery.trim().toLocaleLowerCase('vi')
+    return (orders ?? []).filter((o) => {
       const matchStatus = statusFilter === 'all' || o.status === statusFilter
-      const matchSearch = o.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          o.customerName.toLowerCase().includes(searchQuery.toLowerCase())
-      return matchStatus && matchSearch
+      const haystack = [orderCode(o.id), o.id, o.customer?.fullName, o.customer?.email, o.customer?.phone,
+        o.customer?.recipientName, o.customer?.recipientPhone].filter(Boolean).join(' ').toLocaleLowerCase('vi')
+      return matchStatus && (!term || haystack.includes(term))
     })
   }, [orders, statusFilter, searchQuery])
 
-  // Reset to page 1 when filters change
-  useMemo(() => {
-    setCurrentPage(1)
-  }, [statusFilter, searchQuery])
-
-  const totalPages = Math.ceil(filtered.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedOrders = filtered.slice(startIndex, startIndex + itemsPerPage)
-
-  const updateStatus = (id: string, newStatus: OrderStatus) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
-    )
-  }
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const page = Math.min(currentPage, totalPages)
+  const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
     <div>
       <div className={a.toolbar}>
         <h1 className="!mb-0">Đơn hàng ({filtered.length})</h1>
-        <input 
-          type="text" 
-          placeholder="Tìm mã đơn, khách hàng..." 
+        <input
+          type="search"
+          placeholder="Tìm mã đơn, tên, email, SĐT..."
           value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
+          onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
           className={`${a.input} max-w-[300px] !rounded-full`}
         />
       </div>
 
       <div className={`${a.filterBar} mb-space-md`}>
         {STATUS_FILTERS.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            className={chipClass(statusFilter === f.value)}
-            onClick={() => setStatusFilter(f.value)}
-          >
-            {f.label}
+          <button key={f.value} type="button" className={chipClass(statusFilter === f.value)}
+            onClick={() => { setStatusFilter(f.value); setCurrentPage(1) }}>
+            {f.label}{f.value !== 'all' && counts[f.value] ? ` (${counts[f.value]})` : ''}
           </button>
         ))}
       </div>
 
+      {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
+
       <div className={a.tableWrap}>
         <table className={a.table}>
           <thead>
-            <tr>
-              <th>Mã đơn</th>
-              <th>Khách hàng</th>
-              <th>Sản phẩm</th>
-              <th>Tổng tiền</th>
-              <th>Ngày đặt</th>
-              <th>Trạng thái</th>
-              <th>Hành động</th>
-            </tr>
+            <tr><th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th>Tổng tiền</th><th>Ngày đặt</th><th>Trạng thái</th></tr>
           </thead>
           <tbody>
-            {paginatedOrders.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center !py-space-xl text-on-surface-variant">Không tìm thấy đơn hàng nào.</td>
-              </tr>
-            ) : (
-              paginatedOrders.map((o) => (
-                <tr key={o.id}>
-                  <td>{o.id}</td>
-                  <td>{o.customerName}</td>
-                  <td>{o.itemCount}</td>
-                  <td>{formatVnd(o.total)}</td>
-                  <td>{o.createdAt}</td>
-                  <td>
-                    <span className={statusPillClass(STATUS_PILL_TONE[o.status])}>{ORDER_STATUS_LABEL[o.status]}</span>
-                  </td>
-                  <td>
-                    <select 
-                      value={o.status}
-                      onChange={(e) => updateStatus(o.id, e.target.value as OrderStatus)}
-                      className="!w-auto cursor-pointer"
-                    >
-                      {STATUS_FILTERS.filter(f => f.value !== 'all').map(f => (
-                        <option key={f.value} value={f.value}>{f.label}</option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-              ))
+            {!orders && !error && <tr><td colSpan={6} className="text-center !py-space-xl text-on-surface-variant">Đang tải đơn hàng…</td></tr>}
+            {orders && visible.length === 0 && (
+              <tr><td colSpan={6} className="text-center !py-space-xl text-on-surface-variant">Không tìm thấy đơn hàng nào.</td></tr>
             )}
+            {visible.map((o) => (
+              <tr key={o.id} className="cursor-pointer hover:bg-surface-container-low" onClick={() => navigate(`/admin/don-hang/${o.id}`)}>
+                <td><button type="button" className={a.linkButton} onClick={(e) => { e.stopPropagation(); navigate(`/admin/don-hang/${o.id}`) }}>{orderCode(o.id)}</button></td>
+                <td>
+                  <div className="font-semibold">{o.customer?.fullName ?? o.customer?.recipientName ?? '—'}</div>
+                  <div className="font-label-md text-label-md text-on-surface-variant">{o.customer?.email ?? o.customer?.recipientPhone ?? ''}</div>
+                </td>
+                <td>{o.itemCount}</td>
+                <td>{formatVnd(o.totalAmount)}</td>
+                <td className="whitespace-nowrap">{dateTime.format(new Date(o.createdAt))}</td>
+                <td><span className={statusPillClass(ORDER_STATUS_TONE[o.status])}>{ORDER_STATUS_LABEL[o.status] ?? o.status}</span></td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-1.5 mt-space-lg">
-          <button 
-            className={pageButtonClass(false)} 
-            disabled={currentPage === 1} 
-            onClick={() => setCurrentPage(p => p - 1)}
-          >
-            &lt;
-          </button>
-          
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-            <button
-              key={page}
-              className={pageButtonClass(currentPage === page)}
-              onClick={() => setCurrentPage(page)}
-            >
-              {page}
-            </button>
+          <button className={pageButtonClass(false)} disabled={page === 1} onClick={() => setCurrentPage(page - 1)}>&lt;</button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <button key={p} className={pageButtonClass(page === p)} onClick={() => setCurrentPage(p)}>{p}</button>
           ))}
-
-          <button 
-            className={pageButtonClass(false)} 
-            disabled={currentPage === totalPages} 
-            onClick={() => setCurrentPage(p => p + 1)}
-          >
-            &gt;
-          </button>
+          <button className={pageButtonClass(false)} disabled={page === totalPages} onClick={() => setCurrentPage(page + 1)}>&gt;</button>
         </div>
       )}
-
-      <p className="mt-space-md font-body-md text-body-md text-on-surface-variant">
-        Dữ liệu minh hoạ - sẽ ghi <code>OrderStatusHistory</code> thật mỗi khi đổi trạng thái khi có API domain Order.
-      </p>
     </div>
   )
 }

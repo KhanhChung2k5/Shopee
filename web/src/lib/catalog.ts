@@ -72,6 +72,23 @@ export interface InventoryStock {
   quantity: number
   reservedQuantity: number
   availableQuantity: number
+  productId: string
+  productName: string
+  imageUrl: string | null
+  attributes: Record<string, unknown> | unknown[] | null
+}
+
+/** {"Màu":"Đen","Phiên bản":"Tiêu chuẩn"} → "Màu: Đen · Phiên bản: Tiêu chuẩn" (also accepts a JSON string). */
+export function describeAttributes(attributes: unknown): string {
+  let value = attributes
+  if (typeof value === 'string') {
+    try { value = JSON.parse(value) } catch { return value as string }
+  }
+  if (Array.isArray(value)) return value.map(String).join(' · ')
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).map(([k, v]) => `${k}: ${String(v)}`).join(' · ')
+  }
+  return ''
 }
 
 export interface InventoryMovement {

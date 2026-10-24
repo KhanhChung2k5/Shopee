@@ -161,7 +161,7 @@ class InventoryStockServiceTest {
         assertThatThrownBy(() -> service.exportForOrder(UUID.randomUUID(), warehouseId,
                 List.of(new InventoryStockService.ExportLine(variantId, 2))))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Insufficient available stock");
+                .hasMessageContaining("Không đủ hàng khả dụng");
 
         assertThat(stock.getQuantity()).isEqualTo(5);
         verify(stocks, never()).save(any(InventoryStock.class));

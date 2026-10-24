@@ -1,6 +1,9 @@
 package com.chotomua.backend.modules.order;
 
 import com.chotomua.backend.modules.order.dto.OrderCreateRequest;
+import com.chotomua.backend.modules.order.dto.OrderPreviewRequest;
+import com.chotomua.backend.modules.order.dto.OrderPaymentResponse;
+import com.chotomua.backend.modules.order.dto.OrderPreviewResponse;
 import com.chotomua.backend.modules.order.dto.OrderDetailResponse;
 import com.chotomua.backend.modules.order.dto.OrderResponse;
 import com.chotomua.backend.modules.order.dto.OrderShippingInfoRequest;
@@ -43,6 +46,12 @@ public class OrderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    /** Checkout summary for the selected cart (same pricing as POST /orders); reserves and saves nothing. */
+    @PostMapping("/preview")
+    public OrderPreviewResponse preview(Authentication authentication, @Valid @RequestBody OrderPreviewRequest request) {
+        return orderService.previewSelectedCart(currentUserId(authentication), request.voucherCode());
+    }
+
     @GetMapping
     public List<OrderSummaryResponse> list(
             Authentication authentication,
@@ -75,6 +84,12 @@ public class OrderController {
             return orderService.updateStatusForBuyer(userId, id, request);
         }
         return orderService.updateStatusForEmployeeUser(userId, id, request);
+    }
+
+    /** Sales checked the bank statement: this order's transfer has arrived. */
+    @PatchMapping("/{id}/payment-received")
+    public OrderPaymentResponse confirmTransferReceived(Authentication authentication, @PathVariable UUID id) {
+        return orderService.confirmTransferReceived(currentUserId(authentication), id);
     }
 
     @PatchMapping("/{id}/shipping-info")

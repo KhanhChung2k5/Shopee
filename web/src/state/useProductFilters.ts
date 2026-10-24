@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { ProductType } from '../data/sampleProducts'
+import type { ProductType } from '../lib/catalog'
 
 const TYPE_LABELS: Record<ProductType, string> = {
   game_disc: 'Đĩa game',

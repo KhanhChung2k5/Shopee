@@ -12,6 +12,7 @@ import com.chotomua.backend.modules.marketing.dto.PromotionProgramRequest;
 import com.chotomua.backend.modules.marketing.dto.VoucherRequest;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,5 +55,30 @@ class VoucherServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Hạn dùng");
         verify(vouchers, never()).save(any());
+    }
+
+    @Test
+    void create_rejectsVoucherOutlivingItsProgramOrWithUnknownProductType() {
+        assertThatThrownBy(() -> service.create(new VoucherRequest(programId, "LATE", "fixed_amount",
+                BigDecimal.ONE, start.plusDays(1).plusSeconds(1))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("sau ngày kết thúc");
+        assertThatThrownBy(() -> service.create(new VoucherRequest(programId, "TOY", "fixed_amount",
+                BigDecimal.ONE, null, List.of("game_disc", "toy"))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Loại sản phẩm");
+        verify(vouchers, never()).save(any());
+    }
+
+    @Test
+    void create_keepsTheProductTypesItIsLimitedTo() {
+        when(vouchers.save(any(Voucher.class))).thenAnswer(call -> call.getArgument(0));
+
+        var result = service.create(new VoucherRequest(programId, "GAMES", "percentage", BigDecimal.TEN, null,
+                List.of("game_disc", "accessory", "game_disc")));
+
+        assertThat(result.targetProductTypes()).containsExactly("game_disc", "accessory");
+        assertThat(service.create(new VoucherRequest(programId, "ALL", "percentage", BigDecimal.TEN, null))
+                .targetProductTypes()).isEmpty();
     }
 }

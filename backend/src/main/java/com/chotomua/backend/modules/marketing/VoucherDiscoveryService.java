@@ -19,12 +19,14 @@ public class VoucherDiscoveryService {
     private final VoucherRepository vouchers;
     private final PromotionProgramRepository programs;
     private final UserRepository users;
+    private final VoucherUsageRepository usages;
 
     public VoucherDiscoveryService(VoucherRepository vouchers, PromotionProgramRepository programs,
-                                   UserRepository users) {
+                                   UserRepository users, VoucherUsageRepository usages) {
         this.vouchers = vouchers;
         this.programs = programs;
         this.users = users;
+        this.usages = usages;
     }
 
     @Transactional(readOnly = true)
@@ -39,7 +41,8 @@ public class VoucherDiscoveryService {
                 .filter(voucher -> {
                     PromotionProgram program = programsById.get(voucher.getPromotionProgramId());
                     return program != null && VoucherEligibility.isActive(voucher, program, now)
-                            && VoucherEligibility.allowsTier(program, user.getLoyaltyTier());
+                            && VoucherEligibility.allowsTier(program, user.getLoyaltyTier())
+                            && !usages.hasActiveUse(voucher.getId(), userId);
                 })
                 .map(voucher -> AvailableVoucherResponse.from(voucher, programsById.get(voucher.getPromotionProgramId())))
                 .toList();

@@ -4,6 +4,7 @@ import { useCart } from '../state/CartContext'
 import { useTheme } from '../state/useTheme'
 import { useAuth } from '../state/AuthContext'
 import NotificationBell from './NotificationBell'
+import { apiFetch } from '../lib/api'
 import { cacheCategories, fetchCategories, getCachedCategories, type CatalogCategory } from '../lib/catalog'
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -15,6 +16,12 @@ const CATEGORY_ICONS: Record<string, string> = {
   'ban-phim': 'keyboard',
 }
 
+/** "Đĩa PS5 Until Dawn" → "Until Dawn", "Tay cầm không dây DualSense Edge" → "DualSense Edge" — short enough for a search chip. */
+function shortProductName(name: string) {
+  const trimmed = name.replace(/^(Đĩa PS5|Đĩa|Tay cầm không dây|Tay cầm|Ốp bọc PS5|Ốp bọc)\s+/i, '')
+  return trimmed.split(' ').slice(0, 4).join(' ').replace(/\s*-\s*$/, '')
+}
+
 export default function Header() {
   const { totalQuantity } = useCart()
   const { isAuthenticated, user, logout } = useAuth()
@@ -24,6 +31,15 @@ export default function Header() {
   const { theme, toggle } = useTheme()
   const [isCategoryOpen, setIsCategoryOpen] = useState(false)
   const [categories, setCategories] = useState<CatalogCategory[]>(() => getCachedCategories().filter((c) => c.parentId === null))
+
+  const [trending, setTrending] = useState<string[]>([])
+  useEffect(() => {
+    let active = true
+    apiFetch<{ name: string }[]>('/api/products/top-sellers?limit=6')
+      .then((items) => { if (active) setTrending([...new Set(items.map((item) => shortProductName(item.name)))]) })
+      .catch(() => { if (active) setTrending([]) })
+    return () => { active = false }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -103,26 +119,18 @@ export default function Header() {
       <div className="hidden md:block bg-inverse-surface text-inverse-on-surface text-label-sm font-label-sm">
         <div className="max-w-[1280px] mx-auto px-margin-desktop h-8 flex items-center justify-between">
           <div className="flex items-center gap-space-lg">
-            <span>
-              Hotline: <strong className="text-primary-fixed">1900 6868</strong>
-            </span>
-            <a className="hover:text-primary-fixed transition-colors" href="#">
-              Tải ứng dụng
-            </a>
-            <a className="hover:text-primary-fixed transition-colors" href="#">
-              Kết nối cộng đồng game thủ
-            </a>
+            <span>Chợ Tốt Mua · Gaming gear &amp; đĩa game chính hãng</span>
           </div>
           <div className="flex items-center gap-space-lg">
             <Link className="hover:text-primary-fixed transition-colors" to="/don-hang">
               Tra cứu đơn hàng
             </Link>
-            <a className="hover:text-primary-fixed transition-colors" href="#">
+            <Link className="hover:text-primary-fixed transition-colors" to="/thong-bao">
               Thông báo
-            </a>
-            <a className="hover:text-primary-fixed transition-colors" href="#">
-              Hỗ trợ 24/7
-            </a>
+            </Link>
+            <Link className="hover:text-primary-fixed transition-colors" to="/ho-tro">
+              Hỗ trợ
+            </Link>
             <button
               id="theme-toggle"
               className="flex items-center gap-space-xs px-space-xs py-0.5 rounded bg-surface-container-highest/20 hover:bg-surface-container-highest/30 transition-colors cursor-pointer text-inverse-on-surface"
@@ -189,57 +197,24 @@ export default function Header() {
               </button>
             </form>
 
-            {/* Trending Keywords */}
-            <div className="hidden md:flex items-center gap-space-sm mt-1 overflow-hidden whitespace-nowrap text-label-sm font-label-sm">
-              <span className="text-on-surface-variant">Xu hướng:</span>
-              <button
-                type="button"
-                onClick={() => goSearch('DualSense Edge')}
-                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-              >
-                DualSense Edge
-              </button>
-              <span className="text-outline-variant">•</span>
-              <button
-                type="button"
-                onClick={() => goSearch('Spider-Man 2')}
-                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-              >
-                Spider-Man 2
-              </button>
-              <span className="text-outline-variant">•</span>
-              <button
-                type="button"
-                onClick={() => goSearch('Astro Bot')}
-                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-              >
-                Astro Bot
-              </button>
-              <span className="text-outline-variant">•</span>
-              <button
-                type="button"
-                onClick={() => goSearch('Stellar Blade')}
-                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-              >
-                Stellar Blade
-              </button>
-              <span className="text-outline-variant">•</span>
-              <button
-                type="button"
-                onClick={() => goSearch('God of War')}
-                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-              >
-                God of War
-              </button>
-              <span className="text-outline-variant">•</span>
-              <button
-                type="button"
-                onClick={() => goSearch('Đế sạc')}
-                className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-              >
-                Đế sạc DualSense
-              </button>
-            </div>
+            {/* Trending Keywords — the best-selling products right now (GET /api/products/top-sellers) */}
+            {trending.length > 0 && (
+              <div className="hidden md:flex items-center gap-space-sm mt-1 overflow-hidden whitespace-nowrap text-label-sm font-label-sm">
+                <span className="text-on-surface-variant">Xu hướng:</span>
+                {trending.map((keyword, index) => (
+                  <span key={keyword} className="flex items-center gap-space-sm">
+                    {index > 0 && <span className="text-outline-variant">•</span>}
+                    <button
+                      type="button"
+                      onClick={() => goSearch(keyword)}
+                      className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+                    >
+                      {keyword}
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Action Links */}
@@ -411,13 +386,12 @@ export default function Header() {
             >
               🎁 Mã Giảm Giá
             </Link>
-            <button
-              type="button"
-              onClick={() => scrollToSection('cam-ket')}
-              className="px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
+            <Link
+              to="/ho-tro"
+              className="px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg"
             >
-              🛡️ Bảo Hành 1 Đổi 1
-            </button>
+              💬 Hỗ Trợ
+            </Link>
 
           </nav>
         </div>

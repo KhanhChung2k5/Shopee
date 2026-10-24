@@ -158,6 +158,8 @@
 						<!-- Each cached Spring test context keeps its own connection pool; the Supabase
 						     session pooler allows 15 clients in total (see application.yml). -->
 						<DB_POOL_SIZE>2</DB_POOL_SIZE>
+						<!-- no background @Scheduled jobs while tests run (see SchedulingConfig) -->
+						<app.scheduling.enabled>false</app.scheduling.enabled>
 					</systemPropertyVariables>
 				</configuration>
 			</plugin>

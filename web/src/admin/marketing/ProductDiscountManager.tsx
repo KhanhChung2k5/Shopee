@@ -4,6 +4,7 @@ import type { ProductDiscount, PromotionProgram } from './types'
 import { errorMessage, money } from './types'
 import { a } from '../adminUi'
 import { buttonClass } from '../../components/ui'
+import { useDialog } from '../../state/DialogContext'
 
 interface ProductForm {
   promotionProgramId: string
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export default function ProductDiscountManager({ token, programs, discounts, onChanged }: Props) {
+  const { confirm } = useDialog()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<ProductForm>(EMPTY_FORM)
   const [busy, setBusy] = useState(false)
@@ -79,7 +81,7 @@ export default function ProductDiscountManager({ token, programs, discounts, onC
   }
 
   const remove = async (discount: ProductDiscount) => {
-    if (!window.confirm('Xóa ưu đãi SKU này?')) return
+    if (!(await confirm({ title: 'Xoá ưu đãi SKU này', message: 'Thao tác này không thể hoàn tác.', confirmLabel: 'Xoá', tone: 'danger' }))) return
     setError(null)
     try {
       await apiFetch(`/marketing/product-discounts/${discount.id}`, { method: 'DELETE' }, token)

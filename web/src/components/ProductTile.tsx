@@ -38,7 +38,7 @@ export default function ProductTile({ product, index = 0 }: { product: CatalogPr
             Chính Hãng
           </span>
           <span className="px-1.5 py-0.5 bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm rounded">
-            Freeship Xtra
+            Freeship
           </span>
         </div>
 

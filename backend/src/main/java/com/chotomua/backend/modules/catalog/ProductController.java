@@ -1,5 +1,6 @@
 package com.chotomua.backend.modules.catalog;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.JsonNodeFactory;
@@ -67,8 +68,16 @@ public class ProductController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @org.springframework.transaction.annotation.Transactional
     public void delete(@PathVariable UUID id) {
-        products.delete(find(id));
+        try {
+            products.delete(find(id));
+            products.flush();
+        } catch (DataIntegrityViolationException stillReferenced) {
+            // order lines, goods receipts, promotions and carts keep pointing at its variants
+            throw new IllegalStateException("Sản phẩm đã có trong đơn hàng, phiếu nhập, khuyến mãi hoặc giỏ hàng nên không xoá được. "
+                    + "Hãy chuyển trạng thái sang Bản nháp để ẩn khỏi cửa hàng.");
+        }
     }
 
     @PostMapping("/{id}/images")
@@ -77,7 +86,7 @@ public class ProductController {
             throws IOException {
         Product product = find(id);
         if (files.isEmpty()) {
-            throw new IllegalArgumentException("At least one image file is required.");
+            throw new IllegalArgumentException("Cần chọn ít nhất một ảnh.");
         }
         ArrayNode imageUrls = product.getImageUrls() instanceof ArrayNode existing
                 ? existing.deepCopy() : JsonNodeFactory.instance.arrayNode();
@@ -90,12 +99,12 @@ public class ProductController {
 
     private Product find(UUID id) {
         return products.findById(id)
-                .orElseThrow(() -> new CatalogNotFoundException("Product not found: " + id));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy sản phẩm: " + id));
     }
 
     private void apply(Product product, ProductRequest request) {
         product.setCategory(request.categoryId() == null ? null : categories.findById(request.categoryId())
-                .orElseThrow(() -> new CatalogNotFoundException("Category not found: " + request.categoryId())));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy danh mục: " + request.categoryId())));
         product.setBrandName(request.brandName());
         product.setDescription(request.description());
         product.setStatus(request.status() == null ? "draft" : request.status());

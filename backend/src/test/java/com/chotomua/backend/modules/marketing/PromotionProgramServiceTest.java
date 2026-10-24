@@ -45,6 +45,18 @@ class PromotionProgramServiceTest {
     }
 
     @Test
+    void create_acceptsOnlyTheFixedTiersAndStoresTheirCode() {
+        when(programs.save(any(PromotionProgram.class))).thenAnswer(call -> call.getArgument(0));
+
+        assertThat(service.create(new PromotionProgramRequest("VIP", "VIP", "member_only", " Gold ",
+                start, start.plusDays(1))).targetLoyaltyTier()).isEqualTo("gold");
+        assertThatThrownBy(() -> service.create(new PromotionProgramRequest("VIP2", "VIP", "member_only", "platinum",
+                start, start.plusDays(1))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Hạng thành viên");
+    }
+
+    @Test
     void create_rejectsEndBeforeStartWithoutWriting() {
         PromotionProgramRequest request = new PromotionProgramRequest("SALE", "Sale", "seasonal", null,
                 start, start.minusMinutes(1));

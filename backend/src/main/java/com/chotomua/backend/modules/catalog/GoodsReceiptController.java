@@ -65,9 +65,9 @@ public class GoodsReceiptController {
                                        Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
         Employee employee = employees.findByUserId(userId)
-                .orElseThrow(() -> new CatalogNotFoundException("Employee profile not found for current user."));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy hồ sơ nhân viên của tài khoản hiện tại."));
         Warehouse warehouse = warehouses.findById(request.warehouseId())
-                .orElseThrow(() -> new CatalogNotFoundException("Warehouse not found: " + request.warehouseId()));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy kho: " + request.warehouseId()));
 
         String code = "GR-" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + "-"
                 + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -75,9 +75,9 @@ public class GoodsReceiptController {
         for (GoodsReceiptItemRequest itemRequest : request.items()) {
             ProductVariant variant = variants.findById(itemRequest.variantId())
                     .orElseThrow(() -> new CatalogNotFoundException(
-                            "Product variant not found: " + itemRequest.variantId()));
+                            "Không tìm thấy biến thể sản phẩm: " + itemRequest.variantId()));
             if (!"active".equals(variant.getStatus())) {
-                throw new IllegalArgumentException("Cannot receive stock for inactive variant: " + variant.getSku());
+                throw new IllegalArgumentException("Không thể nhập kho cho biến thể đang ngừng bán: " + variant.getSku());
             }
             receipt.addItem(new GoodsReceiptItem(variant, itemRequest.quantity(), itemRequest.unitCost()));
         }
@@ -88,7 +88,7 @@ public class GoodsReceiptController {
     @Transactional
     public GoodsReceiptResponse approve(@PathVariable UUID id) {
         GoodsReceipt receipt = receipts.findByIdForUpdate(id)
-                .orElseThrow(() -> new CatalogNotFoundException("Goods receipt not found: " + id));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy phiếu nhập: " + id));
         requirePending(receipt);
         List<InventoryStockService.ImportLine> importLines = receipt.getItems().stream()
                 .map(item -> new InventoryStockService.ImportLine(item.getVariant(), item.getQuantity()))
@@ -102,7 +102,7 @@ public class GoodsReceiptController {
     @Transactional
     public GoodsReceiptResponse reject(@PathVariable UUID id) {
         GoodsReceipt receipt = receipts.findByIdForUpdate(id)
-                .orElseThrow(() -> new CatalogNotFoundException("Goods receipt not found: " + id));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy phiếu nhập: " + id));
         requirePending(receipt);
         receipt.setStatus("rejected");
         return GoodsReceiptResponse.from(receipts.save(receipt));
@@ -110,12 +110,12 @@ public class GoodsReceiptController {
 
     private GoodsReceipt find(UUID id) {
         return receipts.findById(id)
-                .orElseThrow(() -> new CatalogNotFoundException("Goods receipt not found: " + id));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy phiếu nhập: " + id));
     }
 
     private void requirePending(GoodsReceipt receipt) {
         if (!"pending".equals(receipt.getStatus())) {
-            throw new IllegalArgumentException("Only pending goods receipts can be approved or rejected.");
+            throw new IllegalArgumentException("Chỉ phiếu nhập đang chờ duyệt mới được duyệt hoặc từ chối.");
         }
     }
 

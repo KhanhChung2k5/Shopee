@@ -50,6 +50,11 @@ public class PromotionProgramService {
         if (invalidatesVoucher) {
             throw new IllegalArgumentException("Ngày bắt đầu mới nằm sau hạn dùng của voucher hiện có");
         }
+        boolean outlivesProgram = vouchers.findByPromotionProgramId(id).stream()
+                .anyMatch(voucher -> voucher.getExpiresAt() != null && voucher.getExpiresAt().isAfter(request.endAt()));
+        if (outlivesProgram) {
+            throw new IllegalArgumentException("Ngày kết thúc mới nằm trước hạn dùng của voucher hiện có");
+        }
         program.update(request, code);
         return PromotionProgramResponse.from(program);
     }
@@ -79,6 +84,10 @@ public class PromotionProgramService {
     private static void validateDates(PromotionProgramRequest request) {
         if (request.startAt() == null || request.endAt() == null || !request.endAt().isAfter(request.startAt())) {
             throw new IllegalArgumentException("Thời gian kết thúc phải sau thời gian bắt đầu");
+        }
+        String tier = request.targetLoyaltyTier();
+        if (tier != null && !tier.isBlank() && LoyaltyTier.fromCode(tier).isEmpty()) {
+            throw new IllegalArgumentException("Hạng thành viên không hợp lệ (bronze, silver, gold, diamond)");
         }
     }
 

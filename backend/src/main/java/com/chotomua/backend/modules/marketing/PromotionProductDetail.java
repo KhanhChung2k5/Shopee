@@ -63,4 +63,9 @@ public class PromotionProductDetail {
         if (limitQty != null && soldQty + quantity > limitQty) throw new IllegalStateException("Flash Sale đã hết số lượng ưu đãi");
         soldQty += quantity;
     }
+    /** Units from a cancelled order go back on offer. */
+    public void releaseFlashQuantity(int quantity) {
+        if (flashPrice == null) return;
+        soldQty = Math.max(0, soldQty - quantity);
+    }
 }

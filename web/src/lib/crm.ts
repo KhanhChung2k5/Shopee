@@ -43,6 +43,8 @@ export interface CustomerReport {
   age: ReportBucket[]
   gender: ReportBucket[]
   interests: { categoryId: string | null; categoryName: string; count: number; percent: number }[]
+  /** Game genres from delivered game discs. */
+  genres: ReportBucket[]
   customers: ReportCustomer[]
 }
 export interface CustomerProfile {

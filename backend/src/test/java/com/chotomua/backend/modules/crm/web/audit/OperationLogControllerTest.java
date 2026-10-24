@@ -143,7 +143,9 @@ class OperationLogControllerTest {
         mockMvc.perform(get("/api/crm/audit-logs/filters")
                         .with(user(ADMIN_ID).authorities(new SimpleGrantedAuthority("DEPT_ADMIN"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.actors[?(@.login=='cs')].label", hasItem("CSKH")))
+                // only people who actually appear in the log: sales acted above, cs never did
+                .andExpect(jsonPath("$.actors[*].login", hasItem("sales")))
+                .andExpect(jsonPath("$.actors[*].login", org.hamcrest.Matchers.not(hasItem("cs"))))
                 .andExpect(jsonPath("$.departments", hasItem("cs")))
                 .andExpect(jsonPath("$.actions", hasItem("Tạo khách hàng")));
     }

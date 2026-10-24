@@ -75,7 +75,8 @@ public class ProductVariantLookup {
                                pv.price,
                                p.name,
                                CAST(pv.attributes AS TEXT),
-                               COALESCE(stock.available_quantity, 0)
+                               COALESCE(stock.available_quantity, 0),
+                               p.product_type
                         FROM product_variants pv
                         JOIN products p ON p.id = pv.product_id
                         LEFT JOIN (
@@ -103,7 +104,8 @@ public class ProductVariantLookup {
                 (BigDecimal) row[1],
                 (String) row[2],
                 (String) row[3],
-                ((Number) row[4]).intValue()
+                ((Number) row[4]).intValue(),
+                (String) row[5]
         );
     }
 }

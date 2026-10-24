@@ -14,7 +14,7 @@ interface TabItem {
 const TABS: TabItem[] = [
   { id: 'all', label: 'Tất Cả', icon: '🔥' },
   { id: 'controller', label: 'Tay Cầm Gaming', icon: '🎮' },
-  { id: 'game_disc', label: 'Đĩa Game Mới', icon: '💿' },
+  { id: 'game_disc', label: 'Đĩa Game', icon: '💿' },
   { id: 'accessory', label: 'Phụ Kiện Console', icon: '🛡️' },
 ]
 
@@ -33,114 +33,6 @@ const PRICE_OPTIONS = [
 
 type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'name'
 
-// Offline fallback when the catalog API is unreachable — no orders/reviews to show, so no sold count or rating.
-const STITCH_DEFAULT_PRODUCTS: CatalogProductSummary[] = ([
-  {
-    id: '9386ce6f-e18e-50c9-8092-8c75ec4d4b9a',
-    categoryId: '01010101-0000-0000-0000-000000000002',
-    name: 'Đĩa PS5 Horizon Zero Dawn Remastered',
-    productType: 'game_disc',
-    brandName: 'Playstation Studios',
-    price: 1249000,
-    comparePrice: 1249000,
-    imageUrls: [
-      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d1-1.webp',
-    ],
-    platforms: ['PS5'],
-  },
-  {
-    id: 'da16eedf-0a60-525c-855c-6783bd9af2bb',
-    categoryId: '01010101-0000-0000-0000-000000000001',
-    name: 'Tay cầm không dây DualSense - Chroma Indigo',
-    productType: 'controller',
-    brandName: 'Sony PlayStation',
-    price: 2299000,
-    comparePrice: 2299000,
-    imageUrls: [
-      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-c1-1.webp',
-    ],
-    platforms: ['PS5/PC'],
-  },
-  {
-    id: 'ed6de72d-7afd-5f30-bd3a-e4ad9db6411e',
-    categoryId: '01010101-0000-0000-0000-000000000002',
-    name: 'Đĩa PS5 Astro Bot',
-    productType: 'game_disc',
-    brandName: 'Playstation Studios',
-    price: 1499000,
-    comparePrice: 1499000,
-    imageUrls: [
-      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d4-1.webp',
-    ],
-    platforms: ['PS5'],
-  },
-  {
-    id: '976110cc-8f9c-519e-91e1-1cfebf415135',
-    categoryId: '01010101-0000-0000-0000-000000000001',
-    name: 'Tay cầm DualSense - Chroma Pearl',
-    productType: 'controller',
-    brandName: 'Sony PlayStation',
-    price: 1339900,
-    comparePrice: 1339900,
-    imageUrls: [
-      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-c2-1.webp',
-    ],
-    platforms: ['PS5/PC'],
-  },
-  {
-    id: 'eb538024-56e6-5134-aef6-927c163ac9aa',
-    categoryId: '01010101-0000-0000-0000-000000000002',
-    name: 'Đĩa PS5 Stellar Blade',
-    productType: 'game_disc',
-    brandName: 'Playstation Studios',
-    price: 1799000,
-    comparePrice: 1799000,
-    imageUrls: [
-      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d5-1.webp',
-    ],
-    platforms: ['PS5'],
-  },
-  {
-    id: '2d75c302-3457-5a9c-99be-6e844546018f',
-    categoryId: '01010101-0000-0000-0000-000000000002',
-    name: 'Đĩa PS5 Spider-Man 2 Standard',
-    productType: 'game_disc',
-    brandName: 'Playstation Studios',
-    price: 14499000,
-    comparePrice: 14499000,
-    imageUrls: [
-      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d9-1.webp',
-    ],
-    platforms: ['PS5'],
-  },
-  {
-    id: '0a13b6d2-1e8a-51c3-91c8-310351af0c60',
-    categoryId: '01010101-0000-0000-0000-000000000001',
-    name: 'Tay cầm không dây DualSense Edge',
-    productType: 'controller',
-    brandName: 'Sony PlayStation',
-    price: 5699000,
-    comparePrice: 5699000,
-    imageUrls: [
-      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-c5-1.webp',
-    ],
-    platforms: ['PS5/PC'],
-  },
-  {
-    id: '916871f7-a4b6-51e6-afb8-fa8f8d9c6aef',
-    categoryId: '01010101-0000-0000-0000-000000000003',
-    name: 'Đế sạc cho tay cầm DualSense',
-    productType: 'accessory',
-    brandName: 'Sony PlayStation',
-    price: 799000,
-    comparePrice: 799000,
-    imageUrls: [
-      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-a5-1.webp',
-    ],
-    platforms: ['PS5'],
-  },
-] satisfies Omit<CatalogProductSummary, 'soldCount' | 'ratingAverage' | 'ratingCount'>[])
-  .map((product) => ({ ...product, soldCount: 0, ratingAverage: null, ratingCount: 0 }))
 
 const INITIAL_DISPLAY_COUNT = 12
 
@@ -174,34 +66,25 @@ export default function SuggestedProducts() {
     setVisibleCount(INITIAL_DISPLAY_COUNT)
   }, [activeTab, selectedPlatform, selectedPrice, sortBy])
 
-  // Fetch all products to support instant zero-delay dynamic client-side filtering
+  // Fetch all published products once; filtering below is client-side. Only real catalogue data — no sample fallback.
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   useEffect(() => {
     let active = true
     setLoading(true)
+    setLoadError(false)
     fetchProducts(new URLSearchParams({ page: '0', size: '100' }))
-      .then((res) => {
-        if (!active) return
-        if (res.content && res.content.length > 0) {
-          setAllProducts(res.content)
-        } else {
-          setAllProducts(STITCH_DEFAULT_PRODUCTS)
-        }
-      })
-      .catch(() => {
-        if (!active) return
-        setAllProducts(STITCH_DEFAULT_PRODUCTS)
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
+      .then((res) => { if (active) setAllProducts(res.content ?? []) })
+      .catch(() => { if (active) setLoadError(true) })
+      .finally(() => { if (active) setLoading(false) })
     return () => {
       active = false
     }
-  }, [])
+  }, [reloadKey])
 
   // Calculate live counts for each tab
   const counts = useMemo(() => {
-    const list = allProducts.length > 0 ? allProducts : STITCH_DEFAULT_PRODUCTS
+    const list = allProducts
     return {
       all: list.length,
       controller: list.filter((p) => p.productType === 'controller').length,
@@ -212,8 +95,7 @@ export default function SuggestedProducts() {
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
-    const base = allProducts.length > 0 ? allProducts : STITCH_DEFAULT_PRODUCTS
-    let result = [...base]
+    let result = [...allProducts]
 
     // 1. Filter by Tab (Product Type)
     if (activeTab !== 'all') {
@@ -307,7 +189,7 @@ export default function SuggestedProducts() {
             </span>
           </div>
           <p className="font-body-md text-body-md text-on-surface-variant">
-            Tuyển chọn tay cầm gaming &amp; đĩa game bán chạy nhất được cộng đồng đánh giá cao
+            Tất cả tay cầm, đĩa game &amp; phụ kiện đang bán — lọc theo loại, nền tảng và giá
           </p>
         </div>
 
@@ -419,7 +301,17 @@ export default function SuggestedProducts() {
       </div>
 
       {/* Product Grid or Empty State */}
-      {loading && allProducts.length === 0 ? (
+      {loadError ? (
+        <div className="bg-surface-container-lowest rounded-xl p-space-xl text-center border border-dashed border-outline-variant my-space-md">
+          <span className="material-symbols-outlined text-4xl text-error mb-space-sm">cloud_off</span>
+          <h3 className="font-title-lg text-title-lg text-on-surface mb-1">Không tải được danh sách sản phẩm</h3>
+          <p className="font-body-md text-body-md text-on-surface-variant mb-space-md">Máy chủ đang không phản hồi. Vui lòng thử lại sau ít phút.</p>
+          <button type="button" onClick={() => setReloadKey((k) => k + 1)}
+            className="px-space-lg py-2 bg-primary text-on-primary font-title-md text-title-md rounded-lg hover:bg-primary-container transition-colors cursor-pointer inline-flex items-center gap-1">
+            <span className="material-symbols-outlined text-lg">refresh</span><span>Thử lại</span>
+          </button>
+        </div>
+      ) : loading && allProducts.length === 0 ? (
         <div className="py-12 text-center text-on-surface-variant">
           <span className="material-symbols-outlined text-4xl animate-spin text-primary mb-2">progress_activity</span>
           <p className="font-body-md text-body-md">Đang tải danh sách sản phẩm gaming…</p>

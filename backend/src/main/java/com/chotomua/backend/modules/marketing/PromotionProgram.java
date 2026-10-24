@@ -47,8 +47,7 @@ public class PromotionProgram {
         code = normalizedCode;
         name = request.name().trim();
         programType = request.programType().trim();
-        targetLoyaltyTier = request.targetLoyaltyTier() == null || request.targetLoyaltyTier().isBlank()
-                ? null : request.targetLoyaltyTier().trim();
+        targetLoyaltyTier = LoyaltyTier.fromCode(request.targetLoyaltyTier()).map(LoyaltyTier::code).orElse(null);
         startAt = request.startAt();
         endAt = request.endAt();
     }

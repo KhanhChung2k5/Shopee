@@ -107,7 +107,7 @@ public class PublicProductController {
     @GetMapping("/{id}")
     public ProductDetails get(@PathVariable UUID id) {
         Product product = products.findByIdAndStatus(id, "published")
-                .orElseThrow(() -> new CatalogNotFoundException("Published product not found: " + id));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy sản phẩm đang bán: " + id));
 
         List<ProductVariant> activeVariants = variants.findByProduct_IdAndStatus(id, "active");
         List<UUID> variantIds = activeVariants.stream().map(ProductVariant::getId).toList();

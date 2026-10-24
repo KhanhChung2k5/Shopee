@@ -7,7 +7,18 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { Product, ProductType } from '../data/sampleProducts'
+import type { ProductType } from '../lib/catalog'
+
+/** What a cart line shows about its product — all of it from the cart API (GET /cart-items). */
+export interface CartProduct {
+  id: string
+  name: string
+  price: number
+  comparePrice: number
+  thumbSeed: number
+  imageUrl?: string
+  productType: ProductType
+}
 import { apiFetch, ApiError } from '../lib/api'
 import { useAuth } from './AuthContext'
 import {
@@ -41,7 +52,7 @@ export interface CartLine {
   available: boolean
   availableQuantity: number | null
   source: 'api'
-  product: Product
+  product: CartProduct
 }
 
 interface CartContextValue {
@@ -94,7 +105,6 @@ function apiLine(item: CartItemApiResponse): CartLine {
       thumbSeed: seedFromId(item.variantId),
       imageUrl: item.imageUrl ?? undefined,
       productType: normalizeProductType(item.productType),
-      category: '',
     },
   }
 }

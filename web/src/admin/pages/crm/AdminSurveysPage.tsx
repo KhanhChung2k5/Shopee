@@ -8,6 +8,7 @@ import {
   type AnswerType, type Segment, type Survey, type SurveyStats,
 } from '../../../lib/crm'
 import { useAuth } from '../../../state/AuthContext'
+import { useDialog } from '../../../state/DialogContext'
 
 /** "Auto after delivery" choice → product filter on the survey (OrderDeliveredSurveyDispatcher). */
 const AUTO_TARGETS: { value: string; label: string; filter: { productType?: string; publishedOnly: boolean } | null }[] = [
@@ -105,6 +106,7 @@ function SurveyEditor({ token, survey, segments, onChanged, onDeleted, onNotice,
   onNotice: (m: string) => void
   onError: (m: string) => void
 }) {
+  const { confirm } = useDialog()
   const [questionText, setQuestionText] = useState('')
   const [answerType, setAnswerType] = useState<AnswerType>('rating')
   const [options, setOptions] = useState('')
@@ -153,7 +155,7 @@ function SurveyEditor({ token, survey, segments, onChanged, onDeleted, onNotice,
           </div>
           <div className={a.rowActions}>
             {survey.status === 'sent' && <button type="button" className={buttonClass('outline', 'sm')} onClick={() => void run(() => archiveSurvey(token, survey.id), 'Không lưu trữ được', 'Đã lưu trữ khảo sát.')}>Lưu trữ</button>}
-            {isDraft && <button type="button" className={buttonClass('outline', 'sm')} onClick={() => { if (confirm('Xoá khảo sát nháp này?')) void deleteSurvey(token, survey.id).then(onDeleted).catch((e) => onError(e instanceof ApiError ? e.message : 'Không xoá được')) }}>Xoá</button>}
+            {isDraft && <button type="button" className={buttonClass('outline', 'sm')} onClick={async () => { if (await confirm({ title: 'Xoá khảo sát nháp', message: <>Xoá khảo sát <strong>{survey.title}</strong>? Các câu hỏi của nó cũng bị xoá.</>, confirmLabel: 'Xoá', tone: 'danger' })) void deleteSurvey(token, survey.id).then(onDeleted).catch((e) => onError(e instanceof ApiError ? e.message : 'Không xoá được')) }}>Xoá</button>}
           </div>
         </div>
 

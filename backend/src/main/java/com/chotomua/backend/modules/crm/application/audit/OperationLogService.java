@@ -1,6 +1,5 @@
 package com.chotomua.backend.modules.crm.application.audit;
 
-import com.chotomua.backend.modules.crm.config.CrmDemoActors;
 import com.chotomua.backend.modules.crm.port.IdentityPort;
 import com.chotomua.backend.modules.crm.port.dto.StaffDepartment;
 import org.springframework.stereotype.Service;
@@ -20,13 +19,6 @@ public class OperationLogService {
 
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 50;
-
-    private static final List<OperationLogActorOption> DEMO_ACTORS = List.of(
-            new OperationLogActorOption(CrmDemoActors.ADMIN_LOGIN, "Quản trị viên", StaffDepartment.ADMIN),
-            new OperationLogActorOption(CrmDemoActors.CS_LEAD_LOGIN, "Trưởng nhóm CSKH", StaffDepartment.CS),
-            new OperationLogActorOption(CrmDemoActors.CS_LOGIN, "CSKH", StaffDepartment.CS),
-            new OperationLogActorOption(CrmDemoActors.SALES_LOGIN, "NV Kinh doanh", StaffDepartment.SALES)
-    );
 
     private final OperationLogStore store;
     private final IdentityPort identity;
@@ -62,10 +54,8 @@ public class OperationLogService {
     public OperationLogFacets facets(UUID actorId) {
         identity.requireSystemAdmin(actorId);
         OperationLogFacets stored = store.facets();
+        // Only people who actually appear in the log — no built-in demo accounts.
         Map<String, OperationLogActorOption> actors = new LinkedHashMap<>();
-        for (OperationLogActorOption option : DEMO_ACTORS) {
-            actors.put(option.login(), option);
-        }
         for (OperationLogActorOption option : stored.actors()) {
             actors.put(option.login(), option);
         }

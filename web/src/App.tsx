@@ -20,6 +20,8 @@ import AdminProductsPage from './admin/pages/AdminProductsPage'
 import AdminInventoryPage from './admin/pages/AdminInventoryPage'
 import AdminGoodsReceiptsPage from './admin/pages/AdminGoodsReceiptsPage'
 import AdminOrdersPage from './admin/pages/AdminOrdersPage'
+import AdminOrderDetailPage from './admin/pages/AdminOrderDetailPage'
+import AdminRefundsPage from './admin/pages/AdminRefundsPage'
 import AdminMarketingPage from './admin/pages/AdminMarketingPage'
 import AdminEmployeesPage from './admin/pages/AdminEmployeesPage'
 import AdminCrmProfilesPage from './admin/pages/crm/AdminCrmProfilesPage'
@@ -34,6 +36,7 @@ import SurveyPage from './pages/SurveyPage'
 import SupportPage from './pages/SupportPage'
 import { CartProvider } from './state/CartContext'
 import { AuthProvider } from './state/AuthContext'
+import { DialogProvider } from './state/DialogContext'
 import ProfilePage from './pages/ProfilePage'
 import RequireStaff from './components/RequireStaff'
 import RequireDepartment from './components/RequireDepartment'
@@ -79,6 +82,7 @@ function CustomerShell() {
 function App() {
   return (
     <AuthProvider>
+      <DialogProvider>
       <Routes>
         <Route
           path="/admin"
@@ -93,6 +97,8 @@ function App() {
           <Route path="kho" element={<RequireDepartment><AdminInventoryPage /></RequireDepartment>} />
           <Route path="phieu-nhap" element={<RequireDepartment><AdminGoodsReceiptsPage /></RequireDepartment>} />
           <Route path="don-hang" element={<RequireDepartment><AdminOrdersPage /></RequireDepartment>} />
+          <Route path="don-hang/:id" element={<RequireDepartment section="/admin/don-hang"><AdminOrderDetailPage /></RequireDepartment>} />
+          <Route path="hoan-tien" element={<RequireDepartment><AdminRefundsPage /></RequireDepartment>} />
           <Route path="marketing" element={<RequireDepartment><AdminMarketingPage /></RequireDepartment>} />
           <Route path="khach-hang" element={<RequireDepartment><AdminCustomersPage /></RequireDepartment>} />
           <Route path="bao-cao" element={<RequireDepartment><AdminDemographicsPage /></RequireDepartment>} />
@@ -107,6 +113,7 @@ function App() {
         </Route>
         <Route path="/*" element={<CustomerShell />} />
       </Routes>
+      </DialogProvider>
     </AuthProvider>
   )
 }
