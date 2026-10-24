@@ -3,6 +3,7 @@ package com.chotomua.backend.modules.order;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -19,6 +20,7 @@ import com.chotomua.backend.modules.marketing.VoucherUsage;
 import com.chotomua.backend.modules.marketing.VoucherUsageRepository;
 import com.chotomua.backend.modules.marketing.dto.VoucherQuoteRequest;
 import com.chotomua.backend.modules.marketing.dto.VoucherQuoteResponse;
+import com.chotomua.backend.modules.catalog.InventoryStockService;
 import com.chotomua.backend.modules.order.dto.OrderCreateRequest;
 import com.chotomua.backend.modules.order.dto.OrderShippingInfoRequest;
 import com.chotomua.backend.modules.order.dto.OrderStatusUpdateRequest;
@@ -665,6 +667,98 @@ class OrderServiceTest {
         )).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("cancelled/packed");
         verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void updateShippingInfo_takesTheOrderLinesOutOfTheChosenWarehouse() {
+        InventoryStockService inventory = mock(InventoryStockService.class);
+        orderService.setInventoryStockService(inventory);
+        UUID employeeUserId = UUID.randomUUID();
+        Employee employee = employeeOf(employeeUserId, "warehouse");
+        UUID warehouseId = UUID.randomUUID();
+        Order order = orderOf(UUID.randomUUID());
+        order.setStatus("confirmed");
+        UUID variantA = UUID.randomUUID();
+        UUID variantB = UUID.randomUUID();
+        when(employeeRepository.findByUserId(employeeUserId)).thenReturn(Optional.of(employee));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(warehouseLookup.existsById(warehouseId)).thenReturn(true);
+        when(orderRepository.save(order)).thenReturn(order);
+        when(orderItemRepository.findByOrderId(order.getId())).thenReturn(List.of(
+                new OrderItem(order.getId(), variantA, 2, new BigDecimal("50000"), "Tay cầm", null),
+                new OrderItem(order.getId(), variantB, 1, new BigDecimal("30000"), "Đế sạc", null)));
+
+        orderService.updateShippingInfo(employeeUserId, order.getId(), new OrderShippingInfoRequest(warehouseId, "GHN"));
+
+        verify(inventory, never()).returnForOrder(any());
+        verify(inventory).exportForOrder(order.getId(), warehouseId, List.of(
+                new InventoryStockService.ExportLine(variantA, 2),
+                new InventoryStockService.ExportLine(variantB, 1)));
+    }
+
+    @Test
+    void updateShippingInfo_repackingFromAnotherWarehouseReturnsStockFirst() {
+        InventoryStockService inventory = mock(InventoryStockService.class);
+        orderService.setInventoryStockService(inventory);
+        UUID employeeUserId = UUID.randomUUID();
+        Employee employee = employeeOf(employeeUserId, "warehouse");
+        Order order = packedOrder(employee.getId());
+        UUID newWarehouse = UUID.randomUUID();
+        when(employeeRepository.findByUserId(employeeUserId)).thenReturn(Optional.of(employee));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(warehouseLookup.existsById(newWarehouse)).thenReturn(true);
+        when(orderRepository.save(order)).thenReturn(order);
+        when(orderItemRepository.findByOrderId(order.getId())).thenReturn(List.of(
+                new OrderItem(order.getId(), UUID.randomUUID(), 1, new BigDecimal("50000"), "Tay cầm", null)));
+
+        orderService.updateShippingInfo(employeeUserId, order.getId(), new OrderShippingInfoRequest(newWarehouse, "GHN"));
+
+        var inOrder = org.mockito.Mockito.inOrder(inventory);
+        inOrder.verify(inventory).returnForOrder(order.getId());
+        inOrder.verify(inventory).exportForOrder(eq(order.getId()), eq(newWarehouse), any());
+    }
+
+    @Test
+    void updateShippingInfo_refusesToPackWhenTheWarehouseIsShort() {
+        InventoryStockService inventory = mock(InventoryStockService.class);
+        orderService.setInventoryStockService(inventory);
+        UUID employeeUserId = UUID.randomUUID();
+        Employee employee = employeeOf(employeeUserId, "warehouse");
+        UUID warehouseId = UUID.randomUUID();
+        Order order = orderOf(UUID.randomUUID());
+        order.setStatus("confirmed");
+        when(employeeRepository.findByUserId(employeeUserId)).thenReturn(Optional.of(employee));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(warehouseLookup.existsById(warehouseId)).thenReturn(true);
+        when(orderItemRepository.findByOrderId(order.getId())).thenReturn(List.of(
+                new OrderItem(order.getId(), UUID.randomUUID(), 5, new BigDecimal("50000"), "Tay cầm", null)));
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("Insufficient available stock"))
+                .when(inventory).exportForOrder(any(), any(), any());
+
+        assertThatThrownBy(() -> orderService.updateShippingInfo(
+                employeeUserId, order.getId(), new OrderShippingInfoRequest(warehouseId, "GHN")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("không đủ hàng");
+        assertThat(order.getShipmentStatus()).isNotEqualTo("packed");
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void cancellingAPackedOrderPutsItsStockBack() {
+        InventoryStockService inventory = mock(InventoryStockService.class);
+        orderService.setInventoryStockService(inventory);
+        UUID employeeUserId = UUID.randomUUID();
+        Employee sales = employeeOf(employeeUserId, "sales");
+        Order order = packedOrder(UUID.randomUUID());
+        when(employeeRepository.findByUserId(employeeUserId)).thenReturn(Optional.of(sales));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+        when(orderStatusHistoryRepository.save(any(OrderStatusHistory.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        orderService.updateStatusForEmployeeUser(employeeUserId, order.getId(),
+                new OrderStatusUpdateRequest("cancelled", "Khách đổi ý"));
+
+        verify(inventory).returnForOrder(order.getId());
     }
 
     private static Address ownedAddress(UUID userId, UUID addressId) {

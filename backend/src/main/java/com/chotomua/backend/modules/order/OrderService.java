@@ -6,6 +6,7 @@ import com.chotomua.backend.modules.identity.Employee;
 import com.chotomua.backend.modules.identity.EmployeeRepository;
 import com.chotomua.backend.modules.marketing.VoucherQuoteService;
 import com.chotomua.backend.modules.crm.application.CrmOrderEvents;
+import com.chotomua.backend.modules.catalog.InventoryStockService;
 import com.chotomua.backend.modules.marketing.LoyaltyAwardService;
 import com.chotomua.backend.modules.marketing.FlashSaleCheckoutService;
 import com.chotomua.backend.modules.marketing.VoucherUsage;
@@ -55,6 +56,14 @@ public class OrderService {
     @Autowired(required = false)
     void setCrmOrderEvents(CrmOrderEvents crmOrderEvents) {
         this.crmOrderEvents = crmOrderEvents;
+    }
+
+    /** Optional for the same reason: stock leaves the warehouse when an order is packed, and comes back if it is cancelled. */
+    private InventoryStockService inventoryStockService;
+
+    @Autowired(required = false)
+    void setInventoryStockService(InventoryStockService inventoryStockService) {
+        this.inventoryStockService = inventoryStockService;
     }
 
     @Autowired
@@ -220,6 +229,20 @@ public class OrderService {
             throw new NoSuchElementException("Không tìm thấy kho xuất hàng");
         }
 
+        if (inventoryStockService != null) {
+            // Re-packing from another warehouse first returns what the earlier packing took out.
+            if (ShipmentStatus.PACKED.value().equals(order.getShipmentStatus())) {
+                inventoryStockService.returnForOrder(order.getId());
+            }
+            List<InventoryStockService.ExportLine> lines = orderItemRepository.findByOrderId(order.getId()).stream()
+                    .map(item -> new InventoryStockService.ExportLine(item.getVariantId(), item.getQuantity()))
+                    .toList();
+            try {
+                inventoryStockService.exportForOrder(order.getId(), request.warehouseId(), lines);
+            } catch (IllegalArgumentException notEnough) {
+                throw new IllegalStateException("Kho đã chọn không đủ hàng để đóng gói đơn này");
+            }
+        }
         order.setEmployeeId(employee.getId());
         order.setWarehouseId(request.warehouseId());
         order.setShippingProviderName(request.shippingProviderName().trim());
@@ -393,6 +416,9 @@ public class OrderService {
 
         order.setStatus(requestedStatus);
         orderRepository.save(order);
+        if (OrderStatus.CANCELLED.value().equals(requestedStatus) && inventoryStockService != null) {
+            inventoryStockService.returnForOrder(order.getId()); // no-op unless it was already packed
+        }
         OrderStatusHistory history = orderStatusHistoryRepository.save(new OrderStatusHistory(
                 order.getId(),
                 requestedStatus,

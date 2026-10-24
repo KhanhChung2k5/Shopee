@@ -19,6 +19,18 @@ export interface CatalogProductSummary {
   imageUrls: string[] | null
   price: number | null
   comparePrice: number | null
+  /** Units on non-cancelled orders (same rule as the top-sellers ranking). */
+  soldCount: number
+  /** Average of buyers' reviews, one decimal; null until the product has a review. */
+  ratingAverage: number | null
+  ratingCount: number
+}
+
+/** 950 → "950", 1250 → "1,3k", 12000 → "12k" (Vietnamese decimal comma). */
+export function formatSoldCount(count: number) {
+  if (count < 1000) return String(count)
+  const thousands = count / 1000
+  return `${thousands >= 10 ? Math.round(thousands) : thousands.toFixed(1).replace(/\.0$/, '').replace('.', ',')}k`
 }
 
 export interface CatalogVariant {
@@ -31,7 +43,7 @@ export interface CatalogVariant {
   availableQuantity: number
 }
 
-export interface CatalogProduct extends Omit<CatalogProductSummary, 'price' | 'comparePrice'> {
+export interface CatalogProduct extends Omit<CatalogProductSummary, 'price' | 'comparePrice' | 'soldCount' | 'ratingAverage' | 'ratingCount'> {
   description: string | null
   publisher: string | null
   genre: string | null

@@ -1,6 +1,7 @@
 package com.chotomua.backend.modules.catalog;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -43,4 +44,34 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     @EntityGraph(attributePaths = "category")
     Optional<Product> findByIdAndStatus(UUID id, String status);
+
+    /**
+     * Real "sold" and rating figures for a page of products. Sold uses the same rule as the
+     * top-sellers ranking: quantity on every non-cancelled order. Rating averages buyers' reviews.
+     */
+    @Query(value = """
+            SELECT p.id AS productId,
+                   COALESCE((SELECT SUM(oi.quantity) FROM order_items oi
+                             JOIN orders o ON o.id = oi.order_id
+                             JOIN product_variants pv ON pv.id = oi.variant_id
+                             WHERE pv.product_id = p.id AND o.status <> 'cancelled'), 0)::bigint AS soldCount,
+                   (SELECT AVG(r.rating) FROM reviews r
+                      JOIN order_items oi ON oi.id = r.order_item_id
+                      JOIN product_variants pv ON pv.id = oi.variant_id
+                      WHERE pv.product_id = p.id)::float8 AS ratingAverage,
+                   (SELECT COUNT(*) FROM reviews r
+                      JOIN order_items oi ON oi.id = r.order_item_id
+                      JOIN product_variants pv ON pv.id = oi.variant_id
+                      WHERE pv.product_id = p.id)::bigint AS ratingCount
+            FROM products p
+            WHERE p.id IN (:ids)
+            """, nativeQuery = true)
+    List<SalesStats> findSalesStats(@Param("ids") Collection<UUID> ids);
+
+    interface SalesStats {
+        UUID getProductId();
+        Long getSoldCount();
+        Double getRatingAverage();
+        Long getRatingCount();
+    }
 }

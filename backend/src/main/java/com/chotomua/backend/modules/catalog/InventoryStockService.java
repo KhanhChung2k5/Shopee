@@ -3,7 +3,9 @@ package com.chotomua.backend.modules.catalog;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /** Inventory operations shared by receipt approval and the order-confirmation flow. */
@@ -49,7 +51,37 @@ public class InventoryStockService {
         return subtractStock(null, warehouseId, line);
     }
 
-    /** Called inside the order-confirmation transaction once the order module is wired. */
+    /**
+     * Puts back whatever an order still holds out of stock — used when a packed order is cancelled or
+     * re-packed from another warehouse. Nets the order's movements per stock row, so calling it twice
+     * (or on an order that was never packed) changes nothing.
+     */
+    @Transactional
+    public void returnForOrder(UUID orderId) {
+        if (orderId == null) {
+            throw new IllegalArgumentException("An order is required.");
+        }
+        Map<UUID, InventoryStock> stockById = new LinkedHashMap<>();
+        Map<UUID, Integer> outstanding = new LinkedHashMap<>();
+        for (InventoryMovement movement : movements.findByOrderId(orderId)) {
+            InventoryStock stock = movement.getStock();
+            stockById.putIfAbsent(stock.getId(), stock);
+            outstanding.merge(stock.getId(), movement.getQuantity(), Integer::sum);
+        }
+        outstanding.forEach((stockId, net) -> {
+            if (net >= 0) {
+                return;
+            }
+            InventoryStock stock = stockById.get(stockId);
+            stock.setQuantity(Math.addExact(stock.getQuantity(), -net));
+            InventoryStock savedStock = stocks.save(stock);
+            InventoryMovement movement = new InventoryMovement(savedStock, "adjust", -net);
+            movement.setOrderId(orderId);
+            movements.save(movement);
+        });
+    }
+
+    /** Takes an order's lines out of the chosen warehouse when it is packed (OrderService.updateShippingInfo). */
     @Transactional
     public void exportForOrder(UUID orderId, UUID warehouseId, List<ExportLine> lines) {
         if (orderId == null || warehouseId == null || lines == null || lines.isEmpty()) {

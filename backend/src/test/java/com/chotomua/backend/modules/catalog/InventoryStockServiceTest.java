@@ -93,6 +93,44 @@ class InventoryStockServiceTest {
     }
 
     @Test
+    void returnForOrder_putsBackWhatTheOrderStillHoldsAndRecordsAnAdjustment() {
+        UUID orderId = UUID.randomUUID();
+        InventoryStock stock = stock(UUID.randomUUID(), UUID.randomUUID(), 6, 0);
+        setId(InventoryStock.class, stock, UUID.randomUUID());
+        InventoryMovement exported = new InventoryMovement(stock, "export", -4);
+        exported.setOrderId(orderId);
+        when(movements.findByOrderId(orderId)).thenReturn(List.of(exported));
+        when(stocks.save(any(InventoryStock.class))).thenAnswer(call -> call.getArgument(0));
+        when(movements.save(any(InventoryMovement.class))).thenAnswer(call -> call.getArgument(0));
+
+        service.returnForOrder(orderId);
+
+        assertThat(stock.getQuantity()).isEqualTo(10);
+        ArgumentCaptor<InventoryMovement> movementCaptor = ArgumentCaptor.forClass(InventoryMovement.class);
+        verify(movements).save(movementCaptor.capture());
+        assertThat(movementCaptor.getValue().getType()).isEqualTo("adjust");
+        assertThat(movementCaptor.getValue().getQuantity()).isEqualTo(4);
+        assertThat(movementCaptor.getValue().getOrderId()).isEqualTo(orderId);
+    }
+
+    @Test
+    void returnForOrder_doesNothingWhenTheOrderWasAlreadySettledOrNeverPacked() {
+        UUID orderId = UUID.randomUUID();
+        InventoryStock stock = stock(UUID.randomUUID(), UUID.randomUUID(), 10, 0);
+        setId(InventoryStock.class, stock, UUID.randomUUID());
+        InventoryMovement exported = new InventoryMovement(stock, "export", -4);
+        InventoryMovement returned = new InventoryMovement(stock, "adjust", 4);
+        when(movements.findByOrderId(orderId)).thenReturn(List.of(exported, returned));
+
+        service.returnForOrder(orderId);
+        service.returnForOrder(UUID.randomUUID());
+
+        assertThat(stock.getQuantity()).isEqualTo(10);
+        verify(stocks, never()).save(any());
+        verify(movements, never()).save(any());
+    }
+
+    @Test
     void exportStock_subtractsAvailableQuantityAndLeavesOrderIdEmpty() {
         UUID warehouseId = UUID.randomUUID();
         UUID variantId = UUID.randomUUID();

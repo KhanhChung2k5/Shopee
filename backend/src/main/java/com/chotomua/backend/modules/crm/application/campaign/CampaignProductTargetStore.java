@@ -5,7 +5,7 @@ import com.chotomua.backend.modules.crm.domain.campaign.CampaignProductTarget;
 import java.util.Optional;
 import java.util.UUID;
 
-/** Kho gắn sản phẩm vào chiến dịch — in-memory, không DDL. */
+/** Kho gắn sản phẩm vào chiến dịch — bảng {@code campaign_product_targets} (V6); bản in-memory chỉ cho test. */
 public interface CampaignProductTargetStore {
 
     void save(CampaignProductTarget target);

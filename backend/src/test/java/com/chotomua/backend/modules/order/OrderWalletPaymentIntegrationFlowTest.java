@@ -3,13 +3,14 @@ package com.chotomua.backend.modules.order;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.chotomua.backend.common.web.GlobalExceptionHandler;
 import com.chotomua.backend.modules.identity.Address;
 import com.chotomua.backend.modules.identity.AddressRepository;
@@ -18,6 +19,7 @@ import com.chotomua.backend.modules.identity.EmployeeRepository;
 import com.chotomua.backend.modules.identity.User;
 import com.chotomua.backend.modules.identity.UserRepository;
 import com.chotomua.backend.modules.marketing.LoyaltyAwardService;
+import com.chotomua.backend.modules.marketing.LoyaltyTransaction;
 import com.chotomua.backend.modules.marketing.LoyaltyTransactionRepository;
 import com.chotomua.backend.modules.marketing.VoucherQuoteService;
 import com.chotomua.backend.modules.marketing.VoucherUsageRepository;
@@ -36,16 +38,15 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 /**
- * KAN-284: the full chain a real refund takes — checkout paid by wallet, delivered (earning
- * loyalty points once), then a refund request approved by CS credits the exact amount back to
- * the buyer's wallet. Repository answers keep state in memory; no shared database is touched.
+ * KAN-284: checkout paid by wallet debits the buyer immediately, and walking the order to
+ * delivered awards loyalty points exactly once. (Refunds were dropped from the system.)
+ * Repository answers keep state in memory; no shared database is touched.
  */
-class OrderPaymentRefundIntegrationFlowTest {
+class OrderWalletPaymentIntegrationFlowTest {
 
     @Test
-    void walletCheckoutThenDeliveryThenApprovedRefundEndsWithTheBuyerMadeWhole() throws Exception {
+    void walletCheckoutThenDeliveryDebitsOnceAndAwardsLoyaltyOnce() throws Exception {
         UUID buyerId = UUID.randomUUID();
-        UUID csUserId = UUID.randomUUID();
         UUID salesUserId = UUID.randomUUID();
         UUID warehouseUserId = UUID.randomUUID();
         UUID addressId = UUID.randomUUID();
@@ -65,7 +66,6 @@ class OrderPaymentRefundIntegrationFlowTest {
         WalletTransactionRepository walletTransactionRepository = mock(WalletTransactionRepository.class);
         PaymentRepository paymentRepository = mock(PaymentRepository.class);
         LoyaltyTransactionRepository loyaltyTransactionRepository = mock(LoyaltyTransactionRepository.class);
-        RefundReturnRepository refundReturnRepository = mock(RefundReturnRepository.class);
 
         // In-memory buyer wallet: starts with just enough to pay for the order.
         User buyer = new User("buyer", "hash");
@@ -123,9 +123,6 @@ class OrderPaymentRefundIntegrationFlowTest {
             return history;
         });
 
-        Employee csEmployee = new Employee(staffUser(), "cs");
-        setId(csEmployee, UUID.randomUUID());
-        when(employeeRepository.findByUserId(csUserId)).thenReturn(Optional.of(csEmployee));
         Employee salesEmployee = new Employee(staffUser(), "sales");
         setId(salesEmployee, UUID.randomUUID());
         when(employeeRepository.findByUserId(salesUserId)).thenReturn(Optional.of(salesEmployee));
@@ -137,17 +134,13 @@ class OrderPaymentRefundIntegrationFlowTest {
         OrderService orderService = new OrderService(cartItemRepository, orderRepository, orderItemRepository,
                 historyRepository, addressRepository, employeeRepository, productVariantLookup, warehouseLookup,
                 voucherQuoteService, voucherUsageRepository, checkoutPaymentService, loyaltyAwardService, null);
-        RefundService refundService = new RefundService(refundReturnRepository, orderItemRepository, orderRepository,
-                employeeRepository, userRepository, walletTransactionRepository);
-        when(refundReturnRepository.save(any(RefundReturn.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         MockMvc mvc = MockMvcBuilders
-                .standaloneSetup(new OrderController(orderService), new RefundController(refundService))
+                .standaloneSetup(new OrderController(orderService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
 
         Authentication buyerAuth = authentication(buyerId, "ROLE_BUYER");
-        Authentication csAuth = authentication(csUserId, "ROLE_STAFF");
         Authentication salesAuth = authentication(salesUserId, "ROLE_STAFF");
         Authentication warehouseAuth = authentication(warehouseUserId, "ROLE_STAFF");
 
@@ -162,7 +155,6 @@ class OrderPaymentRefundIntegrationFlowTest {
         assertThat(buyer.getWalletBalance()).isEqualByComparingTo("0"); // 500,000 - 500,000 paid
 
         UUID orderId = storedOrder.get().getId();
-        UUID itemId = storedItems.get(0).getId();
 
         // 2) Walk the order to delivered — this awards loyalty points exactly once.
         mvc.perform(patch("/orders/{id}/status", orderId).principal(salesAuth)
@@ -183,36 +175,11 @@ class OrderPaymentRefundIntegrationFlowTest {
                         .content("{\"trackingNo\":\"GHN-284\",\"shipmentStatus\":\"delivered\"}"))
                 .andExpect(status().isOk());
 
-        // 3) The buyer requests a refund on the (only) line item of a fully-delivered, no-discount order.
-        //    RefundReturnRepository is backed by the same in-memory-list pattern as the order
-        //    repositories above, so the refund approved in step 4 is provably the one this POST created.
-        List<RefundReturn> storedRefunds = new ArrayList<>();
-        when(refundReturnRepository.save(any(RefundReturn.class))).thenAnswer(invocation -> {
-            RefundReturn refundReturn = invocation.getArgument(0);
-            if (refundReturn.getId() == null) setId(refundReturn, UUID.randomUUID());
-            storedRefunds.add(refundReturn);
-            return refundReturn;
-        });
-        when(refundReturnRepository.findById(any(UUID.class))).thenAnswer(invocation -> storedRefunds.stream()
-                .filter(r -> invocation.getArgument(0).equals(r.getId())).findFirst());
-
-        String refundResponseJson = mvc.perform(post("/refund-returns")
-                        .principal(buyerAuth)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"orderItemId\":\"" + itemId + "\",\"reason\":\"San pham bi loi khi nhan hang\"}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status").value("requested"))
-                .andReturn().getResponse().getContentAsString();
-        UUID refundId = UUID.fromString(new ObjectMapper().readTree(refundResponseJson).get("id").asText());
-
-        // 4) CS approves that exact refund — the buyer must get back exactly the item's line
-        //    total (no discount was applied to this order, so no proration to account for).
-        mvc.perform(patch("/refund-returns/{id}/approve", refundId).principal(csAuth))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("refunded"))
-                .andExpect(jsonPath("$.refundAmount").value(500000.0));
-
-        assertThat(buyer.getWalletBalance()).isEqualByComparingTo("500000"); // made whole again
+        // 3) Delivered: the wallet stays debited and loyalty is credited exactly once (500,000đ → 50 points).
+        assertThat(storedOrder.get().getStatus()).isEqualTo("delivered");
+        assertThat(buyer.getWalletBalance()).isEqualByComparingTo("0");
+        assertThat(buyer.getLoyaltyBalance()).isEqualTo(50);
+        verify(loyaltyTransactionRepository, times(1)).save(any(LoyaltyTransaction.class));
     }
 
     private static Optional<Order> matchStoredOrder(AtomicReference<Order> storedOrder, UUID requestedId) {

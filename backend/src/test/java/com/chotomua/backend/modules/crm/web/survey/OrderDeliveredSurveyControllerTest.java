@@ -6,8 +6,8 @@ import com.chotomua.backend.modules.crm.adapter.fake.FakeOrderPort;
 import com.chotomua.backend.modules.crm.adapter.fake.FakeProductPort;
 import com.chotomua.backend.modules.crm.application.notification.InMemoryNotificationStore;
 import com.chotomua.backend.modules.crm.application.survey.InMemorySurveyStore;
+import com.chotomua.backend.modules.crm.application.survey.InMemorySurveyDispatchLog;
 import com.chotomua.backend.modules.crm.application.survey.InMemorySurveyTargetStore;
-import com.chotomua.backend.modules.crm.application.survey.OrderDeliveredSurveyDispatcher;
 import com.chotomua.backend.modules.crm.port.dto.CustomerStatus;
 import com.chotomua.backend.modules.crm.port.dto.CustomerView;
 import com.chotomua.backend.modules.crm.port.dto.DeliveredOrderLine;
@@ -72,7 +72,7 @@ class OrderDeliveredSurveyControllerTest {
     private InMemoryNotificationStore notifications;
 
     @Autowired
-    private OrderDeliveredSurveyDispatcher dispatcher;
+    private InMemorySurveyDispatchLog dispatchLog;
 
     @BeforeEach
     void setUp() {
@@ -82,7 +82,7 @@ class OrderDeliveredSurveyControllerTest {
         surveys.clear();
         targets.clear();
         notifications.clear();
-        dispatcher.clear();
+        dispatchLog.clear();
         identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
         products.seed(new ProductView(
