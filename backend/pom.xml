@@ -150,6 +150,17 @@
 					</execution>
 				</executions>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<systemPropertyVariables>
+						<!-- Each cached Spring test context keeps its own connection pool; the Supabase
+						     session pooler allows 15 clients in total (see application.yml). -->
+						<DB_POOL_SIZE>2</DB_POOL_SIZE>
+					</systemPropertyVariables>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 

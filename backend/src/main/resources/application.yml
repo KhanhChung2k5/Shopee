@@ -21,6 +21,13 @@ spring:
     url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5434}/${DB_NAME:chotomua}?sslmode=${DB_SSLMODE:prefer}
     username: ${DB_USER:chotomua}
     password: ${DB_PASSWORD:chotomua}
+    # Supabase Session pooler (gói Free) chỉ cho tối đa 15 kết nối cho CẢ project — mọi máy
+    # đang chạy backend và mọi Spring context của bộ test cộng dồn vào con số đó. Giữ pool nhỏ
+    # và nhả kết nối khi rảnh (minimum-idle 0) để vài người cùng chạy không làm nhau bị từ chối.
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:4}
+      minimum-idle: 0
+      idle-timeout: 30000
   jpa:
     hibernate:
       # Flyway owns the schema (db/migration/*.sql); Hibernate only checks

@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/** Kho gắn sản phẩm vào khảo sát — in-memory, không DDL. */
+/** Kho gắn sản phẩm vào khảo sát — bảng {@code survey_product_targets} (V5); bản in-memory chỉ cho test. */
 public interface SurveyTargetStore {
 
     void save(SurveyProductTarget target);

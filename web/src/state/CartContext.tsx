@@ -104,7 +104,9 @@ function errorMessage(error: unknown, fallback: string) {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const { token } = useAuth()
+  const { token: authToken, user } = useAuth()
+  // /cart-items is buyer-only on the backend; staff sessions have no cart (would just 403).
+  const token = user?.role === 'buyer' ? authToken : null
   const [apiLines, setApiLines] = useState<CartLine[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

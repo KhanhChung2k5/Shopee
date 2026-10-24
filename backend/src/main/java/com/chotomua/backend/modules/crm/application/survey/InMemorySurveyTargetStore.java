@@ -1,6 +1,7 @@
 package com.chotomua.backend.modules.crm.application.survey;
 
 import com.chotomua.backend.modules.crm.domain.survey.SurveyProductTarget;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -10,8 +11,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-/** Gắn sản phẩm vào khảo sát trong bộ nhớ. Mất khi restart — đúng SPEC mở rộng. */
+/** Gắn sản phẩm vào khảo sát trong bộ nhớ — chỉ cho profile test {@code crm-fake}; chạy thật dùng {@code JdbcSurveyTargetStore}. */
 @Component
+@Profile("crm-fake")
 public class InMemorySurveyTargetStore implements SurveyTargetStore {
 
     private final Map<UUID, SurveyProductTarget> targets = new LinkedHashMap<>();

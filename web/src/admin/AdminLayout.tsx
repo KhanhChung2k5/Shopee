@@ -51,6 +51,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/admin/bao-cao', label: 'Báo cáo nhân khẩu học', icon: <path d="M4 20V10M10 20V4M16 20v-7M4 20h16" /> },
       { to: '/admin/crm', label: 'Hồ sơ & RFM', icon: <path d="M12 3 4 7v6c0 4 3.4 7.4 8 8 4.6-.6 8-4 8-8V7l-8-4ZM9 12l2 2 4-4" /> },
       { to: '/admin/ho-tro', label: 'Hỗ trợ khách hàng', icon: <path d="M4 5h16v11H8l-4 4V5ZM8 9h8M8 12h5" /> },
+      { to: '/admin/danh-gia', label: 'Đánh giá sản phẩm', icon: <path d="m12 3 2.7 5.5 6 .9-4.4 4.2 1 6L12 16.8 6.6 19.6l1-6L3.3 9.4l6-.9L12 3Z" /> },
       { to: '/admin/khao-sat', label: 'Khảo sát', icon: <path d="M9 4h6v3H9zM6 6H5v15h14V6h-1M8 12l2 2 4-4M8 17h8" /> },
       { to: '/admin/phan-khuc', label: 'Phân khúc', icon: <path d="M12 3v9h9A9 9 0 1 1 12 3ZM15 3.5A9 9 0 0 1 20.5 9H15V3.5Z" /> },
       { to: '/admin/chien-dich', label: 'Chiến dịch', icon: <path d="M4 10v4h3l6 4V6L7 10H4ZM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12" /> },
@@ -60,6 +61,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: 'Nhân sự',
     items: [
       { to: '/admin/nhan-vien', label: 'Nhân viên', icon: <path d="M4 20c1.2-3.6 4.2-5.5 8-5.5s6.8 1.9 8 5.5M12 11.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /> },
+      { to: '/admin/nhat-ky', label: 'Nhật ký thao tác', icon: <path d="M6 3h9l4 4v14H6zM15 3v4h4M9 11h7M9 14.5h7M9 18h4" /> },
     ],
   },
 ]
@@ -75,10 +77,12 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/bao-cao': 'Báo cáo nhân khẩu học',
   '/admin/crm': 'Hồ sơ & RFM khách hàng',
   '/admin/ho-tro': 'Hỗ trợ khách hàng',
+  '/admin/danh-gia': 'Đánh giá sản phẩm',
   '/admin/khao-sat': 'Khảo sát khách hàng',
   '/admin/phan-khuc': 'Phân khúc khách hàng',
   '/admin/chien-dich': 'Chiến dịch chăm sóc',
   '/admin/nhan-vien': 'Nhân viên',
+  '/admin/nhat-ky': 'Nhật ký thao tác',
 }
 
 const DEPARTMENT_LABEL: Record<Department, string> = {

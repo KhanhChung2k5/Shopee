@@ -1,6 +1,6 @@
 package com.chotomua.backend.modules.marketing;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /** Projection for the public homepage review showcase — joins review +
@@ -11,7 +11,7 @@ public interface ReviewShowcaseProjection {
     Integer getRating();
     String getComment();
     String getReplyText();
-    OffsetDateTime getCreatedAt();
+    Instant getCreatedAt();
     String getBuyerName();
     String getProductName();
 }

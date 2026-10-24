@@ -24,6 +24,8 @@ import AdminMarketingPage from './admin/pages/AdminMarketingPage'
 import AdminEmployeesPage from './admin/pages/AdminEmployeesPage'
 import AdminCrmProfilesPage from './admin/pages/crm/AdminCrmProfilesPage'
 import AdminSupportPage from './admin/pages/crm/AdminSupportPage'
+import AdminReviewsPage from './admin/pages/AdminReviewsPage'
+import AdminAuditLogPage from './admin/pages/crm/AdminAuditLogPage'
 import AdminSurveysPage from './admin/pages/crm/AdminSurveysPage'
 import AdminSegmentsPage from './admin/pages/crm/AdminSegmentsPage'
 import AdminCampaignsPage from './admin/pages/crm/AdminCampaignsPage'
@@ -95,8 +97,10 @@ function App() {
           <Route path="khach-hang" element={<RequireDepartment><AdminCustomersPage /></RequireDepartment>} />
           <Route path="bao-cao" element={<RequireDepartment><AdminDemographicsPage /></RequireDepartment>} />
           <Route path="nhan-vien" element={<RequireDepartment><AdminEmployeesPage /></RequireDepartment>} />
+          <Route path="nhat-ky" element={<RequireDepartment><AdminAuditLogPage /></RequireDepartment>} />
           <Route path="crm" element={<RequireDepartment><AdminCrmProfilesPage /></RequireDepartment>} />
           <Route path="ho-tro" element={<RequireDepartment><AdminSupportPage /></RequireDepartment>} />
+          <Route path="danh-gia" element={<RequireDepartment><AdminReviewsPage /></RequireDepartment>} />
           <Route path="khao-sat" element={<RequireDepartment><AdminSurveysPage /></RequireDepartment>} />
           <Route path="phan-khuc" element={<RequireDepartment><AdminSegmentsPage /></RequireDepartment>} />
           <Route path="chien-dich" element={<RequireDepartment><AdminCampaignsPage /></RequireDepartment>} />
