@@ -1,6 +1,7 @@
 package com.chotomua.backend.modules.crm.application.campaign;
 
 import com.chotomua.backend.modules.crm.domain.campaign.CampaignProductTarget;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
@@ -8,8 +9,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-/** Gắn sản phẩm vào chiến dịch trong bộ nhớ. Mất khi restart — đúng SPEC mở rộng. */
+/** Gắn sản phẩm vào chiến dịch trong bộ nhớ — chỉ cho profile test {@code crm-fake}; chạy thật dùng {@code JdbcCampaignProductTargetStore}. */
 @Component
+@Profile("crm-fake")
 public class InMemoryCampaignProductTargetStore implements CampaignProductTargetStore {
 
     private final Map<UUID, CampaignProductTarget> targets = new LinkedHashMap<>();

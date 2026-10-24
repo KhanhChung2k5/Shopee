@@ -99,6 +99,31 @@ class PublicProductControllerTest {
         verify(products).findPublishedProducts(null, "", "", "", PageRequest.of(0, 10));
     }
 
+    @Test
+    void listCarriesRealSoldCountAndReviewRating() {
+        Product sold = persistedProduct(UUID.randomUUID(), "DualSense");
+        Product fresh = persistedProduct(UUID.randomUUID(), "Đế sạc");
+        when(products.findPublishedProducts(null, "", "", "", PageRequest.of(0, 20)))
+                .thenReturn(new PageImpl<>(List.of(sold, fresh), PageRequest.of(0, 20), 2));
+        when(variants.findByProduct_IdInAndStatus(anyCollection(), eq("active"))).thenReturn(List.of());
+        ProductRepository.SalesStats stats = mock(ProductRepository.SalesStats.class);
+        when(stats.getProductId()).thenReturn(sold.getId());
+        when(stats.getSoldCount()).thenReturn(1250L);
+        when(stats.getRatingAverage()).thenReturn(4.666);
+        when(stats.getRatingCount()).thenReturn(3L);
+        when(products.findSalesStats(anyCollection())).thenReturn(List.of(stats));
+
+        var content = controller.list(null, null, null, null, 0, 20).content();
+
+        assertThat(content.get(0).soldCount()).isEqualTo(1250);
+        assertThat(content.get(0).ratingAverage()).isEqualTo(4.7);
+        assertThat(content.get(0).ratingCount()).isEqualTo(3);
+        // No orders and no reviews: zero sold and no made-up rating.
+        assertThat(content.get(1).soldCount()).isZero();
+        assertThat(content.get(1).ratingAverage()).isNull();
+        assertThat(content.get(1).ratingCount()).isZero();
+    }
+
     private static Product persistedProduct(UUID id, String name) {
         Product product = new Product(name);
         setId(Product.class, product, id);

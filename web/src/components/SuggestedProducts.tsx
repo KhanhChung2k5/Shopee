@@ -33,7 +33,8 @@ const PRICE_OPTIONS = [
 
 type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'name'
 
-const STITCH_DEFAULT_PRODUCTS: CatalogProductSummary[] = [
+// Offline fallback when the catalog API is unreachable — no orders/reviews to show, so no sold count or rating.
+const STITCH_DEFAULT_PRODUCTS: CatalogProductSummary[] = ([
   {
     id: '9386ce6f-e18e-50c9-8092-8c75ec4d4b9a',
     categoryId: '01010101-0000-0000-0000-000000000002',
@@ -138,7 +139,8 @@ const STITCH_DEFAULT_PRODUCTS: CatalogProductSummary[] = [
     ],
     platforms: ['PS5'],
   },
-]
+] satisfies Omit<CatalogProductSummary, 'soldCount' | 'ratingAverage' | 'ratingCount'>[])
+  .map((product) => ({ ...product, soldCount: 0, ratingAverage: null, ratingCount: 0 }))
 
 const INITIAL_DISPLAY_COUNT = 12
 

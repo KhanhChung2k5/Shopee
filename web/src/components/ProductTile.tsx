@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import ProductThumb from './ProductThumb'
 import { formatPrice } from './ui'
-import type { CatalogProductSummary } from '../lib/catalog'
+import { formatSoldCount, type CatalogProductSummary } from '../lib/catalog'
 import { useQuickAdd } from '../state/useQuickAdd'
 
 /** Product card used by the homepage suggestions, category and search grids. */
@@ -48,16 +48,20 @@ export default function ProductTile({ product, index = 0 }: { product: CatalogPr
           </h3>
         </Link>
 
-        {/* Rating & Sold Count */}
+        {/* Rating & Sold Count — real figures from orders and reviews */}
         <div className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant mb-space-sm">
-          <div className="flex items-center text-primary">
-            <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
-              star
-            </span>
-            <span className="font-bold ml-0.5">{(4.8 + ((index * 3) % 3) * 0.1).toFixed(1)}</span>
-          </div>
+          {product.ratingAverage != null && product.ratingCount > 0 ? (
+            <div className="flex items-center text-primary" title={`${product.ratingCount} đánh giá`}>
+              <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+                star
+              </span>
+              <span className="font-bold ml-0.5">{product.ratingAverage.toFixed(1)}</span>
+            </div>
+          ) : (
+            <span>Chưa có đánh giá</span>
+          )}
           <span>•</span>
-          <span>Đã bán {((index * 400 + 950) / 1000).toFixed(1)}k</span>
+          <span>Đã bán {formatSoldCount(product.soldCount ?? 0)}</span>
         </div>
       </div>
 

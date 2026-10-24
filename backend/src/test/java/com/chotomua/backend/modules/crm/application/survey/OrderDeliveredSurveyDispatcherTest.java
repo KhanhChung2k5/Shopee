@@ -58,7 +58,7 @@ class OrderDeliveredSurveyDispatcherTest {
         notifications = new InMemoryNotificationStore();
         targetService = new SurveyTargetService(identity, products, surveys, targets);
         dispatcher = new OrderDeliveredSurveyDispatcher(
-                identity, orders, surveys, targetService, notifications, CLOCK);
+                identity, orders, surveys, targetService, notifications, new InMemorySurveyDispatchLog(), CLOCK);
         identity.seedStaff(ADMIN, StaffDepartment.ADMIN);
         products.seed(new ProductView(
                 PRODUCT, "Tay cầm DualSense", "Sony", "controller",

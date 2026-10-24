@@ -24,7 +24,7 @@ import java.util.UUID;
 
 /**
  * Hook đơn {@code delivered}: khớp sản phẩm mục tiêu → 1 thông báo khảo sát in-app.
- * Không SMTP. Chống trùng theo (surveyId, orderId).
+ * Không SMTP. Chống trùng theo (surveyId, orderId) qua {@link SurveyDispatchLog} (lưu DB, giữ được qua restart).
  */
 @Service
 public class OrderDeliveredSurveyDispatcher {
@@ -34,8 +34,8 @@ public class OrderDeliveredSurveyDispatcher {
     private final SurveyStore surveys;
     private final SurveyTargetService targets;
     private final NotificationStore notifications;
+    private final SurveyDispatchLog dispatchLog;
     private final Clock clock;
-    private final Set<String> dispatched = new HashSet<>();
 
     @Autowired
     public OrderDeliveredSurveyDispatcher(
@@ -43,9 +43,10 @@ public class OrderDeliveredSurveyDispatcher {
             OrderPort orders,
             SurveyStore surveys,
             SurveyTargetService targets,
-            NotificationStore notifications
+            NotificationStore notifications,
+            SurveyDispatchLog dispatchLog
     ) {
-        this(identity, orders, surveys, targets, notifications, Clock.systemDefaultZone());
+        this(identity, orders, surveys, targets, notifications, dispatchLog, Clock.systemDefaultZone());
     }
 
     /** Kiểm thử gắn đồng hồ khi ghi thời điểm gửi. */
@@ -55,6 +56,7 @@ public class OrderDeliveredSurveyDispatcher {
             SurveyStore surveys,
             SurveyTargetService targets,
             NotificationStore notifications,
+            SurveyDispatchLog dispatchLog,
             Clock clock
     ) {
         this.identity = identity;
@@ -62,12 +64,8 @@ public class OrderDeliveredSurveyDispatcher {
         this.surveys = surveys;
         this.targets = targets;
         this.notifications = notifications;
+        this.dispatchLog = dispatchLog;
         this.clock = clock;
-    }
-
-    /** Xóa dấu đã gửi — dùng giữa các bài kiểm thử. */
-    public synchronized void clear() {
-        dispatched.clear();
     }
 
     /**
@@ -107,8 +105,7 @@ public class OrderDeliveredSurveyDispatcher {
             if (!matches(survey.id(), orderedProducts)) {
                 continue;
             }
-            String key = key(survey.id(), orderId);
-            if (dispatched.contains(key)) {
+            if (!dispatchLog.claim(survey.id(), orderId)) {
                 continue;
             }
             markSentIfDraft(survey);
@@ -121,7 +118,6 @@ public class OrderDeliveredSurveyDispatcher {
                     inboxContent(survey),
                     "sent",
                     now));
-            dispatched.add(key);
             surveyIds.add(survey.id());
         }
         if (!created.isEmpty()) {
@@ -166,9 +162,5 @@ public class OrderDeliveredSurveyDispatcher {
         String description = survey.description() == null ? "" : survey.description().trim();
         String content = description.isEmpty() ? title : title + " — " + description;
         return content.length() > 500 ? content.substring(0, 500) : content;
-    }
-
-    private static String key(UUID surveyId, UUID orderId) {
-        return surveyId + ":" + orderId;
     }
 }

@@ -94,9 +94,11 @@ public class PublicProductController {
         Map<UUID, List<ProductVariant>> variantsByProduct = productIds.isEmpty() ? Map.of()
                 : variants.findByProduct_IdInAndStatus(productIds, "active").stream()
                     .collect(Collectors.groupingBy(variant -> variant.getProduct().getId()));
+        Map<UUID, SalesStats> statsByProduct = salesStats(productIds);
         List<ProductSummary> content = result.getContent().stream()
                 .map(product -> ProductSummary.from(product,
-                        variantsByProduct.getOrDefault(product.getId(), List.of())))
+                        variantsByProduct.getOrDefault(product.getId(), List.of()),
+                        statsByProduct.getOrDefault(product.getId(), SalesStats.NONE)))
                 .toList();
         return new PageResponse<>(content, result.getNumber(),
                 result.getSize(), result.getTotalElements(), result.getTotalPages());
@@ -120,6 +122,20 @@ public class PublicProductController {
                         availableByVariant.getOrDefault(variant.getId(), 0)))
                 .toList();
         return ProductDetails.from(product, variantDetails);
+    }
+
+    private Map<UUID, SalesStats> salesStats(List<UUID> productIds) {
+        if (productIds.isEmpty()) return Map.of();
+        return products.findSalesStats(productIds).stream().collect(Collectors.toMap(
+                ProductRepository.SalesStats::getProductId,
+                row -> new SalesStats(row.getSoldCount(),
+                        row.getRatingAverage() == null ? null : Math.round(row.getRatingAverage() * 10) / 10.0,
+                        row.getRatingCount())));
+    }
+
+    /** Sold / rating shown on product cards; {@link #NONE} when a product has no orders or reviews yet. */
+    record SalesStats(long soldCount, Double ratingAverage, long ratingCount) {
+        static final SalesStats NONE = new SalesStats(0, null, 0);
     }
 
     private String normalize(String value) {
@@ -147,15 +163,17 @@ public class PublicProductController {
 
     public record ProductSummary(UUID id, UUID categoryId, String name, String brandName,
                                  String productType, JsonNode platforms, JsonNode imageUrls,
-                                 BigDecimal price, BigDecimal comparePrice) {
-        static ProductSummary from(Product product, List<ProductVariant> variants) {
+                                 BigDecimal price, BigDecimal comparePrice,
+                                 long soldCount, Double ratingAverage, long ratingCount) {
+        static ProductSummary from(Product product, List<ProductVariant> variants, SalesStats stats) {
             ProductVariant lowest = variants.stream()
                     .min(java.util.Comparator.comparing(ProductVariant::getPrice)).orElse(null);
             return new ProductSummary(product.getId(),
                     product.getCategory() == null ? null : product.getCategory().getId(), product.getName(),
                     product.getBrandName(), product.getProductType(), product.getPlatforms(),
                     displayImages(product, lowest),
-                    lowest == null ? null : lowest.getPrice(), lowest == null ? null : lowest.getComparePrice());
+                    lowest == null ? null : lowest.getPrice(), lowest == null ? null : lowest.getComparePrice(),
+                    stats.soldCount(), stats.ratingAverage(), stats.ratingCount());
         }
 
         private static JsonNode displayImages(Product product, ProductVariant lowest) {

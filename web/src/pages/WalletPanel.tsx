@@ -9,7 +9,7 @@ interface WalletBalance {
 interface WalletTransaction {
   id: string
   orderId: string | null
-  type: 'topup' | 'refund' | 'payment'
+  type: 'topup' | 'payment'
   amount: number
   createdAt: string
 }
@@ -27,13 +27,11 @@ const dateTime = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyl
 
 const transactionNames: Record<WalletTransaction['type'], string> = {
   topup: 'Nạp ví',
-  refund: 'Hoàn tiền',
   payment: 'Thanh toán đơn hàng',
 }
 
 const transactionIcons: Record<WalletTransaction['type'], string> = {
   topup: 'add_card',
-  refund: 'currency_exchange',
   payment: 'shopping_bag',
 }
 

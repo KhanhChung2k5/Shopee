@@ -9,4 +9,7 @@ import java.util.UUID;
 public interface InventoryMovementRepository extends JpaRepository<InventoryMovement, UUID> {
     @EntityGraph(attributePaths = {"stock", "stock.variant", "stock.warehouse"})
     List<InventoryMovement> findByStock_IdOrderByOccurredAtDesc(UUID stockId);
+
+    @EntityGraph(attributePaths = {"stock"})
+    List<InventoryMovement> findByOrderId(UUID orderId);
 }
