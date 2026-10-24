@@ -1,6 +1,8 @@
 package com.chotomua.backend.modules.marketing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -21,14 +23,16 @@ class VoucherDiscoveryServiceTest {
     private final VoucherRepository vouchers = mock(VoucherRepository.class);
     private final PromotionProgramRepository programs = mock(PromotionProgramRepository.class);
     private final UserRepository users = mock(UserRepository.class);
-    private final VoucherDiscoveryService service = new VoucherDiscoveryService(vouchers, programs, users);
+    private final VoucherUsageRepository usages = mock(VoucherUsageRepository.class);
+    private final VoucherDiscoveryService service = new VoucherDiscoveryService(vouchers, programs, users, usages);
 
     @Test
-    void listsOnlyActiveVouchersForBuyerTier() {
+    void listsOnlyActiveUnusedVouchersOpenToTheBuyerTier() {
         UUID userId = UUID.randomUUID();
         UUID openId = UUID.randomUUID();
         UUID premiumId = UUID.randomUUID();
         UUID futureId = UUID.randomUUID();
+        UUID silverId = UUID.randomUUID();
         OffsetDateTime now = OffsetDateTime.now();
         User buyer = new User("buyer", "hash");
         buyer.setLoyaltyTier("silver");
@@ -37,16 +41,25 @@ class VoucherDiscoveryServiceTest {
         PromotionProgram open = program(openId, null, now.minusDays(1), now.plusDays(2));
         PromotionProgram premium = program(premiumId, "gold", now.minusDays(1), now.plusDays(2));
         PromotionProgram future = program(futureId, null, now.plusDays(1), now.plusDays(2));
-        when(programs.findAll()).thenReturn(List.of(open, premium, future));
+        PromotionProgram fromBronze = program(silverId, "bronze", now.minusDays(1), now.plusDays(2));
+        when(programs.findAll()).thenReturn(List.of(open, premium, future, fromBronze));
         when(vouchers.findAllByOrderByCodeAsc()).thenReturn(List.of(
                 voucher(openId, "ACTIVE", now.plusHours(1)),
                 voucher(openId, "EXPIRED", now.minusHours(1)),
                 voucher(premiumId, "GOLD", null),
-                voucher(futureId, "FUTURE", null)));
+                voucher(futureId, "FUTURE", null),
+                voucher(silverId, "MEMBER", null),
+                voucher(openId, "USED", null)));
+        when(usages.hasActiveUse(any(), eq(userId))).thenAnswer(call -> false);
+
+        Voucher used = vouchers.findAllByOrderByCodeAsc().get(5);
+        ReflectionTestUtils.setField(used, "id", UUID.randomUUID());
+        when(usages.hasActiveUse(used.getId(), userId)).thenReturn(true);
 
         var result = service.availableFor(userId);
 
-        assertThat(result).extracting("code").containsExactly("ACTIVE");
+        // GOLD needs gold+; MEMBER (bronze and up) is open to a silver buyer; USED was already used.
+        assertThat(result).extracting("code").containsExactly("ACTIVE", "MEMBER");
         assertThat(result.getFirst().endsAt()).isEqualTo(now.plusHours(1));
     }
 

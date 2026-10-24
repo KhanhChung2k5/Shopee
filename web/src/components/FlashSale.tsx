@@ -33,79 +33,6 @@ function countdown(endMs: number, now: number) {
   }
 }
 
-const DEFAULT_FLASH_ITEMS = [
-  {
-    id: 'fs-real-1',
-    productId: '976110cc-8f9c-519e-91e1-1cfebf415135',
-    productName: 'Tay Cầm DualSense - Chroma Pearl (Bộ Sưu Tập Đổi Màu)',
-    imageUrl:
-      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-c2-1.webp',
-    originalPrice: 1590000,
-    flashPrice: 1339900,
-    soldPercent: 88,
-    soldText: 'Đã bán 88%',
-    stockText: 'Chỉ còn 6 cái',
-    badge: 'Chính Hãng',
-    badgeClass: 'bg-secondary-container text-on-secondary-container',
-  },
-  {
-    id: 'fs-real-2',
-    productId: 'ed6de72d-7afd-5f30-bd3a-e4ad9db6411e',
-    productName: 'Đĩa PS5 Astro Bot (Bản Vật Lý Chính Hãng Sealed)',
-    imageUrl:
-      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d4-1.webp',
-    originalPrice: 1790000,
-    flashPrice: 1499000,
-    soldPercent: 94,
-    soldText: 'Đã bán 94%',
-    stockText: 'Sắp Cháy Hàng',
-    badge: 'HOT DEAL',
-    badgeClass: 'bg-primary-fixed-dim text-on-primary-fixed',
-  },
-  {
-    id: 'fs-real-3',
-    productId: 'eb538024-56e6-5134-aef6-927c163ac9aa',
-    productName: 'Đĩa PS5 Stellar Blade (Bản Đĩa Vật Lý Sealed 100%)',
-    imageUrl:
-      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-d5-1.webp',
-    originalPrice: 1990000,
-    flashPrice: 1799000,
-    soldPercent: 75,
-    soldText: 'Đã bán 75%',
-    stockText: 'Còn 10 cái',
-    badge: 'Bán Chạy',
-    badgeClass: 'bg-secondary-container text-on-secondary-container',
-  },
-  {
-    id: 'fs-real-4',
-    productId: 'da16eedf-0a60-525c-855c-6783bd9af2bb',
-    productName: 'Tay Cầm Không Dây DualSense - Chroma Indigo',
-    imageUrl:
-      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-c1-1.webp',
-    originalPrice: 2490000,
-    flashPrice: 2299000,
-    soldPercent: 82,
-    soldText: 'Đã bán 82%',
-    stockText: 'Còn 8 cái',
-    badge: 'Chính Hãng',
-    badgeClass: 'bg-tertiary-fixed text-on-tertiary-fixed',
-  },
-  {
-    id: 'fs-real-5',
-    productId: '916871f7-a4b6-51e6-afb8-fa8f8d9c6aef',
-    productName: 'Đế Sạc Nhanh Cho Tay Cầm DualSense PS5',
-    imageUrl:
-      'https://egjqoclztrflmtuxclsp.supabase.co/storage/v1/object/public/CNPM/products/gallery/sp-a5-1.webp',
-    originalPrice: 990000,
-    flashPrice: 799000,
-    soldPercent: 60,
-    soldText: 'Đã bán 60%',
-    stockText: 'Còn 15 cái',
-    badge: 'Phụ Kiện',
-    badgeClass: 'bg-secondary-container text-on-secondary-container',
-  },
-]
-
 export default function FlashSale() {
   const { token } = useAuth()
   const { quickAdd, busyId } = useQuickAdd()
@@ -126,10 +53,9 @@ export default function FlashSale() {
   }, [])
 
   const running = items.filter((item) => new Date(item.endsAt).getTime() > now)
-  const defaultTargetTime = now + (2 * 3600 + 45 * 60 + 18) * 1000 - (now % (3 * 3600 * 1000))
-  const nextEnd = running.length > 0
-    ? Math.min(...running.map((item) => new Date(item.endsAt).getTime()))
-    : defaultTargetTime
+  // Only real, running flash-sale lines from /flash-sales; with none on, the homepage shows no Flash Sale block.
+  if (running.length === 0) return null
+  const nextEnd = Math.min(...running.map((item) => new Date(item.endsAt).getTime()))
   const { hours, minutes, seconds } = countdown(nextEnd, now)
 
   return (
@@ -170,8 +96,7 @@ export default function FlashSale() {
       </div>
 
       <div className="p-space-lg grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-space-md">
-        {running.length > 0
-          ? running.map((prod) => {
+        {running.map((prod) => {
               const image = resolveCatalogImageUrl(prod.imageUrl)
               const discount = prod.originalPrice > prod.flashPrice
                 ? Math.round((1 - prod.flashPrice / prod.originalPrice) * 100)
@@ -240,67 +165,6 @@ export default function FlashSale() {
                   <button
                     onClick={() => quickAdd(prod.productId, { goToCart: true, variantId: prod.variantId })}
                     disabled={remaining === 0 || busyId === prod.productId}
-                    className="mt-space-md w-full py-2 bg-primary hover:bg-primary-container text-on-primary font-title-md text-title-md rounded transition-colors flex items-center justify-center gap-1 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                    type="button"
-                  >
-                    <span className="material-symbols-outlined text-base">shopping_bag</span>
-                    <span>Mua Ngay</span>
-                  </button>
-                </div>
-              )
-            })
-          : DEFAULT_FLASH_ITEMS.map((item) => {
-              const discount = Math.round((1 - item.flashPrice / item.originalPrice) * 100)
-              return (
-                <div
-                  key={item.id}
-                  className="bg-surface-container-lowest rounded-lg p-space-sm shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
-                >
-                  <Link to={`/san-pham/${item.productId}`} className="block">
-                    <div className="relative w-full aspect-square bg-surface-container-low rounded-lg overflow-hidden mb-space-sm">
-                      <div
-                        className="w-full h-full bg-cover bg-center group-hover:scale-105 transition-transform duration-300"
-                        style={{ backgroundImage: `url('${item.imageUrl}')` }}
-                      ></div>
-                      <span className="absolute top-2 right-2 bg-primary text-on-primary font-label-sm text-label-sm font-bold px-1.5 py-0.5 rounded">
-                        -{discount}%
-                      </span>
-                      <span className={`absolute top-2 left-2 font-label-sm text-label-sm px-1.5 py-0.5 rounded font-bold ${item.badgeClass}`}>
-                        {item.badge}
-                      </span>
-                    </div>
-                  </Link>
-
-                  <div className="space-y-space-xs flex-1 flex flex-col justify-between">
-                    <Link to={`/san-pham/${item.productId}`}>
-                      <h3 className="font-title-md text-title-md text-on-surface line-clamp-2 group-hover:text-primary transition-colors">
-                        {item.productName}
-                      </h3>
-                    </Link>
-                    <div className="space-y-1 pt-1">
-                      <div className="flex items-baseline gap-space-xs">
-                        <span className="font-price-lg text-price-lg text-primary">
-                          ₫{item.flashPrice.toLocaleString('vi-VN')}
-                        </span>
-                        <span className="font-label-sm text-label-sm text-outline line-through">
-                          ₫{item.originalPrice.toLocaleString('vi-VN')}
-                        </span>
-                      </div>
-                      <div className="space-y-0.5">
-                        <div className="w-full bg-surface-container-highest rounded-full h-2.5 overflow-hidden">
-                          <div className="bg-primary h-full rounded-full" style={{ width: `${item.soldPercent}%` }}></div>
-                        </div>
-                        <div className="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
-                          <span>{item.soldText}</span>
-                          <span className="text-primary font-bold">{item.stockText}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => quickAdd(item.productId, { goToCart: true })}
-                    disabled={busyId === item.productId}
                     className="mt-space-md w-full py-2 bg-primary hover:bg-primary-container text-on-primary font-title-md text-title-md rounded transition-colors flex items-center justify-center gap-1 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                     type="button"
                   >

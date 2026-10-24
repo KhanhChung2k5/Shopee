@@ -21,9 +21,6 @@ public class Payment {
     @Column(name = "user_id")
     private UUID userId;
 
-    @Column(name = "wallet_transaction_id")
-    private UUID walletTransactionId;
-
     @Column(nullable = false, length = 20)
     private String purpose;
 
@@ -42,38 +39,20 @@ public class Payment {
     protected Payment() {
     }
 
-    public static Payment simulatedWalletTopUp(UUID requestId, UUID userId, UUID walletTransactionId, BigDecimal amount) {
-        Payment payment = new Payment();
-        payment.id = requestId;
-        payment.userId = userId;
-        payment.walletTransactionId = walletTransactionId;
-        payment.purpose = "wallet_topup";
-        payment.method = "bank_transfer";
-        payment.amount = amount;
-        payment.status = "paid";
-        payment.paidAt = OffsetDateTime.now();
-        return payment;
-    }
-
-    public static Payment checkout(UUID orderId, String method, BigDecimal amount, UUID walletTransactionId) {
+    /** COD and bank transfer are collected later — marked paid when the order is delivered (CheckoutPaymentService.settleOnDelivery). */
+    public static Payment checkout(UUID orderId, String method, BigDecimal amount) {
         Payment payment = new Payment();
         payment.id = UUID.randomUUID();
         payment.orderId = orderId;
-        payment.walletTransactionId = walletTransactionId;
         payment.purpose = "checkout";
         payment.method = method;
         payment.amount = amount;
-        payment.status = "cod".equals(method) ? "pending" : "paid";
-        payment.paidAt = "cod".equals(method) ? null : OffsetDateTime.now();
+        payment.status = "pending";
         return payment;
     }
 
     public UUID getId() {
         return id;
-    }
-
-    public UUID getWalletTransactionId() {
-        return walletTransactionId;
     }
 
     public UUID getUserId() {
@@ -94,5 +73,29 @@ public class Payment {
 
     public String getStatus() {
         return status;
+    }
+
+    public UUID getOrderId() {
+        return orderId;
+    }
+
+    public OffsetDateTime getPaidAt() {
+        return paidAt;
+    }
+
+    /** COD / bank transfer collected (order delivered). */
+    public void markPaid() {
+        status = "paid";
+        if (paidAt == null) paidAt = OffsetDateTime.now();
+    }
+
+    /** Order cancelled before anything was collected. */
+    public void markCancelled() {
+        status = "cancelled";
+    }
+
+    /** Money handed back to the buyer by bank transfer — all of it, or only part (some lines returned). */
+    public void markRefunded(boolean full) {
+        status = full ? "refunded" : "partially_refunded";
     }
 }

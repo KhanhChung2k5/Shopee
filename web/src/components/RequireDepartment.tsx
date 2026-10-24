@@ -10,12 +10,13 @@ import { EmptyState } from './ui'
  * sidebar) — so adding a new admin page only means adding one line there,
  * never touching this component or duplicating the rule.
  */
-export default function RequireDepartment({ children }: { children: ReactNode }) {
+export default function RequireDepartment({ children, section }: { children: ReactNode; section?: string }) {
   const { user } = useAuth()
   const location = useLocation()
 
   const department = (user?.department ?? null) as Department | null
-  const allowed = canAccessSection(location.pathname, department)
+  // `section` lets a nested page (e.g. /admin/don-hang/:id) reuse its parent section's rule.
+  const allowed = canAccessSection(section ?? location.pathname, department)
 
   if (!allowed) {
     return (

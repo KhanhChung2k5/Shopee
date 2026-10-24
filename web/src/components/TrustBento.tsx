@@ -1,62 +1,34 @@
+import { Link } from 'react-router-dom'
+
+/** What the shop actually does today (shipping fee 0, payment methods, loyalty points, CS tickets). */
+const PROMISES = [
+  { icon: 'local_shipping', tone: 'bg-primary/10 text-primary', title: 'Miễn Phí Vận Chuyển', desc: 'Áp dụng cho mọi đơn hàng', to: '#goi-y' },
+  { icon: 'payments', tone: 'bg-secondary-container/40 text-secondary', title: 'Thanh Toán Linh Hoạt', desc: 'COD hoặc chuyển khoản ngân hàng', to: '/gio-hang' },
+  { icon: 'loyalty', tone: 'bg-tertiary-fixed text-tertiary', title: 'Tích Điểm Thành Viên', desc: '1 điểm cho mỗi 10.000đ đơn đã giao', to: '#gamer-club' },
+  { icon: 'support_agent', tone: 'bg-surface-container-highest text-on-surface', title: 'Hỗ Trợ Trực Tuyến', desc: 'Gửi yêu cầu, CSKH phản hồi trên web', to: '/ho-tro' },
+]
+
 export default function TrustBento() {
   return (
     <section id="cam-ket" className="w-full bg-surface-container-lowest rounded-xl p-space-md shadow-sm">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-space-md">
-        <div className="flex items-center gap-space-md p-space-xs">
-          <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
-            <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-              verified
-            </span>
-          </div>
-          <div>
-            <h4 className="font-title-md text-title-md text-on-surface">100% Chính Hãng</h4>
-            <p className="font-label-sm text-label-sm text-on-surface-variant">
-              Hoàn tiền 200% nếu phát hiện hàng giả
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-space-md p-space-xs">
-          <div className="w-12 h-12 rounded-lg bg-secondary-container/40 flex items-center justify-center text-secondary flex-shrink-0">
-            <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-              electric_bolt
-            </span>
-          </div>
-          <div>
-            <h4 className="font-title-md text-title-md text-on-surface">Giao Hỏa Tốc 2H</h4>
-            <p className="font-label-sm text-label-sm text-on-surface-variant">
-              Nội thành TP.HCM &amp; Hà Nội nhận liền
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-space-md p-space-xs">
-          <div className="w-12 h-12 rounded-lg bg-tertiary-fixed flex items-center justify-center text-tertiary flex-shrink-0">
-            <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-              published_with_changes
-            </span>
-          </div>
-          <div>
-            <h4 className="font-title-md text-title-md text-on-surface">Đổi Mới 30 Ngày</h4>
-            <p className="font-label-sm text-label-sm text-on-surface-variant">
-              Lỗi phần cứng là đổi mới ngay tận nhà
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-space-md p-space-xs">
-          <div className="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface flex-shrink-0">
-            <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-              credit_card
-            </span>
-          </div>
-          <div>
-            <h4 className="font-title-md text-title-md text-on-surface">Trả Góp 0%</h4>
-            <p className="font-label-sm text-label-sm text-on-surface-variant">
-              Hỗ trợ qua thẻ tín dụng và Game Club
-            </p>
-          </div>
-        </div>
+        {PROMISES.map((item) => {
+          const body = (
+            <>
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${item.tone}`}>
+                <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>{item.icon}</span>
+              </div>
+              <div>
+                <h4 className="font-title-md text-title-md text-on-surface">{item.title}</h4>
+                <p className="font-label-sm text-label-sm text-on-surface-variant">{item.desc}</p>
+              </div>
+            </>
+          )
+          const className = 'flex items-center gap-space-md p-space-xs rounded-lg hover:bg-surface-container-low transition-colors'
+          return item.to.startsWith('#')
+            ? <a key={item.title} href={item.to} className={className}>{body}</a>
+            : <Link key={item.title} to={item.to} className={className}>{body}</Link>
+        })}
       </div>
     </section>
   )

@@ -48,12 +48,12 @@ public class ProductImageStorage {
 
     public String store(MultipartFile file) throws IOException {
         if (file.isEmpty()) {
-            throw new IllegalArgumentException("Uploaded image is empty.");
+            throw new IllegalArgumentException("Ảnh tải lên bị rỗng.");
         }
         String contentType = file.getContentType();
         String extension = contentType == null ? null : EXTENSIONS.get(contentType);
         if (extension == null) {
-            throw new IllegalArgumentException("Only JPEG, PNG, WebP, and GIF images are supported.");
+            throw new IllegalArgumentException("Chỉ hỗ trợ ảnh JPEG, PNG, WebP và GIF.");
         }
         String filename = UUID.randomUUID() + extension;
         if (usesSupabase()) {

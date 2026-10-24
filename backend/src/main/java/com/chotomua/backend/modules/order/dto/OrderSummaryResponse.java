@@ -11,16 +11,22 @@ public record OrderSummaryResponse(
         String status,
         String shipmentStatus,
         long itemCount,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        OrderCustomerResponse customer
 ) {
     public static OrderSummaryResponse from(Order order, long itemCount) {
+        return from(order, itemCount, null);
+    }
+
+    public static OrderSummaryResponse from(Order order, long itemCount, OrderCustomerResponse customer) {
         return new OrderSummaryResponse(
                 order.getId(),
                 order.getTotalAmount(),
                 order.getStatus(),
                 order.getShipmentStatus(),
                 itemCount,
-                order.getCreatedAt()
+                order.getCreatedAt(),
+                customer
         );
     }
 }

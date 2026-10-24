@@ -12,4 +12,7 @@ public interface PromotionProductDetailRepository extends JpaRepository<Promotio
     boolean existsByPromotionProgramId(UUID promotionProgramId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<PromotionProductDetail> findByVariantId(UUID variantId);
+
+    /** Same rows without the write lock — for checkout previews that change nothing. */
+    List<PromotionProductDetail> readByVariantId(UUID variantId);
 }

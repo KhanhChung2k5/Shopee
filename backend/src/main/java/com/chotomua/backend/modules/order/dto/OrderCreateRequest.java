@@ -8,7 +8,7 @@ import java.util.UUID;
 public record OrderCreateRequest(
         @NotNull UUID addressId,
         @Size(max = 50) String voucherCode,
-        @Pattern(regexp = "cod|bank_transfer|wallet", message = "Phương thức thanh toán không hợp lệ") String paymentMethod
+        @Pattern(regexp = "cod|bank_transfer", message = "Phương thức thanh toán không hợp lệ") String paymentMethod
 ) {
     public OrderCreateRequest(UUID addressId) {
         this(addressId, null, "cod");

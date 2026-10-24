@@ -1,47 +1,34 @@
 import { Link } from 'react-router-dom'
 import ApiStatus from './ApiStatus'
 
+/** Same real promises as the homepage TrustBento — nothing the shop does not actually do. */
+const FOOTER_PROMISES = [
+  { icon: 'local_shipping', title: 'Miễn Phí Vận Chuyển', desc: 'Áp dụng cho mọi đơn hàng' },
+  { icon: 'payments', title: 'Thanh Toán Linh Hoạt', desc: 'COD hoặc chuyển khoản ngân hàng' },
+  { icon: 'loyalty', title: 'Tích Điểm Thành Viên', desc: '1 điểm cho mỗi 10.000đ đơn đã giao' },
+  { icon: 'support_agent', title: 'Hỗ Trợ Trực Tuyến', desc: 'Gửi yêu cầu tại trang Hỗ trợ' },
+]
+
+/** Every link goes to a page that exists in the app. */
+const FOOTER_LINKS: { title: string; links: [string, string][] }[] = [
+  { title: 'Hỗ Trợ Khách Hàng', links: [['Tra cứu đơn hàng', '/don-hang'], ['Gửi yêu cầu hỗ trợ', '/ho-tro'], ['Thông báo của tôi', '/thong-bao']] },
+  { title: 'Tài Khoản & Ưu Đãi', links: [['Hồ sơ & điểm thành viên', '/ho-so'], ['Kho voucher', '/kho-voucher'], ['Giỏ hàng', '/gio-hang']] },
+]
+
 export default function Footer() {
   return (
     <footer className="w-full bg-surface-container-lowest">
       <div className="bg-surface-container-low py-space-lg">
         <div className="max-w-[1280px] mx-auto px-margin-desktop grid grid-cols-1 md:grid-cols-4 gap-space-lg">
-          <div className="flex items-center gap-space-md">
-            <span className="material-symbols-outlined text-3xl text-primary">verified</span>
-            <div>
-              <p className="font-title-md text-title-md text-on-surface">100% Chính Hãng</p>
-              <p className="font-label-sm text-label-sm text-on-surface-variant">
-                Cam kết hoàn tiền 200% nếu phát hiện giả
-              </p>
+          {FOOTER_PROMISES.map((item) => (
+            <div key={item.title} className="flex items-center gap-space-md">
+              <span className="material-symbols-outlined text-3xl text-primary">{item.icon}</span>
+              <div>
+                <p className="font-title-md text-title-md text-on-surface">{item.title}</p>
+                <p className="font-label-sm text-label-sm text-on-surface-variant">{item.desc}</p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-space-md">
-            <span className="material-symbols-outlined text-3xl text-primary">sync_alt</span>
-            <div>
-              <p className="font-title-md text-title-md text-on-surface">Đổi Trả Trong 7 Ngày</p>
-              <p className="font-label-sm text-label-sm text-on-surface-variant">
-                Thủ tục đơn giản, 1 đổi 1 tận nơi
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-space-md">
-            <span className="material-symbols-outlined text-3xl text-primary">rocket_launch</span>
-            <div>
-              <p className="font-title-md text-title-md text-on-surface">Giao Hỏa Tốc 2H</p>
-              <p className="font-label-sm text-label-sm text-on-surface-variant">
-                Nội thành TP.HCM &amp; Hà Nội nhận ngay
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-space-md">
-            <span className="material-symbols-outlined text-3xl text-primary">support_agent</span>
-            <div>
-              <p className="font-title-md text-title-md text-on-surface">Hỗ Trợ Game Thủ 24/7</p>
-              <p className="font-label-sm text-label-sm text-on-surface-variant">
-                Tư vấn máy, fix lỗi cài đặt tận tâm
-              </p>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -54,135 +41,49 @@ export default function Footer() {
             <span className="font-title-lg text-title-lg text-primary uppercase font-bold">CHỢ TỐT MUA</span>
           </div>
           <p className="font-body-md text-body-md text-on-surface-variant">
-            Chợ Tốt Mua - Hệ thống bán lẻ tay cầm &amp; đĩa game bản quyền số 1 Việt Nam. Điểm đến tin cậy
-            của cộng đồng PlayStation, Nintendo Switch và Xbox.
+            Chợ Tốt Mua — cửa hàng tay cầm, đĩa game và phụ kiện cho game thủ PlayStation.
           </p>
-          <div className="flex items-center gap-space-sm">
-            <span className="material-symbols-outlined text-xl text-on-surface-variant">verified_user</span>
-            <span className="font-label-sm text-label-sm text-on-surface font-semibold">
-              Chứng nhận sàn TMĐT uy tín bởi Bộ Công Thương
-            </span>
-          </div>
           <div className="pt-2">
             <ApiStatus />
           </div>
         </div>
 
-        <div>
-          <h4 className="font-title-md text-title-md text-on-surface uppercase mb-space-md font-bold">
-            Hỗ Trợ Khách Hàng
-          </h4>
-          <ul className="space-y-space-sm font-body-md text-body-md text-on-surface-variant">
-            <li>
-              <Link className="hover:text-primary transition-colors" to="/don-hang">
-                Hướng dẫn mua hàng từ xa
-              </Link>
-            </li>
-            <li>
-              <Link className="hover:text-primary transition-colors" to="/don-hang">
-                Tra cứu tình trạng vận đơn
-              </Link>
-            </li>
-            <li>
-              <a className="hover:text-primary transition-colors" href="#">
-                Hướng dẫn thanh toán trả góp 0%
-              </a>
-            </li>
-            <li>
-              <a className="hover:text-primary transition-colors" href="#">
-                Quy định đóng gói chống sốc linh kiện
-              </a>
-            </li>
-            <li>
-              <a className="hover:text-primary transition-colors" href="#">
-                Giải quyết khiếu nại &amp; bồi thường
-              </a>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <h4 className="font-title-md text-title-md text-on-surface uppercase mb-space-md font-bold">
-            Chính Sách &amp; Dịch Vụ
-          </h4>
-          <ul className="space-y-space-sm font-body-md text-body-md text-on-surface-variant">
-            <li>
-              <a className="hover:text-primary transition-colors" href="#cam-ket">
-                Chính sách bảo hành 1 đổi 1 trong 12 tháng
-              </a>
-            </li>
-            <li>
-              <a className="hover:text-primary transition-colors" href="/kho-voucher">
-                Chính sách voucher &amp; tích điểm Gamer Club
-              </a>
-            </li>
-            <li>
-              <a className="hover:text-primary transition-colors" href="#">
-                Chính sách bảo mật thông tin cá nhân
-              </a>
-            </li>
-            <li>
-              <a className="hover:text-primary transition-colors" href="#">
-                Điều khoản hoạt động sàn Chợ Tốt Mua
-              </a>
-            </li>
-            <li>
-              <a className="hover:text-primary transition-colors" href="#">
-                Quy chế kiểm duyệt linh kiện bóc máy
-              </a>
-            </li>
-          </ul>
-        </div>
+        {FOOTER_LINKS.map((column) => (
+          <div key={column.title}>
+            <h4 className="font-title-md text-title-md text-on-surface uppercase mb-space-md font-bold">{column.title}</h4>
+            <ul className="space-y-space-sm font-body-md text-body-md text-on-surface-variant">
+              {column.links.map(([label, to]) => (
+                <li key={to}><Link className="hover:text-primary transition-colors" to={to}>{label}</Link></li>
+              ))}
+            </ul>
+          </div>
+        ))}
 
         <div>
           <h4 className="font-title-md text-title-md text-on-surface uppercase mb-space-md font-bold">
             Phương Thức Thanh Toán
           </h4>
           <div className="grid grid-cols-3 gap-space-xs mb-space-md">
-            <span className="px-2 py-1.5 bg-surface-container rounded font-label-sm text-label-sm text-center text-on-surface">
-              MoMo
-            </span>
-            <span className="px-2 py-1.5 bg-surface-container rounded font-label-sm text-label-sm text-center text-on-surface">
-              ZaloPay
-            </span>
-            <span className="px-2 py-1.5 bg-surface-container rounded font-label-sm text-label-sm text-center text-on-surface">
-              VNPAY
-            </span>
-            <span className="px-2 py-1.5 bg-surface-container rounded font-label-sm text-label-sm text-center text-on-surface">
-              Visa
-            </span>
-            <span className="px-2 py-1.5 bg-surface-container rounded font-label-sm text-label-sm text-center text-on-surface">
-              Mastercard
-            </span>
-            <span className="px-2 py-1.5 bg-surface-container rounded font-label-sm text-label-sm text-center text-on-surface">
-              Trả góp 0%
-            </span>
+            {['Khi nhận hàng (COD)', 'Chuyển khoản'].map((method) => (
+              <span key={method} className="px-2 py-1.5 bg-surface-container rounded font-label-sm text-label-sm text-center text-on-surface">
+                {method}
+              </span>
+            ))}
           </div>
 
           <h4 className="font-title-md text-title-md text-on-surface uppercase mb-space-sm font-bold">
-            Đơn Vị Vận Chuyển
+            Vận Chuyển
           </h4>
-          <div className="flex flex-wrap gap-space-xs">
-            <span className="px-2 py-1 bg-surface-container-low rounded font-label-sm text-label-sm text-on-surface-variant">
-              Giao Hàng Nhanh
-            </span>
-            <span className="px-2 py-1 bg-surface-container-low rounded font-label-sm text-label-sm text-on-surface-variant">
-              Viettel Post
-            </span>
-            <span className="px-2 py-1 bg-surface-container-low rounded font-label-sm text-label-sm text-on-surface-variant">
-              SPX Express
-            </span>
-            <span className="px-2 py-1 bg-surface-container-low rounded font-label-sm text-label-sm text-on-surface-variant">
-              GrabExpress 2H
-            </span>
-          </div>
+          <p className="font-label-sm text-label-sm text-on-surface-variant">
+            Miễn phí vận chuyển mọi đơn. Đơn vị vận chuyển và mã vận đơn hiện trong chi tiết đơn hàng sau khi kho đóng gói.
+          </p>
         </div>
       </div>
 
       <div className="bg-surface-container py-space-md text-center font-label-md text-label-md text-on-surface-variant">
         <div className="max-w-[1280px] mx-auto px-margin-desktop flex flex-col md:flex-row items-center justify-between gap-2">
           <span>
-            © 2025 Chợ Tốt Mua Gaming Marketplace. Giấy phép cung cấp dịch vụ TMĐT số 031489201.
+            © 2026 Chợ Tốt Mua Gaming Marketplace.
           </span>
           <span>Trụ sở: 180 Cao Lỗ, Phường 4, Quận 8, TP. Hồ Chí Minh</span>
         </div>

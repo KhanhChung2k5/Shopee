@@ -3,7 +3,6 @@ import { Link, Navigate } from 'react-router-dom'
 import { Alert, Badge, Button, Card, CardTitle, Field, Loading, Page, cx, inputClass } from '../components/ui'
 import { useAuth } from '../state/AuthContext'
 import { apiFetch, ApiError } from '../lib/api'
-import WalletPanel from './WalletPanel'
 import LoyaltyPanel from './LoyaltyPanel'
 
 interface UserProfile {
@@ -25,7 +24,7 @@ interface Address {
   isDefault: boolean
 }
 
-type Tab = 'profile' | 'addresses' | 'wallet' | 'loyalty'
+type Tab = 'profile' | 'addresses' | 'loyalty'
 
 const EMPTY_ADDRESS_FORM = { recipientName: '', phone: '', fullAddress: '', isDefault: false }
 
@@ -140,7 +139,6 @@ function ProfilePageContent({ token, logout, isBuyer }: { token: string; logout:
     { id: 'profile', label: 'Hồ sơ cá nhân', icon: 'person' },
     { id: 'addresses', label: 'Địa chỉ giao hàng', icon: 'location_on' },
     ...(isBuyer ? [
-      { id: 'wallet' as const, label: 'Ví của tôi', icon: 'account_balance_wallet' },
       { id: 'loyalty' as const, label: 'Điểm thành viên', icon: 'loyalty' },
     ] : []),
   ]
@@ -289,7 +287,6 @@ function ProfilePageContent({ token, logout, isBuyer }: { token: string; logout:
             </>
           )}
 
-          {tab === 'wallet' && isBuyer && <WalletPanel token={token} />}
           {tab === 'loyalty' && isBuyer && <LoyaltyPanel token={token} />}
         </div>
       </div>

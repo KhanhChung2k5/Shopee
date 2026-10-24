@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class VoucherService {
 
     private static final BigDecimal MAX_AMOUNT = new BigDecimal("9999999999.99");
+    /** Same values as products.product_type. */
+    static final java.util.Set<String> PRODUCT_TYPES = java.util.Set.of("game_disc", "controller", "accessory");
 
     private final VoucherRepository vouchers;
     private final PromotionProgramRepository programs;
@@ -66,6 +68,12 @@ public class VoucherService {
         }
         if (request.expiresAt() != null && request.expiresAt().isBefore(program.getStartAt())) {
             throw new IllegalArgumentException("Hạn dùng voucher không thể trước ngày bắt đầu chương trình");
+        }
+        if (request.expiresAt() != null && request.expiresAt().isAfter(program.getEndAt())) {
+            throw new IllegalArgumentException("Hạn dùng voucher không thể sau ngày kết thúc chương trình");
+        }
+        if (request.targetProductTypes() != null && !PRODUCT_TYPES.containsAll(request.targetProductTypes())) {
+            throw new IllegalArgumentException("Loại sản phẩm không hợp lệ (game_disc, controller, accessory)");
         }
     }
 

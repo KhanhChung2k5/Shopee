@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Alert, Card, CardTitle, Loading, cx } from '../components/ui'
 import { apiFetch, ApiError } from '../lib/api'
+import { nextTier, tierLabel } from '../lib/loyalty'
 
 interface LoyaltyTransaction {
   id: string
@@ -45,7 +46,17 @@ export default function LoyaltyPanel({ token }: { token: string }) {
           {summary && (
             <>
               <p className="font-headline-xl text-headline-xl">{summary.balance.toLocaleString('vi-VN')} <span className="font-title-lg text-title-lg">điểm</span></p>
-              <p className="font-body-md text-body-md opacity-80">Hạng: {summary.tier ?? 'Chưa xếp hạng'}</p>
+              <p className="font-body-md text-body-md opacity-80">Hạng thành viên: <strong>{tierLabel(summary.tier)}</strong></p>
+              {(() => {
+                // Tier is ranked on lifetime points earned (points are never spent today).
+                const lifetime = summary.transactions.reduce((sum, t) => sum + Math.max(0, t.points), 0)
+                const next = nextTier(lifetime)
+                return (
+                  <p className="font-label-md text-label-md opacity-80">
+                    {next ? `Còn ${(next.minPoints - lifetime).toLocaleString('vi-VN')} điểm để lên hạng ${next.label}` : 'Bạn đang ở hạng cao nhất'}
+                  </p>
+                )
+              })()}
             </>
           )}
         </div>

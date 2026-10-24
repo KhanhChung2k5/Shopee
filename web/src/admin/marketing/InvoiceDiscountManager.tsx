@@ -4,6 +4,7 @@ import type { InvoiceDiscount, PromotionProgram } from './types'
 import { errorMessage, money } from './types'
 import { a } from '../adminUi'
 import { buttonClass } from '../../components/ui'
+import { useDialog } from '../../state/DialogContext'
 
 interface InvoiceForm {
   promotionProgramId: string
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export default function InvoiceDiscountManager({ token, programs, discounts, onChanged }: Props) {
+  const { confirm } = useDialog()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<InvoiceForm>(EMPTY_FORM)
   const [busy, setBusy] = useState(false)
@@ -70,7 +72,7 @@ export default function InvoiceDiscountManager({ token, programs, discounts, onC
   }
 
   const remove = async (discount: InvoiceDiscount) => {
-    if (!window.confirm('Xóa ưu đãi hóa đơn này?')) return
+    if (!(await confirm({ title: 'Xoá ưu đãi hóa đơn này', message: 'Thao tác này không thể hoàn tác.', confirmLabel: 'Xoá', tone: 'danger' }))) return
     setError(null)
     try {
       await apiFetch(`/marketing/invoice-discounts/${discount.id}`, { method: 'DELETE' }, token)

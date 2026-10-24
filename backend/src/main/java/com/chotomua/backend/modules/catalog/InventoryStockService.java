@@ -24,12 +24,12 @@ public class InventoryStockService {
     @Transactional
     public void importForReceipt(UUID receiptId, Warehouse warehouse, List<ImportLine> lines) {
         if (receiptId == null || warehouse == null || warehouse.getId() == null || lines == null || lines.isEmpty()) {
-            throw new IllegalArgumentException("A receipt, warehouse, and at least one import line are required.");
+            throw new IllegalArgumentException("Cần có phiếu nhập, kho và ít nhất một dòng nhập.");
         }
 
         for (ImportLine line : lines) {
             if (line.variant() == null || line.variant().getId() == null || line.quantity() == null || line.quantity() <= 0) {
-                throw new IllegalArgumentException("Each import line requires a variant and positive quantity.");
+                throw new IllegalArgumentException("Mỗi dòng nhập kho cần có biến thể và số lượng lớn hơn 0.");
             }
             InventoryStock stock = stocks.findByVariant_IdAndWarehouse_Id(line.variant().getId(), warehouse.getId())
                     .orElseGet(() -> new InventoryStock(line.variant(), warehouse));
@@ -46,7 +46,7 @@ public class InventoryStockService {
     @Transactional
     public InventoryStock exportStock(UUID warehouseId, ExportLine line) {
         if (warehouseId == null || line == null) {
-            throw new IllegalArgumentException("A warehouse and export line are required.");
+            throw new IllegalArgumentException("Cần chọn kho và dòng xuất kho.");
         }
         return subtractStock(null, warehouseId, line);
     }
@@ -59,7 +59,7 @@ public class InventoryStockService {
     @Transactional
     public void returnForOrder(UUID orderId) {
         if (orderId == null) {
-            throw new IllegalArgumentException("An order is required.");
+            throw new IllegalArgumentException("Thiếu đơn hàng.");
         }
         Map<UUID, InventoryStock> stockById = new LinkedHashMap<>();
         Map<UUID, Integer> outstanding = new LinkedHashMap<>();
@@ -85,12 +85,12 @@ public class InventoryStockService {
     @Transactional
     public void exportForOrder(UUID orderId, UUID warehouseId, List<ExportLine> lines) {
         if (orderId == null || warehouseId == null || lines == null || lines.isEmpty()) {
-            throw new IllegalArgumentException("An order, warehouse, and at least one export line are required.");
+            throw new IllegalArgumentException("Cần có đơn hàng, kho và ít nhất một dòng xuất kho.");
         }
 
         for (ExportLine line : lines) {
             if (line.variantId() == null || line.quantity() == null || line.quantity() <= 0) {
-                throw new IllegalArgumentException("Each export line requires a variant and positive quantity.");
+                throw new IllegalArgumentException("Mỗi dòng xuất kho cần có biến thể và số lượng lớn hơn 0.");
             }
             subtractStock(orderId, warehouseId, line);
         }
@@ -98,13 +98,13 @@ public class InventoryStockService {
 
     private InventoryStock subtractStock(UUID orderId, UUID warehouseId, ExportLine line) {
         if (line.variantId() == null || line.quantity() == null || line.quantity() <= 0) {
-            throw new IllegalArgumentException("Each export line requires a variant and positive quantity.");
+            throw new IllegalArgumentException("Mỗi dòng xuất kho cần có biến thể và số lượng lớn hơn 0.");
         }
         InventoryStock stock = stocks.findByVariant_IdAndWarehouse_Id(line.variantId(), warehouseId)
-                .orElseThrow(() -> new IllegalArgumentException("No stock exists for variant " + line.variantId()));
+                .orElseThrow(() -> new IllegalArgumentException("Chưa có tồn kho cho biến thể " + line.variantId()));
         int available = stock.getQuantity() - stock.getReservedQuantity();
         if (available < line.quantity()) {
-            throw new IllegalArgumentException("Insufficient available stock for variant " + line.variantId());
+            throw new IllegalArgumentException("Không đủ hàng khả dụng cho biến thể " + line.variantId());
         }
 
         stock.setQuantity(stock.getQuantity() - line.quantity());

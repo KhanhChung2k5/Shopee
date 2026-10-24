@@ -10,6 +10,7 @@ export type Department = 'sales' | 'warehouse' | 'admin' | 'cs'
  * - san-pham   : nhân viên bán hàng tạo/sửa sản phẩm (CRUD Product)
  * - kho        : nhân viên kho quản lý tồn kho + duyệt phiếu nhập (CRUD Warehouse/GoodsReceipt)
  * - don-hang   : cả sales (xử lý/xuất hoá đơn) lẫn warehouse (đóng gói/xuất kho) đều thao tác trên Order
+ * - hoan-tien  : CSKH duyệt yêu cầu trả hàng và chuyển khoản hoàn tiền thủ công (khớp /refund-returns ở backend)
  * - marketing  : voucher/flash sale là quyết định kinh doanh của sales
  * - khach-hang : quản lý khách hàng (thêm/khoá/xoá mềm) thuộc CRM, do CS phụ trách
  * - bao-cao    : báo cáo khách hàng — admin + CS (CS chỉ xem, phục vụ chăm sóc khách hàng)
@@ -23,6 +24,7 @@ export const ADMIN_SECTION_ACCESS: Record<string, Department[]> = {
   '/admin/kho': ['warehouse', 'admin'],
   '/admin/phieu-nhap': ['warehouse', 'admin'],
   '/admin/don-hang': ['sales', 'warehouse', 'admin'],
+  '/admin/hoan-tien': ['cs', 'admin'],
   '/admin/marketing': ['sales', 'admin'],
   '/admin/khach-hang': ['cs', 'admin'],
   '/admin/bao-cao': ['cs', 'admin'],

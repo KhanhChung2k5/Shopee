@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ApiError, apiFetch } from '../../lib/api'
-import { fetchCategories, formatVnd, typeLabel, type CatalogCategory, type ProductType } from '../../lib/catalog'
+import { fetchCategories, formatVnd, resolveCatalogImageUrl, typeLabel, type CatalogCategory, type ProductType } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
 import { a, statusPillClass } from '../adminUi'
 import { buttonClass } from '../../components/ui'
+import { useDialog } from '../../state/DialogContext'
 
 interface AdminProduct {
   id: string
@@ -34,6 +35,16 @@ interface AdminVariant {
   status: 'active' | 'inactive'
 }
 
+/**
+ * Columns of `products` only some product types use: game info for discs, connection/warranty for hardware.
+ * The form shows just the fields that apply, and clears the others on save so the row stays consistent.
+ */
+const FIELDS_BY_TYPE: Record<ProductType, { game: boolean; hardware: boolean }> = {
+  game_disc: { game: true, hardware: false },
+  controller: { game: false, hardware: true },
+  accessory: { game: false, hardware: true },
+}
+
 const EMPTY_FORM = {
   name: '', categoryId: '', brandName: '', description: '', status: 'draft' as 'draft' | 'published',
   productType: 'accessory' as ProductType, platforms: '', publisher: '', genre: '', ageRating: '',
@@ -42,6 +53,7 @@ const EMPTY_FORM = {
 
 export default function AdminProductsPage() {
   const { token } = useAuth()
+  const { confirm } = useDialog()
   const [products, setProducts] = useState<AdminProduct[]>([])
   const [variants, setVariants] = useState<AdminVariant[]>([])
   const [categories, setCategories] = useState<CatalogCategory[]>([])
@@ -50,6 +62,8 @@ export default function AdminProductsPage() {
   const [editing, setEditing] = useState<AdminProduct | null>(null)
   const [editingVariant, setEditingVariant] = useState<AdminVariant | null>(null)
   const [files, setFiles] = useState<FileList | null>(null)
+  /** Images kept on the product being edited (removing one here drops it on save). */
+  const [keptImages, setKeptImages] = useState<string[]>([])
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -88,6 +102,7 @@ export default function AdminProductsPage() {
     setEditingVariant(null)
     setForm(EMPTY_FORM)
     setFiles(null)
+    setKeptImages([])
     setShowForm(true)
   }
 
@@ -107,6 +122,7 @@ export default function AdminProductsPage() {
       attributes: variant?.attributes ? JSON.stringify(variant.attributes) : '',
     })
     setFiles(null)
+    setKeptImages(product.imageUrls ?? [])
     setShowForm(true)
   }
 
@@ -121,14 +137,20 @@ export default function AdminProductsPage() {
         try { variantAttributes = JSON.parse(form.attributes) as Record<string, unknown> | string[] }
         catch { throw new Error('Thuộc tính biến thể phải là JSON hợp lệ.') }
       }
+      const fields = FIELDS_BY_TYPE[form.productType]
       const payload = {
         name: form.name.trim(), categoryId: form.categoryId || null, brandName: form.brandName || null,
         description: form.description || null, status: form.status, productType: form.productType,
         platforms: form.platforms.trim() ? form.platforms.split(',').map((item) => item.trim()).filter(Boolean) : null,
-        publisher: form.publisher || null, genre: form.genre || null, ageRating: form.ageRating || null,
-        releaseDate: form.releaseDate || null, connectionType: form.connectionType || null,
-        warrantyMonths: form.warrantyMonths === '' ? null : Number(form.warrantyMonths),
+        publisher: fields.game ? form.publisher || null : null,
+        genre: fields.game ? form.genre || null : null,
+        ageRating: fields.game ? form.ageRating || null : null,
+        releaseDate: fields.game ? form.releaseDate || null : null,
+        connectionType: fields.hardware ? form.connectionType || null : null,
+        warrantyMonths: !fields.hardware || form.warrantyMonths === '' ? null : Number(form.warrantyMonths),
         originCountry: form.originCountry.trim() || null,
+        // only send the list when an existing image was removed; otherwise the backend keeps what it has
+        ...(editing && keptImages.length !== (editing.imageUrls ?? []).length ? { imageUrls: keptImages } : {}),
       }
       const saved = editing
         ? await apiFetch<AdminProduct>(`/api/catalog/products/${editing.id}`, { method: 'PUT', body: JSON.stringify(payload) }, token)
@@ -158,7 +180,7 @@ export default function AdminProductsPage() {
   }
 
   const remove = async (product: AdminProduct) => {
-    if (!token || !window.confirm(`Xoá sản phẩm “${product.name}”?`)) return
+    if (!token || !(await confirm({ title: 'Xoá sản phẩm', message: <>Xoá <strong>{product.name}</strong> khỏi danh mục?</>, confirmLabel: 'Xoá', tone: 'danger' }))) return
     try {
       await apiFetch(`/api/catalog/products/${product.id}`, { method: 'DELETE' }, token)
       await refresh()
@@ -183,27 +205,46 @@ export default function AdminProductsPage() {
       <label>Thương hiệu<input maxLength={255} value={form.brandName} onChange={(e) => setForm({ ...form, brandName: e.target.value })} /></label>
       <label>Loại<select value={form.productType} onChange={(e) => setForm({ ...form, productType: e.target.value as ProductType })}><option value="game_disc">Đĩa game</option><option value="controller">Tay cầm</option><option value="accessory">Phụ kiện</option></select></label>
       <label>Trạng thái<select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as 'draft' | 'published' })}><option value="draft">Bản nháp</option><option value="published">Đang bán</option></select></label>
-      <label>Nền tảng, phân cách bằng dấu phẩy<input placeholder="PS5, PC" value={form.platforms} onChange={(e) => setForm({ ...form, platforms: e.target.value })} /></label>
-      <label>Nhà phát hành<input value={form.publisher} onChange={(e) => setForm({ ...form, publisher: e.target.value })} /></label>
-      <label>Thể loại<input value={form.genre} onChange={(e) => setForm({ ...form, genre: e.target.value })} /></label>
-      <label>Phân loại tuổi<input value={form.ageRating} onChange={(e) => setForm({ ...form, ageRating: e.target.value })} /></label>
-      <label>Kết nối<select value={form.connectionType} onChange={(e) => setForm({ ...form, connectionType: e.target.value })}><option value="">Không áp dụng</option><option value="wired">Có dây</option><option value="wireless">Không dây</option><option value="bluetooth">Bluetooth</option></select></label>
-      <label>Bảo hành (tháng)<input type="number" min="0" value={form.warrantyMonths} onChange={(e) => setForm({ ...form, warrantyMonths: e.target.value })} /></label>
+      <label>{FIELDS_BY_TYPE[form.productType].game ? 'Nền tảng' : 'Tương thích với'}, phân cách bằng dấu phẩy<input placeholder="PS5, PC" value={form.platforms} onChange={(e) => setForm({ ...form, platforms: e.target.value })} /></label>
+      {FIELDS_BY_TYPE[form.productType].game && <>
+        <label>Nhà phát hành<input value={form.publisher} onChange={(e) => setForm({ ...form, publisher: e.target.value })} /></label>
+        <label>Thể loại<input value={form.genre} onChange={(e) => setForm({ ...form, genre: e.target.value })} /></label>
+        <label>Phân loại tuổi<input placeholder="VD: 18+" value={form.ageRating} onChange={(e) => setForm({ ...form, ageRating: e.target.value })} /></label>
+        <label>Ngày phát hành<input type="date" value={form.releaseDate} onChange={(e) => setForm({ ...form, releaseDate: e.target.value })} /></label>
+      </>}
+      {FIELDS_BY_TYPE[form.productType].hardware && <>
+        <label>Kết nối<select value={form.connectionType} onChange={(e) => setForm({ ...form, connectionType: e.target.value })}><option value="">Không áp dụng</option><option value="wired">Có dây</option><option value="wireless">Không dây</option><option value="bluetooth">Bluetooth</option></select></label>
+        <label>Bảo hành (tháng)<input type="number" min="0" value={form.warrantyMonths} onChange={(e) => setForm({ ...form, warrantyMonths: e.target.value })} /></label>
+      </>}
       <label>Xuất xứ<input maxLength={100} placeholder="Ví dụ: Nhật Bản" value={form.originCountry} onChange={(e) => setForm({ ...form, originCountry: e.target.value })} /></label>
       <label>Mã SKU biến thể<input required value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} /></label>
       <label>Giá bán<input required type="number" min="0" step="1000" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></label>
       <label>Giá so sánh<input type="number" min="0" step="1000" value={form.comparePrice} onChange={(e) => setForm({ ...form, comparePrice: e.target.value })} /></label>
       <label>Thuộc tính biến thể (JSON)<input placeholder='{"màu":"Đen"}' value={form.attributes} onChange={(e) => setForm({ ...form, attributes: e.target.value })} /></label>
       <label className={a.formWide}>Mô tả<textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
-      <label className={a.formWide}>Ảnh sản phẩm<input type="file" accept="image/*" multiple onChange={(e) => setFiles(e.target.files)} /><small>Ảnh được tải lên sau khi lưu thông tin sản phẩm.</small></label>
+      {editing && keptImages.length > 0 && <div className={a.formWide}>
+        <span className="font-label-md text-label-md text-on-surface-variant">Ảnh hiện có ({keptImages.length})</span>
+        <div className="flex flex-wrap gap-space-xs mt-1">
+          {keptImages.map((url, index) => <div key={url} className="relative">
+            <img src={resolveCatalogImageUrl(url)} alt="" className="w-20 h-20 rounded-lg object-cover bg-surface-container-low" />
+            {index === 0 && <span className="absolute left-1 top-1 rounded bg-primary text-on-primary px-1 font-label-sm text-label-sm">Ảnh chính</span>}
+            <button type="button" aria-label="Xoá ảnh" className="absolute -right-1 -top-1 w-6 h-6 rounded-full bg-error text-on-error leading-none cursor-pointer"
+              onClick={() => setKeptImages(keptImages.filter((item) => item !== url))}>×</button>
+          </div>)}
+        </div>
+      </div>}
+      <label className={a.formWide}>Thêm ảnh sản phẩm<input type="file" accept="image/*" multiple onChange={(e) => setFiles(e.target.files)} /><small>Ảnh được tải lên Supabase sau khi lưu thông tin sản phẩm.</small></label>
       <div className={a.formActions}><button className={buttonClass('primary')} disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu sản phẩm'}</button></div>
     </form>}
     {loading ? <p>Đang tải sản phẩm…</p> : <div className={a.tableWrap}><table className={a.table}>
-      <thead><tr><th>Tên</th><th>Danh mục</th><th>Thương hiệu / loại</th><th>SKU / giá</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+      <thead><tr><th>Ảnh</th><th>Tên</th><th>Danh mục</th><th>Thương hiệu / loại</th><th>SKU / giá</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
       <tbody>{filtered.map((product) => {
         const variant = variants.find((item) => item.productId === product.id)
         const categoryName = categories.find((item) => item.id === product.categoryId)?.name ?? '—'
         return <tr key={product.id}>
+          <td>{product.imageUrls?.[0]
+            ? <img src={resolveCatalogImageUrl(product.imageUrls[0])} alt="" className="w-14 h-14 rounded-lg object-cover bg-surface-container-low" loading="lazy" />
+            : <span className="block w-14 h-14 rounded-lg bg-surface-container-low" />}</td>
           <td>{product.name}</td><td>{categoryName}</td><td>{product.brandName ?? '—'} · {typeLabel[product.productType] ?? product.productType}</td>
           <td>{variant ? <>{variant.sku}<br />{formatVnd(variant.price)}</> : 'Chưa có biến thể'}</td>
           <td><span className={statusPillClass(product.status === 'published' ? 'active' : 'locked')}>{product.status === 'published' ? 'Đang bán' : 'Bản nháp'}</span></td>

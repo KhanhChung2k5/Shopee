@@ -4,6 +4,7 @@ import { formatVnd, type GoodsReceipt } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
 import { a, statusPillClass } from '../adminUi'
 import { buttonClass } from '../../components/ui'
+import { useDialog } from '../../state/DialogContext'
 
 interface Warehouse { id: string; name: string }
 interface Variant { id: string; productId: string; sku: string; status: string }
@@ -13,6 +14,7 @@ const EMPTY_LINE: ReceiptLine = { variantId: '', quantity: '1', unitCost: '' }
 
 export default function AdminGoodsReceiptsPage() {
   const { token } = useAuth()
+  const { confirm } = useDialog()
   const [receipts, setReceipts] = useState<GoodsReceipt[]>([])
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [variants, setVariants] = useState<Variant[]>([])
@@ -83,7 +85,14 @@ export default function AdminGoodsReceiptsPage() {
   const transition = async (receipt: GoodsReceipt, action: 'approve' | 'reject') => {
     if (!token) return
     const actionLabel = action === 'approve' ? 'duyệt' : 'từ chối'
-    if (!window.confirm(`Bạn muốn ${actionLabel} phiếu ${receipt.code}?`)) return
+    if (!(await confirm({
+      title: action === 'approve' ? 'Duyệt phiếu nhập' : 'Từ chối phiếu nhập',
+      message: action === 'approve'
+        ? <>Duyệt phiếu <strong>{receipt.code}</strong>? Số lượng trên phiếu sẽ được cộng vào tồn kho.</>
+        : <>Từ chối phiếu <strong>{receipt.code}</strong>? Tồn kho không thay đổi.</>,
+      confirmLabel: action === 'approve' ? 'Duyệt' : 'Từ chối',
+      tone: action === 'approve' ? 'primary' : 'danger',
+    }))) return
     try {
       await apiFetch(`/api/catalog/goods-receipts/${receipt.id}/${action}`, { method: 'POST' }, token)
       await refresh()

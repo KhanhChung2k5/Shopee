@@ -192,11 +192,6 @@ class CartScreen extends StatelessWidget {
               title: const Text('Thanh toán khi nhận hàng (COD)'),
               onTap: () => Navigator.of(context).pop('cod'),
             ),
-            ListTile(
-              leading: const Icon(Icons.account_balance_wallet_outlined),
-              title: const Text('Thanh toán bằng Ví'),
-              onTap: () => Navigator.of(context).pop('wallet'),
-            ),
           ],
         ),
       ),

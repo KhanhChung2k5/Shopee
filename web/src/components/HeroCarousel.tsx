@@ -1,173 +1,164 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { apiFetch } from '../lib/api'
+import { fetchProducts, formatVnd, resolveCatalogImageUrl, typeLabel } from '../lib/catalog'
+import { LOYALTY_TIERS } from '../lib/loyalty'
 
 interface Slide {
+  productId: string
   badge: string
   title: string
   desc: string
-  highlight: string
-  image: string
-  linkText: string
-  linkHref: string
+  image: string | undefined
 }
 
-const SLIDES: Slide[] = [
-  {
-    badge: 'Siêu Hội Gaming Tháng 2',
-    title: 'Đại Tiệc Tay Cầm & Đĩa Game 2025',
-    desc: 'Ưu đãi chấn động tới 50%. Đầy đủ dòng DualSense, Xbox Elite & Đĩa game bom tấn sealed chính hãng.',
-    highlight: '50%',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuC2YTcG8-tzuO327K8MJovKlwDW6j1Suya4MJZhb-4brGzwk3b-XUN2yOrYB9vLcS7vtJPeWKcYb5tiPyfPdJ6wL7HzBmcTtYizIZNgxC1cqLjRSS5bNJ_UVrA-gjlLMcur245WMxDViORYF3K9WRmVlH6WsAgEZV6pR3Z6jRnUmM5LMXtuq1Y9PX6hrdn6R6uWSeZecwezB5XqEc56actfpu9V4M1mfSdZ0uDTiup0c4Dai0GFHFcq',
-    linkText: 'Khám Phá Ngay',
-    linkHref: '#flash-sale',
-  },
-  {
-    badge: 'Độc Quyền Tại Chợ Tốt Mua',
-    title: 'Sony DualSense Edge Pro Gear',
-    desc: 'Bản nâng cấp cần Hall Effect chống trôi tuyệt đối. Phím phụ gán macro, bảo hành 12 tháng 1 đổi 1.',
-    highlight: 'Hall Effect',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBNlww-GvuA9PXl2L6YC3hdBiKU_v8ukqp3OMhbGACT-KkkOUEyMlZkArRhRVd6KdbgCCnnmx-uXCP6vlOq3MkzUPxXoZu3MxgQupr6GXzYYL9Qne9MA1vhugpTKJnz_hnmf-FORjSAchZo0ACP2KECR2y9U4yYoX8a3_HcBCSFB-9c0EOQu9gcIsMZE0l57dGGyBg4KUM2UXvg-IyJw2K5CJ1Jxj5peLYcOxys-yz_Zy1RYaTCazsC',
-    linkText: 'Xem Chi Tiết',
-    linkHref: '#goi-y',
-  },
-  {
-    badge: 'Bom Tấn Mới Ra Mắt',
-    title: 'Black Myth: Wukong & FC 25 PS5',
-    desc: 'Đĩa vật lý Sealed 100% kèm phụ kiện tặng độc quyền. Giao hàng hỏa tốc 2 giờ nội thành.',
-    highlight: 'Sealed 100%',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAM3wUxxiYFEOwbWRpAFVEV9B6iTifVVsUkOgZw2PkGBBSCNwS11J6Z6foW0bFC2j6ZWxf9jJtbWZ6oehj8ZtJ8Olsfbjt54Lf0k4bz8kGKDLprJ-_SZUzblLPzOp2o7Tr38xm-8__NeHa5A3bzmHZzQOBoVaXqlaL_iOOT912cah4yTYGg0ZjSjrkktedFpIQm0PYhJBSdVcABBpfQ3gwiAKCmzfgm4e7o9931zlXvOtNANdA7WJHN',
-    linkText: 'Săn Ngay Đĩa Hot',
-    linkHref: '#flash-sale',
-  },
-]
+interface TopSeller {
+  productId: string
+  name: string
+  price: number | null
+  soldQuantity: number
+  imageUrl: string | null
+}
 
+const SLIDE_COUNT = 3
+
+/**
+ * Homepage hero built from real catalogue data: the best sellers (GET /api/products/top-sellers), or the
+ * newest published products while nothing has sold yet. The side cards state the shop's actual rules
+ * (loyalty tiers, free shipping, payment methods) — no invented promotions.
+ */
 export default function HeroCarousel() {
+  const [slides, setSlides] = useState<Slide[] | null>(null)
   const [current, setCurrent] = useState(0)
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % SLIDES.length)
-    }, 5000)
-    return () => clearInterval(timer)
+    let active = true
+    const load = async () => {
+      const sellers = await apiFetch<TopSeller[]>(`/api/products/top-sellers?limit=${SLIDE_COUNT}`).catch(() => [])
+      if (sellers.length > 0) {
+        return sellers.map((item, index): Slide => ({
+          productId: item.productId,
+          badge: `Bán chạy #${index + 1}`,
+          title: item.name,
+          desc: `Đã bán ${item.soldQuantity.toLocaleString('vi-VN')} sản phẩm${item.price != null ? ` · Giá từ ${formatVnd(item.price)}` : ''}`,
+          image: resolveCatalogImageUrl(item.imageUrl),
+        }))
+      }
+      const page = await fetchProducts(new URLSearchParams({ page: '0', size: String(SLIDE_COUNT) })).catch(() => null)
+      return (page?.content ?? []).map((product): Slide => ({
+        productId: product.id,
+        badge: typeLabel[product.productType] ?? 'Sản phẩm',
+        title: product.name,
+        desc: product.price != null ? `Giá ${formatVnd(product.price)}` : 'Xem chi tiết sản phẩm',
+        image: resolveCatalogImageUrl(product.imageUrls?.[0]),
+      }))
+    }
+    load().then((list) => { if (active) setSlides(list) })
+    return () => { active = false }
   }, [])
 
-  const currentSlide = SLIDES[current]
+  useEffect(() => {
+    if (!slides || slides.length < 2) return
+    const timer = setInterval(() => setCurrent((prev) => (prev + 1) % slides.length), 5000)
+    return () => clearInterval(timer)
+  }, [slides])
+
+  const slide = slides?.[current % (slides.length || 1)]
+  const silver = LOYALTY_TIERS.find((tier) => tier.code === 'silver')
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop items-stretch">
-      <div className="lg:col-span-8 relative overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between min-h-[380px] p-space-xl group">
-        <div className="absolute inset-0 bg-gradient-to-r from-surface-container-lowest via-surface-container-low/60 to-transparent z-10"></div>
+      <div className="lg:col-span-8 relative overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between min-h-[380px] p-space-xl">
         <div className="absolute -right-10 -bottom-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-all duration-700 group-hover:scale-105"
-          style={{ backgroundImage: `url('${currentSlide.image}')` }}
-        ></div>
+        {slide?.image && (
+          <img
+            src={slide.image}
+            alt=""
+            className="absolute right-space-xl top-1/2 -translate-y-1/2 h-[85%] max-w-[40%] object-contain drop-shadow-xl transition-opacity duration-500 hidden sm:block"
+          />
+        )}
 
         <div className="relative z-20 max-w-lg space-y-space-md">
-          <div className="inline-flex items-center gap-space-xs px-2.5 py-1 bg-primary text-on-primary font-label-sm text-label-sm uppercase tracking-wider rounded-full shadow-sm">
-            <span className="material-symbols-outlined text-sm">local_fire_department</span>
-            <span>{currentSlide.badge}</span>
-          </div>
-
-          <div className="space-y-space-xs">
-            <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight leading-tight">
-              {currentSlide.title}
-            </h1>
-            <p className="font-body-lg text-body-lg text-on-surface-variant font-medium">
-              {currentSlide.desc}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-space-md pt-space-xs">
-            <a
-              className="px-space-xl py-3 bg-primary hover:bg-primary-container text-on-primary font-title-lg text-title-lg rounded-lg shadow-md transition-all flex items-center gap-space-xs"
-              href={currentSlide.linkHref}
-            >
-              <span>{currentSlide.linkText}</span>
-              <span className="material-symbols-outlined text-lg">arrow_forward</span>
-            </a>
-            <a
-              className="px-space-lg py-3 bg-surface-container-lowest/90 hover:bg-surface-container-lowest text-primary font-title-lg text-title-lg rounded-lg shadow-sm transition-all flex items-center gap-space-xs"
-              href="#gamer-club"
-            >
-              <span className="material-symbols-outlined text-lg">loyalty</span>
-              <span>Săn Voucher 100K</span>
-            </a>
-          </div>
+          {!slides && <div className="h-40 rounded-lg bg-surface-container-low animate-pulse" />}
+          {slides && slides.length === 0 && (
+            <h1 className="font-headline-xl text-headline-xl text-on-surface">Chợ Tốt Mua — gaming gear &amp; đĩa game chính hãng</h1>
+          )}
+          {slide && (
+            <>
+              <div className="inline-flex items-center gap-space-xs px-2.5 py-1 bg-primary text-on-primary font-label-sm text-label-sm uppercase tracking-wider rounded-full shadow-sm">
+                <span className="material-symbols-outlined text-sm">local_fire_department</span>
+                <span>{slide.badge}</span>
+              </div>
+              <div className="space-y-space-xs">
+                <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight leading-tight">{slide.title}</h1>
+                <p className="font-body-lg text-body-lg text-on-surface-variant font-medium">{slide.desc}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-space-md pt-space-xs">
+                <Link
+                  className="px-space-xl py-3 bg-primary hover:bg-primary-container text-on-primary font-title-lg text-title-lg rounded-lg shadow-md transition-all flex items-center gap-space-xs"
+                  to={`/san-pham/${slide.productId}`}
+                >
+                  <span>Xem sản phẩm</span>
+                  <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                </Link>
+                <Link
+                  className="px-space-lg py-3 bg-surface-container-lowest/90 hover:bg-surface-container-lowest text-primary font-title-lg text-title-lg rounded-lg shadow-sm transition-all flex items-center gap-space-xs"
+                  to="/kho-voucher"
+                >
+                  <span className="material-symbols-outlined text-lg">confirmation_number</span>
+                  <span>Kho voucher của tôi</span>
+                </Link>
+              </div>
+            </>
+          )}
         </div>
 
-        <div className="relative z-20 flex items-center gap-space-xs self-start pt-space-lg">
-          {SLIDES.map((_, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => setCurrent(idx)}
-              className={`rounded-full transition-all cursor-pointer ${
-                idx === current
-                  ? 'w-8 h-2 bg-primary'
-                  : 'w-2 h-2 bg-surface-container-highest hover:bg-primary/50'
-              }`}
-              aria-label={`Chuyển đến banner ${idx + 1}`}
-            />
-          ))}
-        </div>
+        {slides && slides.length > 1 && (
+          <div className="relative z-20 flex items-center gap-space-xs self-start pt-space-lg">
+            {slides.map((s, idx) => (
+              <button
+                key={s.productId}
+                type="button"
+                onClick={() => setCurrent(idx)}
+                className={`rounded-full transition-all cursor-pointer ${
+                  idx === current % slides.length ? 'w-8 h-2 bg-primary' : 'w-2 h-2 bg-surface-container-highest hover:bg-primary/50'
+                }`}
+                aria-label={`Chuyển đến banner ${idx + 1}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="lg:col-span-4 flex flex-col gap-gutter-desktop">
-        <div className="flex-1 relative overflow-hidden rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col justify-between group">
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105 opacity-20"
-            style={{
-              backgroundImage:
-                "url('https://lh3.googleusercontent.com/aida-public/AB6AXuC9eANfe6HvChh7-yYxa_1yZ1ElDSqt3z4yvc8VfztGEpwShTv3S1tuqBS_Ywnfek3pL1H8ELJ78OpxVA89GzccskmIdIBKG5hc0C4q-3mYrSIG-39-xfU3Y-JN-NKY_Twumx5YJ9E-fHCLQk31dmDWfMlW7KmPE5gyxZOY5CasrgPekPOlxUhNZ1R-NP1bVTrle01MYjhKkOqPcvqow13PxLj0iVb71FiI9QJ95L7-Us6xOCbPe2aO')",
-            }}
-          ></div>
-          <div className="relative z-10 space-y-space-xs">
+        <div className="flex-1 rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col justify-between">
+          <div className="space-y-space-xs">
             <span className="px-2 py-0.5 bg-secondary-container text-on-secondary-container font-label-sm text-label-sm rounded uppercase font-bold">
-              Gamer Club
+              Thành viên
             </span>
-            <h3 className="font-headline-md text-headline-md text-on-surface">
-              Tích Điểm Đổi Voucher 500K
-            </h3>
+            <h3 className="font-headline-md text-headline-md text-on-surface">Tích điểm, lên hạng</h3>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Nhận voucher độc quyền, freeship không giới hạn cho mọi đơn hàng.
+              Mỗi 10.000đ trên đơn đã giao = 1 điểm. Lên hạng {silver?.label} từ {silver?.minPoints.toLocaleString('vi-VN')} điểm để nhận voucher dành riêng cho hạng.
             </p>
           </div>
-          <a
-            className="relative z-10 self-start text-primary font-title-md text-title-md flex items-center gap-1 hover:underline pt-space-sm"
-            href="#gamer-club"
-          >
-            <span>Xem quyền lợi thành viên</span>
+          <a className="self-start text-primary font-title-md text-title-md flex items-center gap-1 hover:underline pt-space-sm" href="#gamer-club">
+            <span>Xem các hạng thành viên</span>
             <span className="material-symbols-outlined text-base">chevron_right</span>
           </a>
         </div>
 
-        <div className="flex-1 relative overflow-hidden rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col justify-between group">
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105 opacity-20"
-            style={{
-              backgroundImage:
-                "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCgVozDxLH3yTqBOYcvNGOAABuZn0OGA3O-W5ZCXBiTZaRUAuRFpQcGOsi9aa4783uUhrokLw2X213jZqyTEnJvsuEdcHgb7649Qe8yAcb9lb-9Wr6pyGIAGdp4k3Ys-YdtEUFLBZenBQC78zuieOrxn0BOfQjB2WHVCKhNrKk_3kQeEywUQvuvNAeD9iygFa1yki6RagEj22xmQ8AEDCtHCQ0gi_0-RHBgoy4v3Q8C960XNdrB2L-R')",
-            }}
-          ></div>
-          <div className="relative z-10 space-y-space-xs">
+        <div className="flex-1 rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col justify-between">
+          <div className="space-y-space-xs">
             <span className="px-2 py-0.5 bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm rounded uppercase font-bold">
-              Combo Tiết Kiệm
+              Mua sắm
             </span>
-            <h3 className="font-headline-md text-headline-md text-on-surface">
-              Mua Tay Cầm Tặng Bọc Cần Analog
-            </h3>
+            <h3 className="font-headline-md text-headline-md text-on-surface">Miễn phí vận chuyển</h3>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Áp dụng cho mọi tay cầm PS5 DualSense &amp; Xbox Series X.
+              Áp dụng cho mọi đơn. Thanh toán khi nhận hàng hoặc chuyển khoản ngân hàng.
             </p>
           </div>
-          <a
-            className="relative z-10 self-start text-primary font-title-md text-title-md flex items-center gap-1 hover:underline pt-space-sm"
-            href="#goi-y"
-          >
-            <span>Chọn combo ngay</span>
+          <a className="self-start text-primary font-title-md text-title-md flex items-center gap-1 hover:underline pt-space-sm" href="#goi-y">
+            <span>Mua sắm ngay</span>
             <span className="material-symbols-outlined text-base">chevron_right</span>
           </a>
         </div>

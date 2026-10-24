@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { age, type Customer, type CustomerStatus } from '../types/customer'
-import { formatVnd } from '../../data/sampleProducts'
+import { formatVnd } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
 import { apiFetch, ApiError } from '../../lib/api'
 import { a, chipClass, statusPillClass } from '../adminUi'
 import { buttonClass } from '../../components/ui'
+import { useDialog } from '../../state/DialogContext'
 
 const STATUS_LABEL: Record<CustomerStatus, string> = {
   active: 'Hoạt động',
@@ -33,6 +34,7 @@ function useToast() {
 
 export default function AdminCustomersPage() {
   const { token } = useAuth()
+  const { confirm } = useDialog()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -99,10 +101,10 @@ export default function AdminCustomersPage() {
     toast.show(next === 'locked' ? `Đã khoá "${c.fullName}"` : `Đã mở khoá "${c.fullName}"`)
   }
 
-  const softDelete = (id: string) => {
+  const softDelete = async (id: string) => {
     const c = customers.find((x) => x.id === id)
     if (!c) return
-    if (!confirm(`Xoá mềm "${c.fullName}"? Tài khoản bị ẩn khỏi hệ thống nhưng vẫn giữ nguyên trong DB.`)) return
+    if (!(await confirm({ title: 'Xoá mềm khách hàng', message: <>Xoá mềm <strong>{c.fullName}</strong>? Tài khoản bị ẩn khỏi hệ thống nhưng dữ liệu và lịch sử đơn hàng vẫn được giữ nguyên.</>, confirmLabel: 'Xoá mềm', tone: 'danger' }))) return
     setStatus(id, 'deleted')
     setSelected((prev) => {
       const next = new Set(prev)
@@ -120,7 +122,7 @@ export default function AdminCustomersPage() {
   }
 
   const bulkSoftDelete = async () => {
-    if (!confirm(`Xoá mềm ${selected.size} khách hàng đã chọn?`)) return
+    if (!(await confirm({ title: 'Xoá mềm nhiều khách hàng', message: <>Xoá mềm <strong>{selected.size}</strong> khách hàng đã chọn? Dữ liệu và lịch sử đơn hàng vẫn được giữ nguyên.</>, confirmLabel: 'Xoá mềm', tone: 'danger' }))) return
     await Promise.all([...selected].map((id) => apiFetch(`/customers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'deleted' }) }, token)))
     toast.show(`Đã xoá mềm ${selected.size} khách hàng`)
     setSelected(new Set())

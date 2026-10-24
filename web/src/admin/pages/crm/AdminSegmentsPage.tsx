@@ -5,6 +5,7 @@ import { ApiError } from '../../../lib/api'
 import { fetchCategories, type CatalogCategory } from '../../../lib/catalog'
 import { AGE_BUCKETS, AGE_LABEL, RFM_LABEL, createSegment, deleteSegment, describeRule, fetchSegments, refreshSegment, timeVi, type Segment } from '../../../lib/crm'
 import { useAuth } from '../../../state/AuthContext'
+import { useDialog } from '../../../state/DialogContext'
 
 const RFM_KEYS = ['champions', 'loyal', 'potential', 'at_risk', 'lost'] as const
 
@@ -15,6 +16,7 @@ function toggle<T>(list: T[], value: T) {
 /** Phân khúc khách hàng (p5-02/p5-10). Sales + admin tạo/sửa; CS chỉ xem để chọn khi gửi khảo sát. */
 export default function AdminSegmentsPage() {
   const { token, user } = useAuth()
+  const { confirm } = useDialog()
   const canEdit = user?.department === 'sales' || user?.department === 'admin'
   const [segments, setSegments] = useState<Segment[] | null>(null)
   const [categories, setCategories] = useState<CatalogCategory[]>([])
@@ -125,7 +127,7 @@ export default function AdminSegmentsPage() {
                   <td>
                     {canEdit && <div className={a.rowActions}>
                       <button type="button" className={buttonClass('outline', 'sm')} onClick={() => void act(() => refreshSegment(token!, s.id), 'Không làm mới được')}>Làm mới</button>
-                      {!s.locked && <button type="button" className={buttonClass('outline', 'sm')} onClick={() => { if (confirm(`Xoá phân khúc "${s.name}"?`)) void act(() => deleteSegment(token!, s.id), 'Không xoá được') }}>Xoá</button>}
+                      {!s.locked && <button type="button" className={buttonClass('outline', 'sm')} onClick={async () => { if (await confirm({ title: 'Xoá phân khúc', message: <>Xoá phân khúc <strong>{s.name}</strong>?</>, confirmLabel: 'Xoá', tone: 'danger' })) void act(() => deleteSegment(token!, s.id), 'Không xoá được') }}>Xoá</button>}
                     </div>}
                   </td>
                 </tr>

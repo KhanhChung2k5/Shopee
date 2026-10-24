@@ -18,4 +18,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     List<Order> findByEmployeeIdAndStatusOrderByCreatedAtDesc(UUID employeeId, String status);
 
     Optional<Order> findByIdAndEmployeeId(UUID id, UUID employeeId);
+
+    List<Order> findAllByOrderByCreatedAtDesc();
+
+    List<Order> findByStatusOrderByCreatedAtDesc(String status);
 }

@@ -6,6 +6,8 @@ import { fetchProducts, formatVnd } from '../lib/catalog'
 import { apiFetch, ApiError } from '../lib/api'
 import { SHIPMENT_LABEL, STATUS_LABEL, STATUS_TONE, formatOrderDate as formatDate, type OrderStatus } from '../lib/orderStatus'
 import { useAuth } from '../state/AuthContext'
+import type { Refund } from '../lib/refunds'
+import { CancellationRefundCard, ItemRefund } from './OrderRefunds'
 
 interface OrderItem {
   id: string
@@ -43,6 +45,17 @@ interface OrderDetail {
   createdAt: string
   items: OrderItem[]
   statusHistory: StatusHistoryEntry[]
+  payment: { method: string; status: string; amount: number; paidAt: string | null } | null
+  refunds: Refund[]
+}
+
+const PAYMENT_METHOD: Record<string, string> = { cod: 'Thanh toán khi nhận hàng (COD)', bank_transfer: 'Chuyển khoản ngân hàng' }
+const PAYMENT_STATUS: Record<string, { label: string; tone: 'neutral' | 'success' | 'info' | 'danger' }> = {
+  pending: { label: 'Chưa thanh toán', tone: 'neutral' },
+  paid: { label: 'Đã thanh toán', tone: 'success' },
+  cancelled: { label: 'Đã huỷ', tone: 'danger' },
+  partially_refunded: { label: 'Đã hoàn một phần', tone: 'info' },
+  refunded: { label: 'Đã hoàn tiền', tone: 'info' },
 }
 
 interface StatusUpdateResponse {
@@ -176,6 +189,11 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
     }
   }, [orderId, retryKey, token])
 
+  /** Refetch quietly after a refund request or bank-account change. */
+  const reload = () => {
+    apiFetch<OrderDetail>(`/orders/${orderId}`, {}, token).then(setOrder).catch(() => undefined)
+  }
+
   const retry = () => {
     setError(null)
     setIsLoading(true)
@@ -233,6 +251,10 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
   }
 
   const canCancel = order.status === 'pending' || order.status === 'confirmed'
+  const deliveredAt = [...order.statusHistory].reverse().find((entry) => entry.status === 'delivered')?.changedAt ?? null
+  const refunds = order.refunds ?? []
+  const cancellationRefund = refunds.find((refund) => refund.kind === 'cancellation')
+  const paidByTransfer = order.payment?.method === 'bank_transfer' && order.payment.status === 'paid'
   return (
     <Page>
       <PageHeader
@@ -269,6 +291,10 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
                     </div>
                     {order.status === 'delivered' && (
                       <OrderItemReview orderItemId={item.id} productName={item.productNameSnapshot} token={token} />
+                    )}
+                    {order.status === 'delivered' && (
+                      <ItemRefund orderItemId={item.id} productName={item.productNameSnapshot} refunds={refunds}
+                        deliveredAt={deliveredAt} token={token} onChanged={reload} />
                     )}
                   </div>
                 )
@@ -308,7 +334,18 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
             <SummaryRow label="Giảm giá" value={`− ${formatVnd(Number(order.discountAmount))}`} />
             <SummaryRow label="Phí vận chuyển" value={formatVnd(Number(order.shippingFeeAmount))} />
             <SummaryRow strong label="Tổng cộng" value={formatVnd(Number(order.totalAmount))} />
+            {order.payment && (
+              <div className="flex flex-wrap items-center justify-between gap-space-xs border-t border-line pt-space-sm font-body-md text-body-md">
+                <span className="text-on-surface-variant">{PAYMENT_METHOD[order.payment.method] ?? order.payment.method}</span>
+                <Badge tone={PAYMENT_STATUS[order.payment.status]?.tone ?? 'neutral'}>{PAYMENT_STATUS[order.payment.status]?.label ?? order.payment.status}</Badge>
+              </div>
+            )}
+            {order.payment?.method === 'bank_transfer' && order.payment.status === 'pending' && order.status !== 'cancelled' && (
+              <p className="font-label-md text-label-md text-on-surface-variant">Shop sẽ xác nhận sau khi đối chiếu tiền chuyển khoản của bạn.</p>
+            )}
           </Card>
+
+          {cancellationRefund && <CancellationRefundCard refund={cancellationRefund} token={token} onChanged={reload} />}
 
           <ButtonLink variant="outline" className="w-full" icon="support_agent" to={`/ho-tro?order=${order.id}`}>
             Cần hỗ trợ về đơn này
@@ -350,6 +387,7 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
             <Alert tone="info">
               <strong className="block font-title-md text-title-md">Yêu cầu huỷ đang chờ xác nhận</strong>
               Đơn hàng chưa bị huỷ. Người bán hoặc nhân viên phụ trách sẽ xem xét và xác nhận yêu cầu.
+              {paidByTransfer && ' Nếu đơn được huỷ, shop sẽ hoàn lại tiền bạn đã chuyển khoản.'}
             </Alert>
           )}
         </aside>

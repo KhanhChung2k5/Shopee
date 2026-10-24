@@ -4,6 +4,8 @@ import type { PromotionProgram } from './types'
 import { dateTime, errorMessage, toIso, toLocalInput } from './types'
 import { a } from '../adminUi'
 import { buttonClass } from '../../components/ui'
+import { LOYALTY_TIERS, audienceLabel } from '../../lib/loyalty'
+import { useDialog } from '../../state/DialogContext'
 
 interface ProgramForm {
   code: string
@@ -25,6 +27,7 @@ interface Props {
 }
 
 export default function ProgramManager({ token, programs, onChanged }: Props) {
+  const { confirm } = useDialog()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<ProgramForm>(EMPTY_FORM)
   const [busy, setBusy] = useState(false)
@@ -78,7 +81,7 @@ export default function ProgramManager({ token, programs, onChanged }: Props) {
   }
 
   const remove = async (program: PromotionProgram) => {
-    if (!window.confirm(`Xóa chương trình ${program.code}?`)) return
+    if (!(await confirm({ title: 'Xoá chương trình khuyến mãi', message: <>Xoá chương trình <strong>{program.code} · {program.name}</strong>? Chỉ xoá được khi chương trình không còn voucher hay ưu đãi.</>, confirmLabel: 'Xoá', tone: 'danger' }))) return
     setError(null)
     try {
       await apiFetch(`/marketing/programs/${program.id}`, { method: 'DELETE' }, token)
@@ -109,9 +112,14 @@ export default function ProgramManager({ token, programs, onChanged }: Props) {
             value={form.programType} onChange={(event) => setForm({ ...form, programType: event.target.value })} />
         </label>
         <label>
-          Hạng thành viên (tùy chọn)
-          <input className={a.input} maxLength={50}
-            value={form.targetLoyaltyTier} onChange={(event) => setForm({ ...form, targetLoyaltyTier: event.target.value })} />
+          Dành cho khách hàng
+          <select className={a.input} value={form.targetLoyaltyTier}
+            onChange={(event) => setForm({ ...form, targetLoyaltyTier: event.target.value })}>
+            <option value="">Mọi khách hàng</option>
+            {LOYALTY_TIERS.map((tier) => (
+              <option key={tier.code} value={tier.code}>Hạng {tier.label} trở lên (từ {tier.minPoints.toLocaleString('vi-VN')} điểm)</option>
+            ))}
+          </select>
         </label>
         <label>
           Bắt đầu
@@ -134,13 +142,14 @@ export default function ProgramManager({ token, programs, onChanged }: Props) {
 
       <div className={a.tableWrap}>
         <table className={a.table}>
-          <thead><tr><th>Mã</th><th>Tên</th><th>Loại / Hạng</th><th>Thời gian</th><th>Thao tác</th></tr></thead>
+          <thead><tr><th>Mã</th><th>Tên</th><th>Loại</th><th>Khách hàng</th><th>Thời gian</th><th>Thao tác</th></tr></thead>
           <tbody>
             {programs.map((program) => (
               <tr key={program.id}>
                 <td>{program.code}</td>
                 <td>{program.name}</td>
-                <td>{program.programType}{program.targetLoyaltyTier ? ` · ${program.targetLoyaltyTier}` : ''}</td>
+                <td>{program.programType}</td>
+                <td>{audienceLabel(program.targetLoyaltyTier)}</td>
                 <td>{dateTime.format(new Date(program.startAt))} – {dateTime.format(new Date(program.endAt))}</td>
                 <td>
                   <div className={a.rowActions}>
@@ -150,7 +159,7 @@ export default function ProgramManager({ token, programs, onChanged }: Props) {
                 </td>
               </tr>
             ))}
-            {programs.length === 0 && <tr><td colSpan={5}>Chưa có chương trình nào.</td></tr>}
+            {programs.length === 0 && <tr><td colSpan={6}>Chưa có chương trình nào.</td></tr>}
           </tbody>
         </table>
       </div>

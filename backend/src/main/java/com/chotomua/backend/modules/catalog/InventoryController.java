@@ -61,13 +61,13 @@ public class InventoryController {
     public StockResponse setStock(@PathVariable UUID variantId, @PathVariable UUID warehouseId,
                                   @Valid @RequestBody SetStockRequest request) {
         ProductVariant variant = variants.findById(variantId)
-                .orElseThrow(() -> new CatalogNotFoundException("Product variant not found: " + variantId));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy biến thể sản phẩm: " + variantId));
         Warehouse warehouse = warehouses.findById(warehouseId)
-                .orElseThrow(() -> new CatalogNotFoundException("Warehouse not found: " + warehouseId));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy kho: " + warehouseId));
         InventoryStock stock = stocks.findByVariant_IdAndWarehouse_Id(variantId, warehouseId)
                 .orElseGet(() -> new InventoryStock(variant, warehouse));
         if (request.quantity() < stock.getReservedQuantity()) {
-            throw new IllegalArgumentException("Quantity cannot be less than the reserved quantity.");
+            throw new IllegalArgumentException("Số lượng không được nhỏ hơn số đang giữ cho đơn.");
         }
 
         int change = Math.subtractExact(request.quantity(), stock.getQuantity());
@@ -84,9 +84,9 @@ public class InventoryController {
     @Transactional
     public StockResponse exportStock(@Valid @RequestBody ExportStockRequest request) {
         ProductVariant variant = variants.findById(request.variantId())
-                .orElseThrow(() -> new CatalogNotFoundException("Product variant not found: " + request.variantId()));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy biến thể sản phẩm: " + request.variantId()));
         Warehouse warehouse = warehouses.findById(request.warehouseId())
-                .orElseThrow(() -> new CatalogNotFoundException("Warehouse not found: " + request.warehouseId()));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy kho: " + request.warehouseId()));
         InventoryStock updated = inventoryStockService.exportStock(warehouse.getId(),
                 new InventoryStockService.ExportLine(variant.getId(), request.quantity()));
         return StockResponse.from(updated);
@@ -109,12 +109,20 @@ public class InventoryController {
                                      @NotNull @Positive Integer quantity) {
     }
 
+    /** One stock row, with the product it belongs to so the warehouse screen shows more than a SKU. */
     public record StockResponse(UUID id, UUID variantId, String sku, UUID warehouseId, String warehouseName,
-                                int quantity, int reservedQuantity, int availableQuantity) {
+                                int quantity, int reservedQuantity, int availableQuantity,
+                                UUID productId, String productName, String imageUrl, tools.jackson.databind.JsonNode attributes) {
         static StockResponse from(InventoryStock stock) {
-            return new StockResponse(stock.getId(), stock.getVariant().getId(), stock.getVariant().getSku(),
+            ProductVariant variant = stock.getVariant();
+            Product product = variant.getProduct();
+            String image = variant.getImageUrl() != null && !variant.getImageUrl().isBlank() ? variant.getImageUrl()
+                    : product.getImageUrls() != null && product.getImageUrls().isArray() && !product.getImageUrls().isEmpty()
+                    ? product.getImageUrls().get(0).asString() : null;
+            return new StockResponse(stock.getId(), variant.getId(), variant.getSku(),
                     stock.getWarehouse().getId(), stock.getWarehouse().getName(), stock.getQuantity(),
-                    stock.getReservedQuantity(), stock.getQuantity() - stock.getReservedQuantity());
+                    stock.getReservedQuantity(), stock.getQuantity() - stock.getReservedQuantity(),
+                    product.getId(), product.getName(), image, variant.getAttributes());
         }
     }
 

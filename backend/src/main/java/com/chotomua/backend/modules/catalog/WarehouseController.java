@@ -61,7 +61,7 @@ public class WarehouseController {
 
     private Warehouse find(UUID id) {
         return warehouses.findById(id)
-                .orElseThrow(() -> new CatalogNotFoundException("Warehouse not found: " + id));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy kho: " + id));
     }
 
     private String trimToNull(String value) {

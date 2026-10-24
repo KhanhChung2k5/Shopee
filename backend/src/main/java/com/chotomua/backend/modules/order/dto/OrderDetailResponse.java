@@ -23,12 +23,45 @@ public record OrderDetailResponse(
         String shipmentStatus,
         OffsetDateTime createdAt,
         List<OrderItemResponse> items,
-        List<OrderStatusHistoryResponse> statusHistory
+        List<OrderStatusHistoryResponse> statusHistory,
+        OrderCustomerResponse customer,
+        OrderPaymentResponse payment,
+        List<RefundResponse> refunds
 ) {
     public static OrderDetailResponse from(
             Order order,
             List<OrderItem> items,
             List<OrderStatusHistory> history
+    ) {
+        return from(order, items.stream().map(OrderItemResponse::from).toList(), history, null);
+    }
+
+    public static OrderDetailResponse from(
+            Order order,
+            List<OrderItemResponse> items,
+            List<OrderStatusHistory> history,
+            OrderCustomerResponse customer
+    ) {
+        return from(order, items, history, customer, null);
+    }
+
+    public static OrderDetailResponse from(
+            Order order,
+            List<OrderItemResponse> items,
+            List<OrderStatusHistory> history,
+            OrderCustomerResponse customer,
+            OrderPaymentResponse payment
+    ) {
+        return from(order, items, history, customer, payment, List.of());
+    }
+
+    public static OrderDetailResponse from(
+            Order order,
+            List<OrderItemResponse> items,
+            List<OrderStatusHistory> history,
+            OrderCustomerResponse customer,
+            OrderPaymentResponse payment,
+            List<RefundResponse> refunds
     ) {
         return new OrderDetailResponse(
                 order.getId(),
@@ -44,8 +77,11 @@ public record OrderDetailResponse(
                 order.getTrackingNo(),
                 order.getShipmentStatus(),
                 order.getCreatedAt(),
-                items.stream().map(OrderItemResponse::from).toList(),
-                history.stream().map(OrderStatusHistoryResponse::from).toList()
+                items,
+                history.stream().map(OrderStatusHistoryResponse::from).toList(),
+                customer,
+                payment,
+                refunds
         );
     }
 }

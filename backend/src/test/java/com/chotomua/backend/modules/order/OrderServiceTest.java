@@ -360,24 +360,40 @@ class OrderServiceTest {
     }
 
     @Test
-    void listForEmployeeUser_resolvesEmployeeIdInsteadOfUsingUserIdAsEmployeeId() {
+    void listForEmployeeUser_showsSalesEveryOrderWithItsCustomer() {
         UUID employeeUserId = UUID.randomUUID();
-        UUID employeeId = UUID.randomUUID();
-        User staffUser = new User("staff", "hash");
-        setId(staffUser, employeeUserId);
-        Employee employee = new Employee(staffUser, "warehouse");
-        setId(employee, employeeId);
-        Order assignedOrder = orderOf(UUID.randomUUID());
-        assignedOrder.setEmployeeId(employeeId);
-        when(employeeRepository.findByUserId(employeeUserId)).thenReturn(Optional.of(employee));
-        when(orderRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId))
-                .thenReturn(List.of(assignedOrder));
-        when(orderItemRepository.countByOrderId(assignedOrder.getId())).thenReturn(1L);
+        when(employeeRepository.findByUserId(employeeUserId)).thenReturn(Optional.of(employeeOf(employeeUserId, "sales")));
+        UUID buyerId = UUID.randomUUID();
+        Order newOrder = orderOf(buyerId); // pending, no employee yet — sales must still see it to confirm it
+        Address address = ownedAddress(buyerId, newOrder.getAddressId());
+        address.getUser().setFullName("Nguyễn Văn A");
+        when(orderRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(newOrder));
+        when(addressRepository.findAllById(any())).thenReturn(List.of(address));
+        when(orderItemRepository.countByOrderId(newOrder.getId())).thenReturn(2L);
 
         var result = orderService.listForEmployeeUser(employeeUserId, null);
 
-        assertThat(result).hasSize(1);
-        verify(orderRepository).findByEmployeeIdOrderByCreatedAtDesc(employeeId);
+        assertThat(result).singleElement().satisfies(order -> {
+            assertThat(order.id()).isEqualTo(newOrder.getId());
+            assertThat(order.itemCount()).isEqualTo(2);
+            assertThat(order.customer().fullName()).isEqualTo("Nguyễn Văn A");
+            assertThat(order.customer().recipientPhone()).isEqualTo("0900000000");
+        });
+    }
+
+    @Test
+    void listForEmployeeUser_filtersByStatusAndRejectsCs() {
+        UUID salesUserId = UUID.randomUUID();
+        when(employeeRepository.findByUserId(salesUserId)).thenReturn(Optional.of(employeeOf(salesUserId, "sales")));
+        when(orderRepository.findByStatusOrderByCreatedAtDesc("pending")).thenReturn(List.of());
+
+        assertThat(orderService.listForEmployeeUser(salesUserId, "pending")).isEmpty();
+        verify(orderRepository).findByStatusOrderByCreatedAtDesc("pending");
+
+        UUID csUserId = UUID.randomUUID();
+        when(employeeRepository.findByUserId(csUserId)).thenReturn(Optional.of(employeeOf(csUserId, "cs")));
+        assertThatThrownBy(() -> orderService.listForEmployeeUser(csUserId, null))
+                .isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
@@ -732,7 +748,7 @@ class OrderServiceTest {
         when(warehouseLookup.existsById(warehouseId)).thenReturn(true);
         when(orderItemRepository.findByOrderId(order.getId())).thenReturn(List.of(
                 new OrderItem(order.getId(), UUID.randomUUID(), 5, new BigDecimal("50000"), "Tay cầm", null)));
-        org.mockito.Mockito.doThrow(new IllegalArgumentException("Insufficient available stock"))
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("Không đủ hàng khả dụng"))
                 .when(inventory).exportForOrder(any(), any(), any());
 
         assertThatThrownBy(() -> orderService.updateShippingInfo(
@@ -759,6 +775,104 @@ class OrderServiceTest {
                 new OrderStatusUpdateRequest("cancelled", "Khách đổi ý"));
 
         verify(inventory).returnForOrder(order.getId());
+    }
+
+    @Test
+    void salesCanTurnDownABuyersCancelRequest() {
+        UUID salesUserId = UUID.randomUUID();
+        Order order = orderOf(UUID.randomUUID());
+        order.setStatus("cancel_requested");
+        when(employeeRepository.findByUserId(salesUserId)).thenReturn(Optional.of(employeeOf(salesUserId, "sales")));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+        when(orderStatusHistoryRepository.save(any(OrderStatusHistory.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = orderService.updateStatusForEmployeeUser(salesUserId, order.getId(),
+                new OrderStatusUpdateRequest("confirmed", "Đơn đã chuẩn bị, không thể huỷ"));
+
+        assertThat(result.previousStatus()).isEqualTo("cancel_requested");
+        assertThat(result.status()).isEqualTo("confirmed");
+    }
+
+    @Test
+    void cancellingAnOrderWhoseTransferArrivedOpensARefund() {
+        CheckoutPaymentService payments = mock(CheckoutPaymentService.class);
+        RefundService refunds = mock(RefundService.class);
+        orderService = new OrderService(cartItemRepository, orderRepository, orderItemRepository, orderStatusHistoryRepository,
+                addressRepository, employeeRepository, productVariantLookup, warehouseLookup, voucherQuoteService,
+                voucherUsageRepository, payments, null, null);
+        orderService.setRefundService(refunds);
+        UUID salesUserId = UUID.randomUUID();
+        Order order = orderOf(UUID.randomUUID());
+        Payment transfer = Payment.checkout(order.getId(), "bank_transfer", new BigDecimal("799000"));
+        transfer.markPaid(); // sales confirmed the money arrived
+        when(employeeRepository.findByUserId(salesUserId)).thenReturn(Optional.of(employeeOf(salesUserId, "sales")));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+        when(orderStatusHistoryRepository.save(any(OrderStatusHistory.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(payments.checkoutPaymentOf(order.getId())).thenReturn(Optional.of(transfer));
+
+        orderService.updateStatusForEmployeeUser(salesUserId, order.getId(), new OrderStatusUpdateRequest("cancelled", "Hết hàng"));
+
+        verify(refunds).openForCancelledOrder(order, new BigDecimal("799000"), "Hết hàng");
+    }
+
+    @Test
+    void warehouseCannotConfirmThatATransferArrived() {
+        UUID warehouseUserId = UUID.randomUUID();
+        when(employeeRepository.findByUserId(warehouseUserId)).thenReturn(Optional.of(employeeOf(warehouseUserId, "warehouse")));
+
+        assertThatThrownBy(() -> orderService.confirmTransferReceived(warehouseUserId, UUID.randomUUID()))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void cancellingVoidsThePaymentAndReturnsFlashSaleUnits() {
+        CheckoutPaymentService payments = mock(CheckoutPaymentService.class);
+        com.chotomua.backend.modules.marketing.FlashSaleCheckoutService flash = mock(com.chotomua.backend.modules.marketing.FlashSaleCheckoutService.class);
+        var applications = mock(com.chotomua.backend.modules.marketing.PromotionProductApplicationRepository.class);
+        orderService = new OrderService(cartItemRepository, orderRepository, orderItemRepository, orderStatusHistoryRepository,
+                addressRepository, employeeRepository, productVariantLookup, warehouseLookup, voucherQuoteService,
+                voucherUsageRepository, payments, null, flash);
+        orderService.setPromotionRecords(null, applications, null);
+        UUID salesUserId = UUID.randomUUID();
+        UUID buyerId = UUID.randomUUID();
+        Order order = orderOf(buyerId);
+        OrderItem item = new OrderItem(order.getId(), UUID.randomUUID(), 3, new BigDecimal("500000"), "Tay cầm", null);
+        setId(item, UUID.randomUUID());
+        UUID flashDetail = UUID.randomUUID();
+        when(employeeRepository.findByUserId(salesUserId)).thenReturn(Optional.of(employeeOf(salesUserId, "sales")));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+        when(orderStatusHistoryRepository.save(any(OrderStatusHistory.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderItemRepository.findByOrderId(order.getId())).thenReturn(List.of(item));
+        when(applications.findByOrderItemIdIn(any())).thenReturn(List.of(
+                new com.chotomua.backend.modules.marketing.PromotionProductApplication(item.getId(), flashDetail, new BigDecimal("300000"))));
+
+        orderService.updateStatusForEmployeeUser(salesUserId, order.getId(), new OrderStatusUpdateRequest("cancelled", "Khách đổi ý"));
+
+        verify(payments).cancelForOrder(order.getId());
+        verify(flash).releaseFlash(flashDetail, 3);
+    }
+
+    @Test
+    void previewReportsAnUnusableVoucherInsteadOfFailing() {
+        UUID buyerId = UUID.randomUUID();
+        UUID variantId = UUID.randomUUID();
+        CartItem line = new CartItem(buyerId, variantId, 2);
+        setId(line, UUID.randomUUID());
+        when(cartItemRepository.findByUserIdAndIsSelectedTrueOrderByUpdatedAtAsc(buyerId)).thenReturn(List.of(line));
+        when(productVariantLookup.findActiveById(variantId)).thenReturn(Optional.of(
+                new ProductVariantSnapshot(variantId, new BigDecimal("400000"), "Đĩa game", "{}", 10, "game_disc")));
+        when(voucherQuoteService.quote(any(), any(VoucherQuoteRequest.class)))
+                .thenThrow(new IllegalArgumentException("Voucher chỉ dành cho thành viên hạng Vàng trở lên"));
+
+        var preview = orderService.previewSelectedCart(buyerId, "VIP");
+
+        assertThat(preview.subtotal()).isEqualByComparingTo("800000");
+        assertThat(preview.voucherDiscount()).isEqualByComparingTo("0");
+        assertThat(preview.voucherError()).contains("hạng Vàng");
+        assertThat(preview.total()).isEqualByComparingTo("800000");
     }
 
     private static Address ownedAddress(UUID userId, UUID addressId) {

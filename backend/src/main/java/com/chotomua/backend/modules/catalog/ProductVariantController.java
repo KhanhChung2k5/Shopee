@@ -47,7 +47,7 @@ public class ProductVariantController {
     @ResponseStatus(HttpStatus.CREATED)
     public ProductVariantResponse create(@Valid @RequestBody ProductVariantRequest request) {
         Product product = products.findById(request.productId())
-                .orElseThrow(() -> new CatalogNotFoundException("Product not found: " + request.productId()));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy sản phẩm: " + request.productId()));
         ProductVariant variant = new ProductVariant(product, request.sku().trim(), request.price());
         apply(variant, request);
         return ProductVariantResponse.from(variants.save(variant));
@@ -58,7 +58,7 @@ public class ProductVariantController {
                                          @Valid @RequestBody ProductVariantRequest request) {
         ProductVariant variant = find(id);
         Product product = products.findById(request.productId())
-                .orElseThrow(() -> new CatalogNotFoundException("Product not found: " + request.productId()));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy sản phẩm: " + request.productId()));
         variant.setProduct(product);
         variant.setSku(request.sku().trim());
         variant.setPrice(request.price());
@@ -74,7 +74,7 @@ public class ProductVariantController {
 
     private ProductVariant find(UUID id) {
         return variants.findById(id)
-                .orElseThrow(() -> new CatalogNotFoundException("Product variant not found: " + id));
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy biến thể sản phẩm: " + id));
     }
 
     private void apply(ProductVariant variant, ProductVariantRequest request) {

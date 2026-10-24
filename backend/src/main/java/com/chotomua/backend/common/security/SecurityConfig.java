@@ -63,6 +63,7 @@ public class SecurityConfig {
                 .hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
                 .requestMatchers("/cart-items", "/cart-items/**").hasRole("BUYER")
                 .requestMatchers(HttpMethod.POST, "/orders").hasRole("BUYER")
+                .requestMatchers(HttpMethod.POST, "/orders/preview").hasRole("BUYER")
                 .requestMatchers(HttpMethod.GET, "/orders/**").hasAnyRole("BUYER", "STAFF")
                 .requestMatchers(HttpMethod.PATCH, "/orders/*/status").hasAnyRole("BUYER", "STAFF")
                 .requestMatchers(
@@ -70,11 +71,15 @@ public class SecurityConfig {
                         "/orders/*/shipping-info",
                         "/orders/*/tracking"
                 ).hasRole("STAFF")
+                .requestMatchers(HttpMethod.PATCH, "/orders/*/payment-received").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
+                // Hoàn tiền: khách gửi yêu cầu / khai tài khoản nhận; CSKH + admin duyệt và ghi nhận đã chuyển trả.
+                .requestMatchers(HttpMethod.POST, "/refund-returns").hasRole("BUYER")
+                .requestMatchers(HttpMethod.PATCH, "/refund-returns/*/bank-account").hasRole("BUYER")
+                .requestMatchers("/refund-returns", "/refund-returns/**").hasAnyAuthority("DEPT_CS", "DEPT_ADMIN")
                 // Only staff in the "admin" department may create internal employee accounts.
                 .requestMatchers("/employees/**").hasAuthority("DEPT_ADMIN")
                 // CRM "Khách hàng" admin page — do CS phụ trách (theo docs/phan-quyen-he-thong.md).
                 .requestMatchers("/customers/**").hasAnyAuthority("DEPT_CS", "DEPT_ADMIN")
-                .requestMatchers("/wallet", "/wallet/**").hasAuthority("ROLE_BUYER")
                 .requestMatchers("/vouchers", "/vouchers/**").hasAuthority("ROLE_BUYER")
                 .requestMatchers("/loyalty", "/loyalty/**").hasAuthority("ROLE_BUYER")
                 .requestMatchers(HttpMethod.POST, "/reviews").hasRole("BUYER")

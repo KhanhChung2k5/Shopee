@@ -20,7 +20,7 @@ import {
 } from '../components/ui'
 import { formatVnd } from '../lib/catalog'
 import { apiFetch, ApiError } from '../lib/api'
-import type { AvailableVoucher, VoucherQuote } from '../lib/vouchers'
+import { type AvailableVoucher, voucherScopeLabel } from '../lib/vouchers'
 import { useAuth } from '../state/AuthContext'
 import { useCart } from '../state/CartContext'
 
@@ -30,6 +30,29 @@ interface Address {
   phone: string
   fullAddress: string
   isDefault: boolean
+}
+
+/** Server-side pricing of the selected cart (POST /orders/preview) — the same numbers POST /orders will charge. */
+interface OrderPreview {
+  lines: PreviewLine[]
+  subtotal: number
+  invoiceDiscount: number
+  invoiceProgramName: string | null
+  voucherCode: string | null
+  voucherDiscount: number
+  voucherError: string | null
+  shippingFee: number
+  total: number
+}
+
+interface PreviewLine {
+  cartItemId: string
+  quantity: number
+  listPrice: number
+  unitPrice: number
+  lineTotal: number
+  promotionKind: 'flash' | 'percent' | null
+  promotionProgramName: string | null
 }
 
 interface CreatedOrder {
@@ -75,7 +98,7 @@ function CheckoutContent({ token }: { token: string }) {
   const [voucherCode, setVoucherCode] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'bank_transfer'>('cod')
   const [draftVoucherCode, setDraftVoucherCode] = useState('')
-  const [quoteResult, setQuoteResult] = useState<{ key: string; quote?: VoucherQuote; error?: string } | null>(null)
+  const [previewResult, setPreviewResult] = useState<{ key: string; preview?: OrderPreview; error?: string } | null>(null)
 
   // New Address modal state
   const [isAddAddressModalOpen, setIsAddAddressModalOpen] = useState(false)
@@ -103,13 +126,17 @@ function CheckoutContent({ token }: { token: string }) {
   }, [token])
 
   const selectedLines = lines.filter((line) => line.isSelected && line.available)
-  const subtotal = selectedLines.reduce((sum, line) => sum + line.product.price * line.quantity, 0)
-  const quoteKey = `${voucherCode}:${subtotal}`
-  const currentQuote = quoteResult?.key === quoteKey ? quoteResult.quote : undefined
-  const quoteError = quoteResult?.key === quoteKey ? quoteResult.error : undefined
-  const quoting = !!voucherCode && subtotal > 0 && quoteResult?.key !== quoteKey
-  const discountAmount = Number(currentQuote?.discountAmount ?? 0)
-  const totalAmount = Math.max(0, subtotal - discountAmount)
+  // Re-price on the server whenever the selection, a quantity or the voucher changes.
+  const previewKey = `${voucherCode}:${selectedLines.map((line) => `${line.id}x${line.quantity}`).join(',')}`
+  const preview = previewResult?.key === previewKey ? previewResult.preview : undefined
+  const previewError = previewResult?.key === previewKey ? previewResult.error : undefined
+  const pricing = selectedLines.length > 0 && previewResult?.key !== previewKey
+  const previewLine = (cartItemId: string) => preview?.lines.find((line) => line.cartItemId === cartItemId)
+  const subtotal = Number(preview?.subtotal ?? 0)
+  const invoiceDiscount = Number(preview?.invoiceDiscount ?? 0)
+  const voucherDiscount = Number(preview?.voucherDiscount ?? 0)
+  const voucherProblem = voucherCode ? (preview?.voucherError ?? undefined) : undefined
+  const totalAmount = Number(preview?.total ?? 0)
 
   const selectedAddress = addresses.find((a) => a.id === addressId)
   const selectedPaymentMethod = PAYMENT_METHODS.find(([val]) => val === paymentMethod)
@@ -130,22 +157,23 @@ function CheckoutContent({ token }: { token: string }) {
     return () => controller.abort()
   }, [token])
 
+  const hasSelection = selectedLines.length > 0
   useEffect(() => {
-    if (!voucherCode || subtotal <= 0) return
+    if (!hasSelection) return
     const controller = new AbortController()
-    apiFetch<VoucherQuote>(
-      '/vouchers/quote',
-      { method: 'POST', signal: controller.signal, body: JSON.stringify({ code: voucherCode, subtotal }) },
+    apiFetch<OrderPreview>(
+      '/orders/preview',
+      { method: 'POST', signal: controller.signal, body: JSON.stringify(voucherCode ? { voucherCode } : {}) },
       token
     )
-      .then((quote) => setQuoteResult({ key: quoteKey, quote }))
+      .then((result) => setPreviewResult({ key: previewKey, preview: result }))
       .catch((reason: unknown) => {
         if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
-          setQuoteResult({ key: quoteKey, error: reason instanceof ApiError ? reason.message : 'Không báo giá được voucher' })
+          setPreviewResult({ key: previewKey, error: reason instanceof ApiError ? reason.message : 'Không tính được giá đơn hàng' })
         }
       })
     return () => controller.abort()
-  }, [quoteKey, subtotal, token, voucherCode])
+  }, [hasSelection, previewKey, token, voucherCode])
 
   // Handle adding new address directly on Checkout
   const handleSaveNewAddress = async (e: FormEvent) => {
@@ -213,7 +241,7 @@ function CheckoutContent({ token }: { token: string }) {
 
   // Handle final order submission from confirmation modal
   const handleFinalConfirmOrder = async () => {
-    if (!addressId || selectedLines.length === 0 || (voucherCode && !currentQuote)) return
+    if (!addressId || selectedLines.length === 0 || !preview || voucherProblem) return
     setIsSubmitting(true)
     setError(null)
     try {
@@ -252,7 +280,7 @@ function CheckoutContent({ token }: { token: string }) {
             <SummaryRow label="Phương thức" value="Thanh toán khi nhận hàng (COD)" />
             {createdOrder.discountAmount > 0 && (
               <SummaryRow
-                label="Voucher giảm"
+                label="Giảm giá"
                 value={<span className="text-secondary">-{formatVnd(Number(createdOrder.discountAmount))}</span>}
               />
             )}
@@ -293,7 +321,7 @@ function CheckoutContent({ token }: { token: string }) {
     )
   }
 
-  const cannotSubmit = isSubmitting || isAddressLoading || !addressId || (!!voucherCode && !currentQuote)
+  const cannotSubmit = isSubmitting || isAddressLoading || !addressId || !preview || !!voucherProblem
   const linkClass =
     'font-title-md text-title-md text-primary hover:underline cursor-pointer disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed'
 
@@ -424,16 +452,16 @@ function CheckoutContent({ token }: { token: string }) {
                           ? 'Hiện chưa có voucher khả dụng.'
                           : 'Có thể chọn một voucher giảm giá cho đơn hàng.')}
                   </span>
-                  {quoting && <span className="block">Đang kiểm tra mức giảm…</span>}
-                  {quoteError && (
+                  {voucherCode && pricing && <span className="block">Đang kiểm tra mức giảm…</span>}
+                  {voucherProblem && (
                     <span role="alert" className="block text-error">
-                      {quoteError}
+                      {voucherProblem}
                     </span>
                   )}
                 </div>
-                {discountAmount > 0 && (
+                {voucherDiscount > 0 && (
                   <strong className="font-price-md text-price-md text-secondary whitespace-nowrap">
-                    -{formatVnd(discountAmount)}
+                    -{formatVnd(voucherDiscount)}
                   </strong>
                 )}
               </div>
@@ -475,9 +503,7 @@ function CheckoutContent({ token }: { token: string }) {
                       <p className="font-title-md text-title-md text-on-surface line-clamp-2">{line.product.name}</p>
                       <p className="font-body-md text-body-md text-on-surface-variant">Số lượng: {line.quantity}</p>
                     </div>
-                    <strong className="font-price-md text-price-md text-on-surface whitespace-nowrap">
-                      {formatVnd(line.product.price * line.quantity)}
-                    </strong>
+                    <LinePrice line={previewLine(line.id)} fallback={line.product.price * line.quantity} />
                   </div>
                 ))}
               </div>
@@ -487,17 +513,28 @@ function CheckoutContent({ token }: { token: string }) {
           {/* Sticky Aside Summary Card */}
           <Card as="aside" className="lg:col-span-4 lg:sticky lg:top-44 space-y-space-sm">
             <h2 className="font-headline-md text-headline-md text-on-surface">Thanh toán</h2>
-            <SummaryRow label="Tạm tính" value={formatVnd(subtotal)} />
+            {previewError && (
+              <p role="alert" className="font-body-md text-body-md text-error">
+                {previewError}
+              </p>
+            )}
+            <SummaryRow label="Tạm tính" value={pricing ? '…' : formatVnd(subtotal)} />
+            {invoiceDiscount > 0 && (
+              <SummaryRow
+                label={`Ưu đãi hoá đơn${preview?.invoiceProgramName ? ` (${preview.invoiceProgramName})` : ''}`}
+                value={<span className="text-secondary whitespace-nowrap">-{formatVnd(invoiceDiscount)}</span>}
+              />
+            )}
             <SummaryRow
-              label="Giảm giá"
+              label="Voucher"
               value={
-                <span className={discountAmount > 0 ? 'text-secondary' : undefined}>
-                  {discountAmount > 0 ? `-${formatVnd(discountAmount)}` : formatVnd(0)}
+                <span className={voucherDiscount > 0 ? 'text-secondary' : undefined}>
+                  {voucherDiscount > 0 ? `-${formatVnd(voucherDiscount)}` : formatVnd(0)}
                 </span>
               }
             />
-            <SummaryRow label="Phí vận chuyển" value={formatVnd(0)} />
-            <SummaryRow strong label="Tổng thanh toán" value={formatVnd(totalAmount)} />
+            <SummaryRow label="Phí vận chuyển" value={formatVnd(Number(preview?.shippingFee ?? 0))} />
+            <SummaryRow strong label="Tổng thanh toán" value={pricing ? '…' : formatVnd(totalAmount)} />
             <Button
               size="lg"
               className="w-full mt-space-sm"
@@ -560,6 +597,7 @@ function CheckoutContent({ token }: { token: string }) {
               <span className="block font-body-md text-body-md text-on-surface-variant mt-0.5">
                 Mã: {voucher.code} · Hết hạn: {new Date(voucher.endsAt).toLocaleString('vi-VN')}
               </span>
+              <span className="block font-label-md text-label-md text-on-surface-variant mt-0.5">{voucherScopeLabel(voucher)}</span>
             </RadioCard>
           ))}
         </Modal>
@@ -696,9 +734,9 @@ function CheckoutContent({ token }: { token: string }) {
                 <p className="font-title-md text-title-md text-on-surface">
                   {voucherCode ? `Mã: ${voucherCode}` : 'Không dùng voucher'}
                 </p>
-                {discountAmount > 0 && (
+                {voucherDiscount > 0 && (
                   <p className="font-label-sm text-label-sm text-secondary font-bold">
-                    Tiết kiệm {formatVnd(discountAmount)}
+                    Tiết kiệm {formatVnd(voucherDiscount)}
                   </p>
                 )}
               </div>
@@ -719,7 +757,7 @@ function CheckoutContent({ token }: { token: string }) {
                       <span className="font-body-md text-body-md truncate">{line.product.name}</span>
                     </div>
                     <span className="font-price-md text-price-md whitespace-nowrap ml-2">
-                      {formatVnd(line.product.price * line.quantity)}
+                      {formatVnd(Number(previewLine(line.id)?.lineTotal ?? line.product.price * line.quantity))}
                     </span>
                   </div>
                 ))}
@@ -729,10 +767,16 @@ function CheckoutContent({ token }: { token: string }) {
             {/* Payment totals breakdown */}
             <div className="bg-surface-container-low rounded-xl p-space-md space-y-space-xs border border-outline-variant/30">
               <SummaryRow label="Tạm tính hàng hoá" value={formatVnd(subtotal)} />
-              {discountAmount > 0 && (
+              {invoiceDiscount > 0 && (
+                <SummaryRow
+                  label="Ưu đãi hoá đơn"
+                  value={<span className="text-secondary whitespace-nowrap">-{formatVnd(invoiceDiscount)}</span>}
+                />
+              )}
+              {voucherDiscount > 0 && (
                 <SummaryRow
                   label="Giảm giá voucher"
-                  value={<span className="text-secondary">-{formatVnd(discountAmount)}</span>}
+                  value={<span className="text-secondary">-{formatVnd(voucherDiscount)}</span>}
                 />
               )}
               <SummaryRow label="Phí giao hàng toàn quốc" value={<span className="text-secondary font-semibold">Miễn phí</span>} />
@@ -750,7 +794,7 @@ function CheckoutContent({ token }: { token: string }) {
 
 
 function BankTransferQRView({ order }: { order: CreatedOrder }) {
-  const [status, setStatus] = useState<'waiting' | 'verifying' | 'success'>('waiting')
+  const [status, setStatus] = useState<'waiting' | 'submitted'>('waiting')
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [timeLeft, setTimeLeft] = useState(900)
   const [qrError, setQrError] = useState(false)
@@ -784,35 +828,10 @@ function BankTransferQRView({ order }: { order: CreatedOrder }) {
   const accountHolder = 'CHO TOT MUA GAMING'
   const qrUrl = `https://img.vietqr.io/image/MB-${bankAccount}-compact2.png?amount=${order.totalAmount}&addInfo=${encodeURIComponent(transferNote)}&accountName=${encodeURIComponent(accountHolder)}`
 
-  const handleConfirmPaid = () => {
-    setStatus('verifying')
-    setTimeout(() => {
-      setStatus('success')
-    }, 1800)
-  }
+  // Nothing is verified here: sales confirms the money against the bank statement (PATCH /orders/{id}/payment-received).
+  const handleConfirmPaid = () => setStatus('submitted')
 
-  if (status === 'verifying') {
-    return (
-      <Page narrow>
-        <Card className="text-center py-space-xl space-y-space-md">
-          <div className="relative mx-auto w-20 h-20 flex items-center justify-center">
-            <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-            <span className="material-symbols-outlined text-primary text-2xl absolute">sync</span>
-          </div>
-          <h1 className="font-headline-lg text-headline-lg text-on-surface">Đang kiểm tra giao dịch...</h1>
-          <p className="font-body-lg text-body-lg text-on-surface-variant max-w-md mx-auto">
-            Hệ thống đang đối soát dữ liệu chuyển khoản với ngân hàng cho đơn hàng <strong className="text-on-surface">{orderShortCode}</strong>.
-            Vui lòng không tắt hoặc tải lại trang.
-          </p>
-          <div className="w-full max-w-xs mx-auto bg-surface-container-highest rounded-full h-2 overflow-hidden">
-            <div className="bg-primary h-full w-2/3 animate-pulse rounded-full" />
-          </div>
-        </Card>
-      </Page>
-    )
-  }
-
-  if (status === 'success') {
+  if (status === 'submitted') {
     return (
       <Page narrow>
         <Card className="text-center space-y-space-md">
@@ -823,10 +842,10 @@ function BankTransferQRView({ order }: { order: CreatedOrder }) {
             <span className="material-symbols-outlined text-4xl">check_circle</span>
           </span>
           <div className="space-y-1">
-            <Badge tone="success">Thanh toán hoàn tất</Badge>
-            <h1 className="font-headline-lg text-headline-lg text-on-surface">Thanh toán thành công!</h1>
+            <Badge tone="info">Chờ shop xác nhận</Badge>
+            <h1 className="font-headline-lg text-headline-lg text-on-surface">Đã ghi nhận chuyển khoản</h1>
             <p className="font-body-lg text-body-lg text-on-surface-variant">
-              Giao dịch chuyển khoản của quý khách đã được xác thực thành công qua VietQR.
+              Shop sẽ đối chiếu sao kê và xác nhận khi nhận được tiền. Trạng thái thanh toán được cập nhật trong chi tiết đơn hàng.
             </p>
           </div>
 
@@ -836,27 +855,27 @@ function BankTransferQRView({ order }: { order: CreatedOrder }) {
             <SummaryRow
               label="Trạng thái giao dịch"
               value={
-                <span className="text-secondary font-semibold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-base">verified</span>
-                  Đã xác nhận thanh toán
+                <span className="text-on-surface-variant font-semibold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-base">schedule</span>
+                  Chờ shop xác nhận
                 </span>
               }
             />
             {order.discountAmount > 0 && (
               <SummaryRow
-                label="Voucher giảm"
+                label="Giảm giá"
                 value={<span className="text-secondary">-{formatVnd(Number(order.discountAmount))}</span>}
               />
             )}
             <SummaryRow
               strong
-              label="Số tiền đã thanh toán"
+              label="Số tiền cần chuyển"
               value={<span className="text-primary font-bold">{formatVnd(Number(order.totalAmount))}</span>}
             />
           </div>
 
           <p className="font-label-md text-label-md text-on-surface-variant">
-            Đơn hàng đang được chuẩn bị và sẽ sớm giao đến địa chỉ của bạn.
+            Nếu đơn bị huỷ sau khi shop đã nhận tiền, bạn sẽ được hoàn tiền về tài khoản ngân hàng của mình.
           </p>
 
           <div className="flex flex-wrap justify-center gap-space-sm pt-space-xs">
@@ -1018,7 +1037,7 @@ function BankTransferQRView({ order }: { order: CreatedOrder }) {
               <ol className="list-decimal list-inside space-y-0.5 text-label-sm">
                 <li>Quét mã QR trên màn hình bằng App Ngân hàng bất kỳ hoặc sao chép thông tin để chuyển khoản.</li>
                 <li>Mã QR đã mã hóa sẵn số tiền và nội dung chuyển khoản tự động.</li>
-                <li>Sau khi chuyển khoản thành công trên app ngân hàng, bấm nút <strong>"Xác nhận đã chuyển khoản"</strong> bên dưới.</li>
+                <li>Sau khi chuyển khoản thành công trên app ngân hàng, bấm nút <strong>"Tôi đã chuyển khoản"</strong> bên dưới. Shop sẽ xác nhận khi nhận được tiền.</li>
               </ol>
             </div>
 
@@ -1029,7 +1048,7 @@ function BankTransferQRView({ order }: { order: CreatedOrder }) {
                 onClick={handleConfirmPaid}
               >
                 <span className="material-symbols-outlined">check_circle</span>
-                <span>Xác nhận đã chuyển khoản</span>
+                <span>Tôi đã chuyển khoản</span>
               </Button>
               <ButtonLink
                 variant="outline"
@@ -1043,5 +1062,30 @@ function BankTransferQRView({ order }: { order: CreatedOrder }) {
         </div>
       </div>
     </Page>
+  )
+}
+
+/** A line's charged total, with the list price struck through when a Flash Sale or % promotion applies. */
+function LinePrice({ line, fallback }: { line?: PreviewLine; fallback: number }) {
+  if (!line) {
+    return <strong className="font-price-md text-price-md text-on-surface whitespace-nowrap">{formatVnd(fallback)}</strong>
+  }
+  const promoted = line.promotionKind != null && Number(line.unitPrice) < Number(line.listPrice)
+  return (
+    <div className="text-right whitespace-nowrap">
+      <strong className={`block font-price-md text-price-md ${promoted ? 'text-primary' : 'text-on-surface'}`}>
+        {formatVnd(Number(line.lineTotal))}
+      </strong>
+      {promoted && (
+        <>
+          <span className="block font-label-sm text-label-sm text-on-surface-variant line-through">
+            {formatVnd(Number(line.listPrice) * line.quantity)}
+          </span>
+          <span className="block font-label-sm text-label-sm text-secondary">
+            {line.promotionKind === 'flash' ? 'Flash Sale' : (line.promotionProgramName ?? 'Khuyến mãi')}
+          </span>
+        </>
+      )}
+    </div>
   )
 }

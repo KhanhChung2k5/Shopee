@@ -24,4 +24,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from User u where u.id = :id")
     Optional<User> findByIdForUpdate(@Param("id") UUID id);
+
+    /** Just the account status — checked on every authenticated request (see JwtAuthenticationFilter). */
+    @Query("select u.status from User u where u.id = :id")
+    Optional<String> findStatusById(@Param("id") UUID id);
 }

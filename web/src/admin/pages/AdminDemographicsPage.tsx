@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { age, type Customer } from '../types/customer'
 import { useAuth } from '../../state/AuthContext'
 import { apiFetch } from '../../lib/api'
+import { fetchCustomerReport, type CustomerReport } from '../../lib/crm'
 import { a } from '../adminUi'
 
 const AGE_BUCKETS: [string, (a: number) => boolean][] = [
@@ -31,10 +32,13 @@ function BarChart({ rows }: { rows: { label: string; count: number }[] }) {
 export default function AdminDemographicsPage() {
   const { token } = useAuth()
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [report, setReport] = useState<CustomerReport | null>(null)
 
   useEffect(() => {
     if (!token) return
     apiFetch<Customer[]>('/customers', {}, token).then(setCustomers).catch(() => setCustomers([]))
+    // Category / genre preferences come from delivered orders (CRM report, cs + admin).
+    fetchCustomerReport(token).then(setReport).catch(() => setReport(null))
   }, [token])
 
   const activeCustomers = customers.filter((c) => c.status !== 'deleted')
@@ -47,10 +51,13 @@ export default function AdminDemographicsPage() {
     }).length,
   }))
 
-  const genderRows = ['Nam', 'Nữ', 'Khác'].map((g) => ({
-    label: g,
-    count: activeCustomers.filter((c) => c.gender === g).length,
+  // users.gender stores male / female / other (older rows may hold the Vietnamese label).
+  const GENDER_VALUES: [string, string[]][] = [['Nam', ['male', 'nam']], ['Nữ', ['female', 'nữ', 'nu']], ['Khác', ['other', 'khác', 'khac']]]
+  const genderRows = GENDER_VALUES.map(([label, values]) => ({
+    label,
+    count: activeCustomers.filter((c) => values.includes((c.gender ?? '').toLocaleLowerCase('vi'))).length,
   }))
+  const unknownGender = activeCustomers.filter((c) => !c.gender).length
 
   return (
     <div>
@@ -68,12 +75,24 @@ export default function AdminDemographicsPage() {
         <div className={a.card}>
           <div className={`${a.statLabel} !mb-space-md`}>Phân bố giới tính</div>
           <BarChart rows={genderRows} />
+          {unknownGender > 0 && <p className="font-label-md text-label-md text-on-surface-variant mt-space-sm">{unknownGender} khách chưa khai báo giới tính.</p>}
         </div>
       </div>
 
-      <p className="font-body-md text-body-md text-on-surface-variant">
-        Báo cáo "Ngành hàng ưa thích" cần dữ liệu đơn hàng thật — sẽ bật lại khi module Order được xây dựng.
-      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+        <div className={a.card}>
+          <div className={`${a.statLabel} !mb-space-md`}>Ngành hàng ưa thích (theo đơn đã giao)</div>
+          {report && report.interests.length > 0
+            ? <BarChart rows={report.interests.map((i) => ({ label: i.categoryName, count: i.count }))} />
+            : <p className="font-body-md text-body-md text-on-surface-variant">{report ? 'Chưa có đơn hàng nào được giao.' : 'Đang tải…'}</p>}
+        </div>
+        <div className={a.card}>
+          <div className={`${a.statLabel} !mb-space-md`}>Thể loại game được mua</div>
+          {report && report.genres?.length > 0
+            ? <BarChart rows={report.genres.map((g) => ({ label: g.label, count: g.count }))} />
+            : <p className="font-body-md text-body-md text-on-surface-variant">{report ? 'Chưa có đĩa game nào được giao.' : 'Đang tải…'}</p>}
+        </div>
+      </div>
     </div>
   )
 }

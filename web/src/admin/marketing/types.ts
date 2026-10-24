@@ -17,6 +17,8 @@ export interface Voucher {
   type: 'percentage' | 'fixed_amount'
   value: number
   expiresAt: string | null
+  /** product_type values the voucher discounts; empty = every product. */
+  targetProductTypes: string[]
 }
 
 export interface ProductDiscount {
