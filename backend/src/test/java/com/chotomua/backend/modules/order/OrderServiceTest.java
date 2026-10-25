@@ -818,6 +818,52 @@ class OrderServiceTest {
     }
 
     @Test
+    void unpaidBankTransferOrderCannotBePacked() {
+        CheckoutPaymentService payments = mock(CheckoutPaymentService.class);
+        orderService = new OrderService(cartItemRepository, orderRepository, orderItemRepository, orderStatusHistoryRepository,
+                addressRepository, employeeRepository, productVariantLookup, warehouseLookup, voucherQuoteService,
+                voucherUsageRepository, payments, null, null);
+        UUID warehouseUserId = UUID.randomUUID();
+        Order order = orderOf(UUID.randomUUID());
+        order.setStatus("confirmed");
+        when(employeeRepository.findByUserId(warehouseUserId)).thenReturn(Optional.of(employeeOf(warehouseUserId, "warehouse")));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(payments.awaitsTransfer(order.getId())).thenReturn(true);
+
+        assertThatThrownBy(() -> orderService.updateShippingInfo(warehouseUserId, order.getId(),
+                new OrderShippingInfoRequest(UUID.randomUUID(), "GHN")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("chưa được xác nhận nhận tiền");
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void unpaidTransferIsCancelledAutomaticallyButAConfirmedOneIsLeftAlone() {
+        CheckoutPaymentService payments = mock(CheckoutPaymentService.class);
+        orderService = new OrderService(cartItemRepository, orderRepository, orderItemRepository, orderStatusHistoryRepository,
+                addressRepository, employeeRepository, productVariantLookup, warehouseLookup, voucherQuoteService,
+                voucherUsageRepository, payments, null, null);
+        Order unpaid = orderOf(UUID.randomUUID());
+        Order paid = orderOf(UUID.randomUUID());
+        Payment paidTransfer = Payment.checkout(paid.getId(), "bank_transfer", new BigDecimal("100000"));
+        paidTransfer.markPaid();
+        when(orderRepository.findById(unpaid.getId())).thenReturn(Optional.of(unpaid));
+        when(orderRepository.findById(paid.getId())).thenReturn(Optional.of(paid));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderStatusHistoryRepository.save(any(OrderStatusHistory.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(payments.checkoutPaymentOf(unpaid.getId()))
+                .thenReturn(Optional.of(Payment.checkout(unpaid.getId(), "bank_transfer", new BigDecimal("100000"))));
+        when(payments.checkoutPaymentOf(paid.getId())).thenReturn(Optional.of(paidTransfer));
+
+        assertThat(orderService.expireUnpaidTransfer(unpaid.getId())).isTrue();
+        assertThat(orderService.expireUnpaidTransfer(paid.getId())).isFalse();
+
+        assertThat(unpaid.getStatus()).isEqualTo("cancelled");
+        assertThat(paid.getStatus()).isEqualTo("pending");
+        verify(payments).cancelForOrder(unpaid.getId());
+    }
+
+    @Test
     void warehouseCannotConfirmThatATransferArrived() {
         UUID warehouseUserId = UUID.randomUUID();
         when(employeeRepository.findByUserId(warehouseUserId)).thenReturn(Optional.of(employeeOf(warehouseUserId, "warehouse")));

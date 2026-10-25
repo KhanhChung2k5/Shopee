@@ -21,7 +21,18 @@ export interface StaffOrderSummary {
   itemCount: number
   createdAt: string
   customer: OrderCustomer | null
+  paymentMethod: 'cod' | 'bank_transfer' | null
+  paymentStatus: string | null
+  refundedAmount: number
 }
+
+/** Short payment label for order lists: "COD · Chưa thu tiền", "CK · Đã thanh toán"… */
+export const paymentShort = (o: { paymentMethod: string | null; paymentStatus: string | null }) =>
+  !o.paymentMethod ? '—' : `${o.paymentMethod === 'cod' ? 'COD' : 'CK'} · ${PAYMENT_STATUS_LABEL[o.paymentStatus ?? ''] ?? o.paymentStatus ?? ''}`
+
+/** Bank-transfer orders whose money sales still has to check against the bank statement. */
+export const awaitsTransfer = (o: { status: OrderStatus; paymentMethod: string | null; paymentStatus: string | null }) =>
+  o.paymentMethod === 'bank_transfer' && o.paymentStatus === 'pending' && o.status !== 'cancelled'
 
 export interface StaffOrderItem {
   id: string

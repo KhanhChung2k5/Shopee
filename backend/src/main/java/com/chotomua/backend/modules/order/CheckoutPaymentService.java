@@ -19,11 +19,21 @@ public class CheckoutPaymentService {
         return payments.save(Payment.checkout(orderId, method, amount));
     }
 
-    /** Order delivered: cash on delivery / bank transfer counts as collected. */
+    /**
+     * Order delivered: cash on delivery was collected by the courier. A bank transfer is never settled by delivery —
+     * only by sales confirming the money arrived (and an unpaid transfer order cannot be packed in the first place).
+     */
     public void settleOnDelivery(UUID orderId) {
         for (Payment payment : payments.findByOrderIdAndPurpose(orderId, "checkout")) {
-            if ("pending".equals(payment.getStatus())) payment.markPaid();
+            if ("cod".equals(payment.getMethod()) && "pending".equals(payment.getStatus())) payment.markPaid();
         }
+    }
+
+    /** A bank-transfer order may only be packed once its money has arrived. */
+    public boolean awaitsTransfer(UUID orderId) {
+        return checkoutPaymentOf(orderId)
+                .map(payment -> "bank_transfer".equals(payment.getMethod()) && !"paid".equals(payment.getStatus()))
+                .orElse(false);
     }
 
     /** Order cancelled before delivery: the payment that was never collected is voided. */
@@ -43,7 +53,8 @@ public class CheckoutPaymentService {
         if (!"bank_transfer".equals(payment.getMethod())) {
             throw new IllegalStateException("Chỉ xác nhận nhận tiền cho đơn chuyển khoản");
         }
-        if (!"pending".equals(payment.getStatus())) {
+        // "cancelled": the order was cancelled before the money showed up — it still has to be recorded (and refunded).
+        if (!"pending".equals(payment.getStatus()) && !"cancelled".equals(payment.getStatus())) {
             throw new IllegalStateException("Thanh toán của đơn này đã được xử lý");
         }
         payment.markPaid();
@@ -54,6 +65,14 @@ public class CheckoutPaymentService {
     public void recordRefunded(UUID orderId, BigDecimal refundedSoFar) {
         checkoutPaymentOf(orderId).ifPresent(payment ->
                 payment.markRefunded(refundedSoFar.compareTo(payment.getAmount()) >= 0));
+    }
+
+    /** Checkout payments of many orders at once (order lists). */
+    public java.util.Map<UUID, Payment> checkoutPaymentsOf(java.util.Collection<UUID> orderIds) {
+        if (orderIds.isEmpty()) return java.util.Map.of();
+        java.util.Map<UUID, Payment> byOrder = new java.util.HashMap<>();
+        payments.findByOrderIdInAndPurpose(orderIds, "checkout").forEach(p -> byOrder.putIfAbsent(p.getOrderId(), p));
+        return byOrder;
     }
 
     /** Checkout payment of an order, for the order detail screens. */

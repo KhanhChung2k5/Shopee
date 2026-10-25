@@ -4,7 +4,7 @@ import { ApiError, apiFetch } from '../../lib/api'
 import { formatVnd } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
 import { a, chipClass, statusPillClass, pageButtonClass } from '../adminUi'
-import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE, orderCode, type OrderStatus, type StaffOrderSummary } from '../orders'
+import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE, awaitsTransfer, orderCode, paymentShort, type OrderStatus, type StaffOrderSummary } from '../orders'
 
 const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Tất cả' },
@@ -83,12 +83,12 @@ export default function AdminOrdersPage() {
       <div className={a.tableWrap}>
         <table className={a.table}>
           <thead>
-            <tr><th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th>Tổng tiền</th><th>Ngày đặt</th><th>Trạng thái</th></tr>
+            <tr><th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th>Tổng tiền</th><th>Thanh toán</th><th>Ngày đặt</th><th>Trạng thái</th></tr>
           </thead>
           <tbody>
-            {!orders && !error && <tr><td colSpan={6} className="text-center !py-space-xl text-on-surface-variant">Đang tải đơn hàng…</td></tr>}
+            {!orders && !error && <tr><td colSpan={7} className="text-center !py-space-xl text-on-surface-variant">Đang tải đơn hàng…</td></tr>}
             {orders && visible.length === 0 && (
-              <tr><td colSpan={6} className="text-center !py-space-xl text-on-surface-variant">Không tìm thấy đơn hàng nào.</td></tr>
+              <tr><td colSpan={7} className="text-center !py-space-xl text-on-surface-variant">Không tìm thấy đơn hàng nào.</td></tr>
             )}
             {visible.map((o) => (
               <tr key={o.id} className="cursor-pointer hover:bg-surface-container-low" onClick={() => navigate(`/admin/don-hang/${o.id}`)}>
@@ -98,7 +98,12 @@ export default function AdminOrdersPage() {
                   <div className="font-label-md text-label-md text-on-surface-variant">{o.customer?.email ?? o.customer?.recipientPhone ?? ''}</div>
                 </td>
                 <td>{o.itemCount}</td>
-                <td>{formatVnd(o.totalAmount)}</td>
+                <td>{formatVnd(o.totalAmount)}{o.refundedAmount > 0 && <div className="font-label-sm text-label-sm text-error">Đã hoàn {formatVnd(o.refundedAmount)}</div>}</td>
+                <td className="whitespace-nowrap">
+                  {awaitsTransfer(o)
+                    ? <span className={statusPillClass('locked')}>CK · Chờ đối chiếu tiền</span>
+                    : <span className="font-body-md text-body-md text-on-surface-variant">{paymentShort(o)}</span>}
+                </td>
                 <td className="whitespace-nowrap">{dateTime.format(new Date(o.createdAt))}</td>
                 <td><span className={statusPillClass(ORDER_STATUS_TONE[o.status])}>{ORDER_STATUS_LABEL[o.status] ?? o.status}</span></td>
               </tr>

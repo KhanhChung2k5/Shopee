@@ -40,6 +40,14 @@ public class RefundService {
     private final CheckoutPaymentService payments;
     private final LoyaltyAwardService loyalty;
 
+    /** Optional so unit tests run without CRM: recalculates LTV / RFM once money has gone back. */
+    private com.chotomua.backend.modules.crm.application.CrmOrderEvents crmOrderEvents;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setCrmOrderEvents(com.chotomua.backend.modules.crm.application.CrmOrderEvents crmOrderEvents) {
+        this.crmOrderEvents = crmOrderEvents;
+    }
+
     public RefundService(RefundReturnRepository refunds, OrderRepository orders, OrderItemRepository items,
                          OrderStatusHistoryRepository history, EmployeeRepository employees, UserRepository users,
                          CheckoutPaymentService payments, LoyaltyAwardService loyalty) {
@@ -93,6 +101,17 @@ public class RefundService {
         }
         refund.setBankAccount(request.bankName().trim(), request.bankAccountNo().trim(), request.bankAccountName().trim());
         return toResponse(refund, false);
+    }
+
+    /** Money already sent back, per order — for order lists and revenue. */
+    @Transactional(readOnly = true)
+    public java.util.Map<UUID, BigDecimal> refundedTotals(java.util.Collection<UUID> orderIds) {
+        if (orderIds.isEmpty()) return java.util.Map.of();
+        java.util.Map<UUID, BigDecimal> totals = new java.util.HashMap<>();
+        for (RefundReturn refund : refunds.findByOrderIdInAndStatus(orderIds, "refunded")) {
+            totals.merge(refund.getOrderId(), refund.getRefundAmount(), BigDecimal::add);
+        }
+        return totals;
     }
 
     @Transactional(readOnly = true)
@@ -149,9 +168,11 @@ public class RefundService {
                 .map(RefundReturn::getRefundAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         payments.recordRefunded(refund.getOrderId(), refundedSoFar);
+        Optional<Order> order = orders.findById(refund.getOrderId());
         if (RefundReturn.RETURN.equals(refund.getKind()) && loyalty != null) {
-            orders.findById(refund.getOrderId()).ifPresent(order -> loyalty.revoke(order, refund.getRefundAmount()));
+            order.ifPresent(o -> loyalty.revoke(o, refund.getRefundAmount()));
         }
+        if (crmOrderEvents != null) order.ifPresent(o -> crmOrderEvents.onOrderRefunded(o.getUserId()));
         return toResponse(refund, true);
     }
 

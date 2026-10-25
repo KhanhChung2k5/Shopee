@@ -90,7 +90,7 @@ export default function AdminOrderDetailPage() {
   const confirmTransfer = async () => {
     const ok = await confirm({
       title: 'Xác nhận đã nhận tiền',
-      message: <>Đã đối chiếu sao kê và nhận đủ <strong>{formatVnd(order?.payment?.amount ?? 0)}</strong> cho đơn <strong>{orderCode(id)}</strong>? Nếu đơn bị huỷ sau đó, khách sẽ được hoàn tiền.</>,
+      message: <>Đã đối chiếu sao kê và nhận đủ <strong>{formatVnd(order?.payment?.amount ?? 0)}</strong> cho đơn <strong>{orderCode(id)}</strong>? {order?.status === 'cancelled' ? 'Đơn đã huỷ nên hệ thống sẽ tạo yêu cầu hoàn lại toàn bộ số tiền cho CSKH.' : 'Nếu đơn bị huỷ sau đó, khách sẽ được hoàn tiền.'}</>,
       confirmLabel: 'Đã nhận tiền',
     })
     if (ok) void run(`/orders/${id}/payment-received`, {})
@@ -100,7 +100,11 @@ export default function AdminOrderDetailPage() {
   if (!order) return <p>Đang tải đơn hàng…</p>
 
   const customer = order.customer
-  const canPack = canShip && order.status === 'confirmed' && (order.shipmentStatus === 'pending' || order.shipmentStatus === 'packed')
+  // A bank-transfer order is packed only after sales confirms the money; money arriving after a cancel is still recorded.
+  const transferUnpaid = order.payment?.method === 'bank_transfer' && order.payment.status === 'pending'
+  const lateTransfer = order.payment?.method === 'bank_transfer' && order.payment.status === 'cancelled' && order.status === 'cancelled'
+  const canPack = canShip && order.status === 'confirmed' && !transferUnpaid
+    && (order.shipmentStatus === 'pending' || order.shipmentStatus === 'packed')
   const decisions = canDecide && ['pending', 'confirmed', 'cancel_requested'].includes(order.status)
 
   return (
@@ -151,8 +155,10 @@ export default function AdminOrderDetailPage() {
                     {PAYMENT_STATUS_LABEL[order.payment.status] ?? order.payment.status}
                     {order.payment.paidAt && ` · ${dateTime.format(new Date(order.payment.paidAt))}`}
                   </span>
-                  {canDecide && order.payment.method === 'bank_transfer' && order.payment.status === 'pending' && (
-                    <button type="button" className={buttonClass('primary', 'sm')} disabled={busy} onClick={() => void confirmTransfer()}>Xác nhận đã nhận tiền</button>
+                  {canDecide && (transferUnpaid || lateTransfer) && (
+                    <button type="button" className={buttonClass(lateTransfer ? 'outline' : 'primary', 'sm')} disabled={busy} onClick={() => void confirmTransfer()}>
+                      {lateTransfer ? 'Khách chuyển tiền sau khi huỷ' : 'Xác nhận đã nhận tiền'}
+                    </button>
                   )}
                 </span>
               </div>
@@ -183,7 +189,7 @@ export default function AdminOrderDetailPage() {
                 <li key={h.id} className="border-l-2 border-primary pl-space-sm">
                   <div className="font-title-md text-title-md">{ORDER_STATUS_LABEL[h.status as OrderStatus] ?? h.status}</div>
                   <div className="font-label-md text-label-md text-on-surface-variant">
-                    {dateTime.format(new Date(h.changedAt))} · {h.changedByType === 'buyer' ? 'Khách hàng' : 'Nhân viên'}
+                    {dateTime.format(new Date(h.changedAt))} · {h.changedByType === 'buyer' ? 'Khách hàng' : h.changedByType === 'system' ? 'Hệ thống' : 'Nhân viên'}
                   </div>
                   {h.reason && <div className="font-body-md text-body-md">{h.reason}</div>}
                 </li>
@@ -213,6 +219,11 @@ export default function AdminOrderDetailPage() {
               <div><dt className="text-on-surface-variant font-label-md text-label-md">Mã vận đơn</dt><dd>{order.trackingNo ?? '—'}</dd></div>
             </dl>
 
+            {canShip && order.status === 'confirmed' && transferUnpaid && (
+              <p className="font-body-md text-body-md text-on-surface-variant border-t border-line pt-space-sm">
+                Đơn chuyển khoản chưa được xác nhận nhận tiền — chưa thể đóng gói. Đơn tự huỷ nếu sau 24 giờ vẫn chưa có tiền.
+              </p>
+            )}
             {canPack && (
               <div className="space-y-space-xs border-t border-line pt-space-sm">
                 <label className="block font-label-md text-label-md">Kho xuất hàng

@@ -7,7 +7,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -22,6 +21,16 @@ import tools.jackson.databind.ObjectMapper;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class AuthFlowE2ETest {
 
+    private final E2eAccounts accounts = new E2eAccounts();
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @org.junit.jupiter.api.AfterEach
+    void removeTestAccounts() {
+        accounts.deleteAll(jdbc);
+    }
+
     @LocalServerPort
     private int port;
 
@@ -34,7 +43,7 @@ class AuthFlowE2ETest {
 
     @Test
     void registerThenLoginThenCallProtectedBuyerEndpoint() throws Exception {
-        String email = "e2e-" + UUID.randomUUID() + "@example.com";
+        String email = accounts.newEmail("e2e-");
         String password = "abc12345";
 
         HttpResponse<String> registerResponse = postJson("/auth/register", Map.of(

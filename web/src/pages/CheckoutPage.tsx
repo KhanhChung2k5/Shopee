@@ -796,22 +796,10 @@ function CheckoutContent({ token }: { token: string }) {
 function BankTransferQRView({ order }: { order: CreatedOrder }) {
   const [status, setStatus] = useState<'waiting' | 'submitted'>('waiting')
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
-  const [timeLeft, setTimeLeft] = useState(900)
   const [qrError, setQrError] = useState(false)
-
-  useEffect(() => {
-    if (status !== 'waiting' || timeLeft <= 0) return
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [status, timeLeft])
-
-  const formatTimer = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-  }
+  // Same deadline the backend enforces (OrderService.TRANSFER_DEADLINE): unpaid transfer orders are cancelled after 24 h.
+  const [deadline] = useState(() => new Date(Date.now() + 24 * 60 * 60 * 1000))
+  const deadlineText = deadline.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
 
   const copyText = (text: string, key: string) => {
     navigator.clipboard.writeText(text)
@@ -908,7 +896,7 @@ function BankTransferQRView({ order }: { order: CreatedOrder }) {
           <Card className="text-center space-y-space-md p-space-lg">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary font-label-md text-label-md">
               <span className="material-symbols-outlined text-base animate-pulse">schedule</span>
-              <span>Thời gian giữ đơn còn: <strong className="font-mono">{formatTimer(timeLeft)}</strong></span>
+              <span>Chuyển khoản trước <strong>{deadlineText}</strong> — quá 24 giờ đơn sẽ tự huỷ</span>
             </div>
 
             <div className="p-4 bg-white rounded-2xl shadow-sm border-2 border-primary/20 max-w-[280px] mx-auto transition-all hover:border-primary/50">

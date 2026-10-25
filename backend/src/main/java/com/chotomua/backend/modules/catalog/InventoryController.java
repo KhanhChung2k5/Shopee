@@ -71,6 +71,7 @@ public class InventoryController {
         }
 
         int change = Math.subtractExact(request.quantity(), stock.getQuantity());
+        if (change < 0) inventoryStockService.requireNotHeld(variantId, -change);
         stock.setQuantity(request.quantity());
         InventoryStock savedStock = stocks.save(stock);
         if (change != 0) {

@@ -139,6 +139,8 @@ class InventoryStockServiceTest {
         when(stocks.save(any(InventoryStock.class))).thenAnswer(call -> call.getArgument(0));
         when(movements.save(any(InventoryMovement.class))).thenAnswer(call -> call.getArgument(0));
 
+        when(stocks.countOnHand(variantId)).thenReturn(7L);
+        when(stocks.countHeldByOpenOrders(variantId)).thenReturn(0L);
         InventoryStock result = service.exportStock(warehouseId,
                 new InventoryStockService.ExportLine(variantId, 2));
 
@@ -149,6 +151,23 @@ class InventoryStockServiceTest {
         assertThat(movementCaptor.getValue().getType()).isEqualTo("export");
         assertThat(movementCaptor.getValue().getQuantity()).isEqualTo(-2);
         assertThat(movementCaptor.getValue().getOrderId()).isNull();
+    }
+
+    @Test
+    void exportStock_cannotTakeUnitsAlreadyHeldForOpenOrders() {
+        UUID warehouseId = UUID.randomUUID();
+        UUID variantId = UUID.randomUUID();
+        InventoryStock stock = stock(variantId, warehouseId, 5, 0);
+        when(stocks.findByVariant_IdAndWarehouse_Id(variantId, warehouseId)).thenReturn(Optional.of(stock));
+        when(stocks.countOnHand(variantId)).thenReturn(5L);
+        when(stocks.countHeldByOpenOrders(variantId)).thenReturn(4L); // 4 already sold, waiting to be packed
+
+        assertThatThrownBy(() -> service.exportStock(warehouseId, new InventoryStockService.ExportLine(variantId, 2)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("đang được giữ cho đơn");
+
+        assertThat(stock.getQuantity()).isEqualTo(5);
+        verify(movements, never()).save(any(InventoryMovement.class));
     }
 
     @Test

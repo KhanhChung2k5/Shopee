@@ -106,6 +106,7 @@ public class InventoryStockService {
         if (available < line.quantity()) {
             throw new IllegalArgumentException("Không đủ hàng khả dụng cho biến thể " + line.variantId());
         }
+        if (orderId == null) requireNotHeld(line.variantId(), line.quantity());
 
         stock.setQuantity(stock.getQuantity() - line.quantity());
         InventoryStock savedStock = stocks.save(stock);
@@ -113,6 +114,20 @@ public class InventoryStockService {
         movement.setOrderId(orderId);
         movements.save(movement);
         return savedStock;
+    }
+
+    /**
+     * A manual export or downward adjustment may not eat into units already promised to open orders —
+     * otherwise those orders could not be packed. (Packing an order itself uses its own held units.)
+     */
+    public void requireNotHeld(UUID variantId, int decrease) {
+        if (decrease <= 0) return;
+        long held = stocks.countHeldByOpenOrders(variantId);
+        long onHand = stocks.countOnHand(variantId);
+        if (onHand - decrease < held) {
+            throw new IllegalArgumentException("Không thể giảm " + decrease + " sản phẩm: " + held
+                    + " sản phẩm đang được giữ cho đơn chưa đóng gói, tổng tồn chỉ còn " + onHand + ".");
+        }
     }
 
     public record ExportLine(UUID variantId, Integer quantity) {

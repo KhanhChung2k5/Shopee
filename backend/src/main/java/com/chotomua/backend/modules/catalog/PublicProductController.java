@@ -115,7 +115,7 @@ public class PublicProductController {
                 : stocks.findAvailabilityByVariantIds(variantIds).stream().collect(Collectors.toMap(
                         InventoryStockRepository.VariantAvailability::getVariantId,
                         availability -> availability.getAvailableQuantity() == null
-                                ? 0 : Math.toIntExact(availability.getAvailableQuantity())));
+                                ? 0 : availability.getAvailableQuantity().intValue()));
 
         List<VariantDetails> variantDetails = activeVariants.stream()
                 .map(variant -> VariantDetails.from(variant,

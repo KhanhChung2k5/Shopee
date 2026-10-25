@@ -8,7 +8,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,6 +23,16 @@ import tools.jackson.databind.ObjectMapper;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class CustomerControllerE2ETest {
+
+    private final E2eAccounts accounts = new E2eAccounts();
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @org.junit.jupiter.api.AfterEach
+    void removeTestAccounts() {
+        accounts.deleteAll(jdbc);
+    }
 
     @LocalServerPort
     private int port;
@@ -46,7 +55,7 @@ class CustomerControllerE2ETest {
 
     @Test
     void adminCanListAndLockRealCustomerButBuyerCannot() throws Exception {
-        String adminEmail = "e2e-admin-" + UUID.randomUUID() + "@example.com";
+        String adminEmail = accounts.newEmail("e2e-admin-");
         String adminPassword = "admin1234";
         User adminUser = new User("staff", passwordEncoder.encode(adminPassword));
         adminUser.setEmail(adminEmail);
@@ -55,7 +64,7 @@ class CustomerControllerE2ETest {
         employeeRepository.save(new Employee(adminUser, "admin"));
         String adminToken = login(adminEmail, adminPassword);
 
-        String buyerEmail = "e2e-" + UUID.randomUUID() + "@example.com";
+        String buyerEmail = accounts.newEmail("e2e-");
         String buyerPassword = "abc12345";
         HttpResponse<String> registerResponse = postJson("/auth/register", Map.of(
                 "email", buyerEmail, "password", buyerPassword, "fullName", "E2E Real Customer"

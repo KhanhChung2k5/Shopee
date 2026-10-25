@@ -14,7 +14,7 @@ import { canAccessSection, type Department } from '../access'
 const DAY_MS = 86_400_000
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 
-/** Revenue (non-cancelled orders) for each of the last 7 days, plus the change against the 7 days before. */
+/** Revenue (non-cancelled orders, minus money refunded for returns) for each of the last 7 days, plus the change against the 7 days before. */
 function revenueTrend(orders: StaffOrderSummary[]) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -23,10 +23,11 @@ function revenueTrend(orders: StaffOrderSummary[]) {
   let previousWeek = 0
   for (const order of orders) {
     if (order.status === 'cancelled') continue
+    const net = order.totalAmount - (order.refundedAmount ?? 0)
     const created = new Date(order.createdAt)
     const age = today.getTime() - new Date(created.getFullYear(), created.getMonth(), created.getDate()).getTime()
-    if (age >= 7 * DAY_MS && age < 14 * DAY_MS) previousWeek += order.totalAmount
-    byDay.set(dayKey(created), (byDay.get(dayKey(created)) ?? 0) + order.totalAmount)
+    if (age >= 7 * DAY_MS && age < 14 * DAY_MS) previousWeek += net
+    byDay.set(dayKey(created), (byDay.get(dayKey(created)) ?? 0) + net)
   }
   const values = days.map((d) => byDay.get(dayKey(d)) ?? 0)
   const thisWeek = values.reduce((sum, v) => sum + v, 0)
@@ -112,7 +113,7 @@ export default function AdminDashboardPage() {
           {canSeeOrders && (
             <>
               <div className="font-label-md text-label-md text-on-surface-variant mb-1">
-                Doanh thu 7 ngày gần nhất: {formatVnd(trend.thisWeek)} (biểu đồ theo triệu đồng, không tính đơn huỷ)
+                Doanh thu 7 ngày gần nhất: {formatVnd(trend.thisWeek)} (biểu đồ theo triệu đồng, không tính đơn huỷ và tiền đã hoàn)
               </div>
               <LineChart values={trend.values} labels={trend.labels} color="var(--st-primary)" height={180} />
             </>
