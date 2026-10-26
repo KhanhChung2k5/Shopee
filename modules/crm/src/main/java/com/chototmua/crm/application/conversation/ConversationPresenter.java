@@ -54,10 +54,15 @@ public class ConversationPresenter {
 
     /** Dòng hàng đợi: mã ticket, SLA, người đang phụ trách, cờ {@code mine}. */
     public ConversationSummaryResponse summary(Conversation conversation, UUID viewerId) {
+        // Lấy messages của conversation
         List<ConversationMessage> messages = store.messagesOf(conversation.id());
+        // Lấy assignments của conversation
         List<AgentAssignment> assignments = store.assignmentsOf(conversation.id());
+        // Lấy current assignment của conversation
         AgentAssignment current = currentOf(assignments);
+        // Lấy thời gian hiện tại
         Instant now = Instant.now();
+        // Tạo response mới
         return new ConversationSummaryResponse(
                 conversation.id(),
                 ConversationText.code(conversation.id()),
@@ -82,10 +87,15 @@ public class ConversationPresenter {
      * Chi tiết hội thoại. {@code staffView} thì gồm ghi chú nội bộ, lịch sử gán và panel khách.
      */
     public ConversationDetailResponse detail(Conversation conversation, UUID viewerId, boolean staffView) {
+        // Lấy messages của conversation
         List<ConversationMessage> messages = store.messagesOf(conversation.id());
+        // Lấy assignments của conversation
         List<AgentAssignment> assignments = store.assignmentsOf(conversation.id());
+        // Lấy current assignment của conversation
         AgentAssignment current = currentOf(assignments);
+        // Lấy thời gian hiện tại
         Instant now = Instant.now();
+        // Lấy trạng thái live của presence
         boolean live = presence.isLive();
         UUID typer = presence.typingUser(conversation.id(), viewerId);
         return new ConversationDetailResponse(
@@ -118,22 +128,32 @@ public class ConversationPresenter {
 
     /** Panel CSKH: RFM, chi nhánh, đơn gần nhất, hội thoại khác của cùng khách. */
     private ConversationCustomerResponse customerPanel(Conversation conversation) {
+        // Lấy profile của conversation
         CustomerProfileCRM profile = profiles.find(conversation.userId()).orElse(null);
+        // Lấy delivered orders của conversation
         List<DeliveredOrderView> delivered = orders.listDeliveredOrders(conversation.userId());
+        // Nếu delivered orders là null, trả về empty list
         if (delivered == null) {
             delivered = List.of();
         }
+        // Lấy last delivered order của conversation
         DeliveredOrderView last = delivered.stream()
                 .max(Comparator.comparing(order -> order.deliveredAt() == null ? Instant.EPOCH : order.deliveredAt()))
                 .orElse(null);
+        // Lấy spend của profile
         BigDecimal spend = profile == null || profile.ltv() == null ? BigDecimal.ZERO : profile.ltv();
+        // Lấy total orders của profile
         int totalOrders = profile == null ? delivered.size() : profile.totalOrders();
+        // Lấy tier của profile
         String tier = profile == null ? null : profile.rfmSegment();
+        // Tạo list history
         List<ConversationHistoryItem> history = new ArrayList<>();
+        // Lấy all conversations từ store
         for (Conversation other : store.listAll()) {
             if (!other.userId().equals(conversation.userId()) || other.id().equals(conversation.id())) {
                 continue;
             }
+            // Thêm conversation history item vào history
             history.add(new ConversationHistoryItem(
                     other.id(),
                     ConversationText.code(other.id()),
@@ -143,9 +163,11 @@ public class ConversationPresenter {
                     ConversationText.channelLabel(other.type()),
                     other.lastMessageAt()));
         }
+        // Sắp xếp history theo thời gian
         history.sort(Comparator.comparing(
                 (ConversationHistoryItem item) -> item.lastMessageAt() == null ? Instant.EPOCH : item.lastMessageAt())
                 .reversed());
+        // Tạo response mới
         return new ConversationCustomerResponse(
                 conversation.userId(),
                 customerName(conversation.userId()),
@@ -166,11 +188,14 @@ public class ConversationPresenter {
             UUID customerId,
             boolean staffView
     ) {
+        // Tạo list views
         List<ConversationMessageResponse> views = new ArrayList<>();
+        // Lấy all messages từ messages
         for (ConversationMessage message : messages) {
             if (!staffView && ConversationText.KIND_INTERNAL.equals(message.kind())) {
                 continue;
             }
+            // Thêm conversation message response vào views
             views.add(new ConversationMessageResponse(
                     message.id(),
                     message.senderId(),
@@ -187,8 +212,11 @@ public class ConversationPresenter {
 
     /** Lịch sử gán agent cho bàn CSKH. */
     private List<AssignmentResponse> assignmentViews(List<AgentAssignment> assignments) {
+        // Tạo list views
         List<AssignmentResponse> views = new ArrayList<>();
+        // Lấy all assignments từ assignments
         for (AgentAssignment assignment : assignments) {
+            // Thêm assignment response vào views
             views.add(new AssignmentResponse(
                     assignment.id(),
                     assignment.employeeUserId(),
@@ -212,13 +240,17 @@ public class ConversationPresenter {
 
     /** Đoạn xem trước hàng đợi: tin công khai/bot/hệ thống gần nhất, cắt 80 ký tự. */
     private static String preview(List<ConversationMessage> messages) {
+        // Lấy all messages từ messages
         for (int index = messages.size() - 1; index >= 0; index--) {
+            // Lấy message từ messages
             ConversationMessage message = messages.get(index);
             if (ConversationText.KIND_INTERNAL.equals(message.kind())
                     || ConversationText.KIND_CSAT.equals(message.kind())) {
                 continue;
             }
+            // Lấy text từ message
             String text = message.content() == null ? "" : message.content().trim();
+            // Nếu text dài hơn 80 ký tự, trả về text cắt 77 ký tự và "..."
             if (text.length() > 80) {
                 return text.substring(0, 77) + "...";
             }
@@ -229,8 +261,11 @@ public class ConversationPresenter {
 
     /** Điểm CSAT mới nhất trên luồng tin. */
     private static Integer csatScore(List<ConversationMessage> messages) {
+        // Lấy all messages từ messages
         for (int index = messages.size() - 1; index >= 0; index--) {
+            // Lấy message từ messages
             ConversationMessage message = messages.get(index);
+            // Nếu kind của message bằng KIND_CSAT, trả về score của message
             if (ConversationText.KIND_CSAT.equals(message.kind())) {
                 return message.score();
             }
@@ -240,15 +275,19 @@ public class ConversationPresenter {
 
     /** Phía bong bóng chat: customer / agent / bot / system / note. */
     private String side(ConversationMessage message, UUID customerId) {
+        // Nếu kind của message bằng KIND_INTERNAL, trả về "note"
         if (ConversationText.KIND_INTERNAL.equals(message.kind())) {
             return "note";
         }
+        // Nếu kind của message bằng KIND_SYSTEM hoặc KIND_CSAT, trả về "system"
         if (ConversationText.KIND_SYSTEM.equals(message.kind()) || ConversationText.KIND_CSAT.equals(message.kind())) {
             return "system";
         }
+        // Nếu kind của message bằng KIND_BOT, trả về "bot"
         if (ConversationText.KIND_BOT.equals(message.kind())) {
             return "bot";
         }
+        // Nếu senderId của message bằng customerId, trả về "customer"
         if (customerId.equals(message.senderId())) {
             return "customer";
         }
@@ -257,50 +296,64 @@ public class ConversationPresenter {
 
     /** Tên hiển thị người gửi. */
     private String senderName(ConversationMessage message, UUID customerId) {
+        // Nếu kind của message bằng KIND_BOT, trả về "Trợ lý ảo"
         if (ConversationText.KIND_BOT.equals(message.kind())) {
             return "Trợ lý ảo";
         }
+        // Nếu kind của message bằng KIND_SYSTEM, trả về "Hệ thống"
         if (ConversationText.KIND_SYSTEM.equals(message.kind())) {
             return "Hệ thống";
         }
+        // Nếu không, trả về displayName của senderId và customerId
         return displayName(message.senderId(), customerId);
     }
 
     /** Nhãn vai trò trên tin (Khách hàng, CSKH, …). */
     private String senderRole(ConversationMessage message, UUID customerId) {
+        // Nếu kind của message bằng KIND_BOT, trả về "Trợ lý ảo"
         if (ConversationText.KIND_BOT.equals(message.kind())) {
             return "Trợ lý ảo";
         }
+        // Nếu kind của message bằng KIND_SYSTEM, trả về "Hệ thống"
         if (ConversationText.KIND_SYSTEM.equals(message.kind())) {
             return "Hệ thống";
         }
+        // Nếu senderId của message bằng customerId, trả về "Khách hàng"
         if (customerId.equals(message.senderId())) {
             return "Khách hàng";
         }
+        // Nếu không, trả về role label của department của senderId
         return ConversationText.roleLabel(directory.departmentOf(message.senderId()));
     }
 
     /** Khách thì tên hồ sơ, còn lại tên nhân viên. */
     private String displayName(UUID userId, UUID customerId) {
+        // Nếu userId bằng customerId, trả về customerName của customerId
         if (customerId.equals(userId)) {
             return customerName(customerId);
         }
+        // Nếu không, trả về staffName của userId
         return staffName(userId);
     }
 
     /** Tên khách từ danh tính; mất hồ sơ thì “Khách hàng”. */
     private String customerName(UUID userId) {
+        // Lấy customer từ identity
         try {
             CustomerView customer = identity.getCustomer(userId);
+            // Nếu fullName của customer là null hoặc blank, trả về "Khách hàng"
             return customer.fullName() == null || customer.fullName().isBlank() ? "Khách hàng" : customer.fullName();
         } catch (CustomerNotFoundException exception) {
+            // Nếu không tìm thấy customer, trả về "Khách hàng"
             return "Khách hàng";
         }
     }
 
     /** Tên nhân viên từ danh bạ. */
     private String staffName(UUID userId) {
+        // Lấy name của userId từ directory
         String name = directory.nameOf(userId);
+        // Nếu name là null hoặc blank, trả về "Nhân viên hỗ trợ"
         return name == null || name.isBlank() ? "Nhân viên hỗ trợ" : name;
     }
 }
