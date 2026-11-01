@@ -47,6 +47,8 @@ public class AuthService {
         }
         // Create a new user
         User user = new User("buyer", passwordEncoder.encode(request.password()));
+        // Every buyer starts at the lowest loyalty tier (marketing.LoyaltyTier.BRONZE)
+        user.setLoyaltyTier("bronze");
         // Set the email
         user.setEmail(request.email());
         // Set the phone

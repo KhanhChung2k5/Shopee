@@ -15,6 +15,7 @@ public record ReportCustomer(
         String genderLabel,
         BigDecimal ltv,
         int totalOrders,
-        String rfmSegment
+        String rfmSegment,
+        BigDecimal totalSpent
 ) {
 }

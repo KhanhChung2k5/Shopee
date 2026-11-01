@@ -1,5 +1,6 @@
 package com.chotomua.backend.modules.crm.application.profile;
 
+import com.chotomua.backend.modules.crm.application.segment.SegmentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,14 +16,17 @@ public class ProfileRecalculateScheduler {
     private static final Logger log = LoggerFactory.getLogger(ProfileRecalculateScheduler.class);
 
     private final CustomerProfileService profiles;
+    private final SegmentService segments;
 
-    public ProfileRecalculateScheduler(CustomerProfileService profiles) {
+    public ProfileRecalculateScheduler(CustomerProfileService profiles, SegmentService segments) {
         this.profiles = profiles;
+        this.segments = segments;
     }
 
     @Scheduled(cron = "0 0 20 * * *", zone = "Asia/Ho_Chi_Minh")
     public void recalculateNightly() {
         int done = profiles.recalculateAll();
-        log.info("Đã tính lại {} hồ sơ CRM lúc 20:00", done);
+        segments.refreshAll();
+        log.info("Đã tính lại {} hồ sơ CRM và làm mới thành viên phân khúc lúc 20:00", done);
     }
 }

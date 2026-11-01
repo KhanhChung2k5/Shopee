@@ -228,7 +228,7 @@ export default function AdminCustomersPage() {
               <th>Email / SĐT</th>
               <th className={a.sortable} onClick={() => toggleSort('age')}>Tuổi{sortArrow('age')}</th>
               <th className={a.sortable} onClick={() => toggleSort('totalOrders')}>Đơn hàng{sortArrow('totalOrders')}</th>
-              <th className={a.sortable} onClick={() => toggleSort('ltv')}>LTV{sortArrow('ltv')}</th>
+              <th className={a.sortable} onClick={() => toggleSort('ltv')}>LTV dự báo{sortArrow('ltv')}</th>
               <th>Trạng thái</th>
               <th>Hành động</th>
             </tr>
@@ -304,7 +304,8 @@ export default function AdminCustomersPage() {
       </div>
 
       <p className="mt-space-md font-body-md text-body-md text-on-surface-variant">
-        Dữ liệu thật từ bảng <code>users</code> (role=buyer). "Đơn hàng"/"LTV" sẽ luôn hiển thị 0 cho tới khi module Order được xây dựng.
+        "Đơn hàng" là số đơn đã giao; "LTV dự báo" do CRM tính lại khi đơn được giao hoặc hoàn tiền (xem trang Hồ sơ & RFM).
+        Không khóa hoặc xóa được khách còn đơn chưa hoàn tất hay yêu cầu hoàn tiền chưa xử lý xong.
         Khách hàng tự đăng ký qua app — admin không tạo tài khoản khách hàng trực tiếp.
       </p>
 

@@ -136,11 +136,15 @@ export default function AdminCampaignsPage() {
                         {funnel === 'error' && <span className="text-error">Không tải được phễu chuyển đổi.</span>}
                         {typeof funnel === 'object' && (
                           <div className="flex flex-wrap items-center gap-space-lg">
-                            {[['Nhắm tới', funnel.targeted], ['Đã gửi', funnel.sent], ['Đã mua', funnel.converted]].map(([label, value]) => (
+                            {[['Nhắm tới', funnel.targeted], ['Đã gửi', funnel.sent], ['Đã đọc', funnel.opened], ['Đã mua', funnel.converted]].map(([label, value]) => (
                               <div key={label as string}><div className={a.statLabel}>{label}</div><div className="font-headline-md text-headline-md">{value as number}</div></div>
                             ))}
                             <div><div className={a.statLabel}>Tỉ lệ chuyển đổi</div><div className="font-headline-md text-headline-md text-primary">{Number(funnel.conversionRate ?? 0).toFixed(1)}%</div></div>
-                            {!funnel.convertible && <span className="font-body-md text-body-md text-on-surface-variant">Chiến dịch không gắn sản phẩm nên không đo được lượt mua.</span>}
+                            <span className="font-body-md text-body-md text-on-surface-variant">
+                              {funnel.convertible
+                                ? '"Đã mua" = khách nhận thư rồi mua sản phẩm mục tiêu trong thời gian chiến dịch.'
+                                : 'Chiến dịch không gắn sản phẩm: "Đã mua" = khách nhận thư rồi có đơn bất kỳ được giao trong thời gian chiến dịch.'}
+                            </span>
                           </div>
                         )}
                       </td>

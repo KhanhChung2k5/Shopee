@@ -23,7 +23,8 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Hook đơn {@code delivered}: khớp sản phẩm mục tiêu → 1 thông báo khảo sát in-app.
+ * Hook đơn {@code delivered}: khớp sản phẩm mục tiêu → 1 thông báo khảo sát in-app gắn với đơn đó.
+ * Chỉ khảo sát đã phát hành ({@code sent}); bản nháp chưa soạn xong không bao giờ tự đến tay khách.
  * Không SMTP. Chống trùng theo (surveyId, orderId) qua {@link SurveyDispatchLog} (lưu DB, giữ được qua restart).
  */
 @Service
@@ -108,7 +109,6 @@ public class OrderDeliveredSurveyDispatcher {
             if (!dispatchLog.claim(survey.id(), orderId)) {
                 continue;
             }
-            markSentIfDraft(survey);
             created.add(new AppNotification(
                     UUID.randomUUID(),
                     userId,
@@ -117,7 +117,9 @@ public class OrderDeliveredSurveyDispatcher {
                     "in_app",
                     inboxContent(survey),
                     "sent",
-                    now));
+                    now,
+                    null,
+                    orderId));
             surveyIds.add(survey.id());
         }
         if (!created.isEmpty()) {
@@ -139,22 +141,8 @@ public class OrderDeliveredSurveyDispatcher {
         return false;
     }
 
-    private void markSentIfDraft(Survey survey) {
-        if (!Survey.DRAFT.equals(survey.status())) {
-            return;
-        }
-        Survey sent = new Survey(
-                survey.id(),
-                survey.createdByEmployeeId(),
-                survey.title(),
-                survey.description(),
-                Survey.SENT,
-                survey.createdAt());
-        surveys.save(sent, surveys.questionsOf(survey.id()));
-    }
-
     private static boolean eligible(String status) {
-        return Survey.DRAFT.equals(status) || Survey.SENT.equals(status);
+        return Survey.SENT.equals(status);
     }
 
     private static String inboxContent(Survey survey) {

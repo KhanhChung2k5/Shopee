@@ -24,7 +24,8 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Đơn hàng trên bảng {@code orders}. Mốc giao lấy {@code created_at} vì schema không có cột delivered_at.
+ * Đơn hàng trên bảng {@code orders}. Mốc giao = lần chuyển sang {@code delivered} trong {@code order_status_histories}
+ * (giống báo cáo doanh thu); đơn thiếu lịch sử thì dùng {@code created_at}.
  * Chỉ {@code SELECT} — không ghi bảng nhóm C.
  */
 @Component
@@ -36,6 +37,11 @@ public class JdbcOrderPort implements OrderPort {
             (total_amount - COALESCE((SELECT SUM(r.refund_amount) FROM refund_returns r
                                       WHERE r.order_id = orders.id AND r.status = 'refunded'), 0)) AS total_amount""";
 
+
+    /** When the order was handed over: its last move to delivered, or the order date if no history row exists. */
+    private static final String DELIVERED_AT = """
+            COALESCE((SELECT MAX(h.changed_at) FROM order_status_histories h
+                      WHERE h.order_id = orders.id AND h.status = 'delivered'), created_at) AS delivered_at""";
 
     private final JdbcTemplate jdbc;
 
@@ -56,11 +62,11 @@ public class JdbcOrderPort implements OrderPort {
     @Override
     public List<DeliveredOrderView> listDeliveredOrders(UUID userId) {
         List<OrderHeader> headers = jdbc.query("""
-                SELECT id, user_id, %s, created_at
+                SELECT id, user_id, %s, %s
                 FROM orders
                 WHERE user_id = ? AND status = 'delivered'
                 ORDER BY created_at
-                """.formatted(NET_TOTAL), (rs, rowNum) -> header(rs), userId);
+                """.formatted(NET_TOTAL, DELIVERED_AT), (rs, rowNum) -> header(rs), userId);
         return attachLines(headers);
     }
 
@@ -73,11 +79,11 @@ public class JdbcOrderPort implements OrderPort {
         for (int from = 0; from < ids.size(); from += 500) {
             List<UUID> chunk = ids.subList(from, Math.min(ids.size(), from + 500));
             List<OrderHeader> headers = jdbc.query("""
-                    SELECT id, user_id, %s, created_at
+                    SELECT id, user_id, %s, %s
                     FROM orders
                     WHERE user_id IN (%s) AND status = 'delivered'
                     ORDER BY created_at
-                    """.formatted(NET_TOTAL, placeholders(chunk.size())), (rs, rowNum) -> header(rs), chunk.toArray());
+                    """.formatted(NET_TOTAL, DELIVERED_AT, placeholders(chunk.size())), (rs, rowNum) -> header(rs), chunk.toArray());
             for (DeliveredOrderView order : attachLines(headers)) {
                 result.computeIfAbsent(order.userId(), key -> new ArrayList<>()).add(order);
             }
@@ -88,10 +94,10 @@ public class JdbcOrderPort implements OrderPort {
     @Override
     public Optional<DeliveredOrderView> getDeliveredOrder(UUID orderId) {
         List<OrderHeader> found = jdbc.query("""
-                SELECT id, user_id, %s, created_at
+                SELECT id, user_id, %s, %s
                 FROM orders
                 WHERE id = ? AND status = 'delivered'
-                """.formatted(NET_TOTAL), (rs, rowNum) -> header(rs), orderId);
+                """.formatted(NET_TOTAL, DELIVERED_AT), (rs, rowNum) -> header(rs), orderId);
         if (found.isEmpty()) {
             return Optional.empty();
         }
@@ -150,6 +156,18 @@ public class JdbcOrderPort implements OrderPort {
         return jdbc.query(sql, (rs, rowNum) -> rs.getObject("product_id", UUID.class), args.toArray());
     }
 
+    @Override
+    public OpenWork openWork(UUID userId) {
+        Integer orders = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM orders WHERE user_id = ? AND status NOT IN ('delivered', 'cancelled')",
+                Integer.class, userId);
+        Integer refunds = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM refund_returns r JOIN orders o ON o.id = r.order_id
+                WHERE o.user_id = ? AND r.status IN ('requested', 'approved')
+                """, Integer.class, userId);
+        return new OpenWork(orders == null ? 0 : orders, refunds == null ? 0 : refunds);
+    }
+
     /**
      * Gom dòng hàng sau khi ResultSet đơn đã đóng. Không query lồng trong mapper —
      * mapper giữ kết nối, query con lấy kết nối thứ hai và dễ cạn pool Hikari.
@@ -204,12 +222,12 @@ public class JdbcOrderPort implements OrderPort {
                 rs.getObject("id", UUID.class),
                 rs.getObject("user_id", UUID.class),
                 rs.getBigDecimal("total_amount"),
-                rs.getTimestamp("created_at"));
+                rs.getTimestamp("delivered_at"));
     }
 
-    private record OrderHeader(UUID id, UUID userId, BigDecimal totalAmount, Timestamp createdAt) {
+    private record OrderHeader(UUID id, UUID userId, BigDecimal totalAmount, Timestamp deliveredAtTimestamp) {
         Instant deliveredAt() {
-            return createdAt == null ? null : createdAt.toInstant();
+            return deliveredAtTimestamp == null ? null : deliveredAtTimestamp.toInstant();
         }
     }
 

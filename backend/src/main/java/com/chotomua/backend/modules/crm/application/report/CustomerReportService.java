@@ -103,7 +103,8 @@ public class CustomerReportService {
                     RfmClassifier.segment(
                             daysSince(value.lastPurchaseAt()),
                             delivered.size(),
-                            value.historicalSpend())));
+                            value.historicalSpend()),
+                    value.historicalSpend()));
             if (customerLines.isEmpty()) {
                 facts.add(new ReportFact(
                         customer.id(), age.code(), age.label(), gender.code(), gender.label(),

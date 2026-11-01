@@ -68,7 +68,7 @@ class CustomerProfileServiceTest {
     }
 
     @Test
-    void twoDeliveredOrdersSumLtvAndKeepTheSameRfmLabel() {
+    void twoDeliveredOrdersGiveSpendAndForecastLtvAndKeepTheSameRfmLabel() {
         CustomerView customer = identity.seedCustomer(
                 "Hai", "male", LocalDate.of(1995, 4, 4), CustomerStatus.ACTIVE);
         seedDelivered(customer.id(), "150000", "2026-08-01T10:00:00Z");
@@ -78,7 +78,9 @@ class CustomerProfileServiceTest {
         CustomerProfileResponse second = profiles.recalculate(ACTOR, customer.id());
 
         assertThat(first.totalOrders()).isEqualTo(2);
-        assertThat(first.ltv()).isEqualByComparingTo("13013.70");
+        assertThat(first.totalSpent()).isEqualByComparingTo("250000");
+        // AOV 125,000 × 2 orders/year × 3-year lifespan
+        assertThat(first.ltv()).isEqualByComparingTo("750000.00");
         assertThat(first.rfmSegment()).isEqualTo(RfmClassifier.POTENTIAL);
         assertThat(first.lastPurchaseAt()).isEqualTo(Instant.parse("2026-08-20T10:00:00Z"));
         assertThat(second.rfmSegment()).isEqualTo(first.rfmSegment());
@@ -105,11 +107,13 @@ class CustomerProfileServiceTest {
 
         assertThat(lockedProfile.status()).isEqualTo(CustomerStatus.LOCKED);
         assertThat(lockedProfile.totalOrders()).isEqualTo(1);
-        assertThat(lockedProfile.ltv()).isEqualByComparingTo("80000");
+        assertThat(lockedProfile.totalSpent()).isEqualByComparingTo("80000");
+        assertThat(lockedProfile.ltv()).isEqualByComparingTo("240000");
         assertThat(lockedProfile.rfmSegment()).isEqualTo(RfmClassifier.POTENTIAL);
         assertThat(deletedProfile.status()).isEqualTo(CustomerStatus.DELETED);
         assertThat(deletedProfile.totalOrders()).isEqualTo(1);
-        assertThat(deletedProfile.ltv()).isEqualByComparingTo("120000");
+        assertThat(deletedProfile.totalSpent()).isEqualByComparingTo("120000");
+        assertThat(deletedProfile.ltv()).isEqualByComparingTo("360000");
         assertThat(store.find(locked.id())).isPresent();
         assertThat(store.find(deleted.id())).isPresent();
     }

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -37,8 +38,8 @@ public class SurveyParticipationController {
 
     @GetMapping("/{id}/sheet")
     @PreAuthorize("hasAuthority('ROLE_BUYER')")
-    public CustomerSurveySheetResponse sheet(@PathVariable UUID id) {
-        return surveys.sheet(currentActor.requireUserId(), id);
+    public CustomerSurveySheetResponse sheet(@PathVariable UUID id, @RequestParam(required = false) UUID orderId) {
+        return surveys.sheet(currentActor.requireUserId(), id, orderId);
     }
 
     @PostMapping("/{id}/responses")

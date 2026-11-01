@@ -102,6 +102,11 @@ class OrderDeliveredSurveyControllerTest {
                                 {"productIds":["02020202-0000-0000-0000-000000000001"]}
                                 """))
                 .andExpect(status().isOk());
+        // Only a published survey is sent after delivery; a draft never reaches customers.
+        addQuestion(surveyId);
+        mockMvc.perform(post("/api/surveys/" + surveyId + "/publish"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("sent"));
         UUID orderId = UUID.randomUUID();
         orders.seedDeliveredOrder(new DeliveredOrderView(
                 orderId,
@@ -133,6 +138,16 @@ class OrderDeliveredSurveyControllerTest {
                         .param("userId", UUID.randomUUID().toString()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.message", containsString("quyền")));
+    }
+
+    /** A survey reaches customers only with at least one question. */
+    private void addQuestion(String surveyId) throws Exception {
+        mockMvc.perform(post("/api/surveys/" + surveyId + "/questions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"questionText":"Bạn hài lòng với đơn hàng không?","answerType":"rating","options":[]}
+                                """))
+                .andExpect(status().isOk());
     }
 
     private String createDraft() throws Exception {

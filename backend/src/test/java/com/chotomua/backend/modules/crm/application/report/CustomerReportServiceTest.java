@@ -167,7 +167,7 @@ class CustomerReportServiceTest {
                 .containsExactly("Mua Nhieu", "Im Lang");
         ReportCustomer valued = report.customers().get(0);
         assertThat(valued.customerId()).isEqualTo(buyer.id());
-        assertThat(valued.ltv()).isEqualByComparingTo("10");
+        assertThat(valued.ltv()).isEqualByComparingTo("30"); // one order of 10 projected over the 3-year lifespan
         assertThat(valued.totalOrders()).isEqualTo(1);
         assertThat(valued.rfmSegment()).isEqualTo(RfmClassifier.POTENTIAL);
         ReportCustomer idle = report.customers().get(1);

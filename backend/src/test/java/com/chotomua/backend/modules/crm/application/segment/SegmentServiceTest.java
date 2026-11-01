@@ -256,6 +256,29 @@ class SegmentServiceTest {
                 .hasMessageContaining("age");
     }
 
+    @Test
+    void recalculatedLabelMovesTheCustomerBetweenDefaultRfmSegments() {
+        CustomerView customer = identity.seedCustomer(
+                "Doi Nhan", "male", TODAY.minusYears(25), CustomerStatus.ACTIVE);
+        segments.ensureRfmDefaults();
+        UUID other = UUID.fromString("a1000001-0000-4000-8000-000000000006");
+        UUID potential = UUID.fromString("a1000001-0000-4000-8000-000000000003");
+
+        segments.syncRfmMember(customer.id(), RfmClassifier.OTHER, true);
+        assertThat(memberIds(other)).contains(customer.id());
+
+        segments.syncRfmMember(customer.id(), RfmClassifier.POTENTIAL, true);
+        assertThat(memberIds(other)).doesNotContain(customer.id());
+        assertThat(memberIds(potential)).contains(customer.id());
+
+        segments.syncRfmMember(customer.id(), RfmClassifier.POTENTIAL, false);
+        assertThat(memberIds(potential)).doesNotContain(customer.id());
+    }
+
+    private List<UUID> memberIds(UUID segmentId) {
+        return segments.get(ACTOR, segmentId).members().stream().map(SegmentMemberResponse::userId).toList();
+    }
+
     private String rfmOf(UUID userId) {
         return new OrderCountRfmStub(orders, null, CLOCK).rfmSegment(userId);
     }

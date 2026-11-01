@@ -12,6 +12,7 @@ public record NotificationResponse(
         String channel,
         String content,
         String status,
-        Instant sentAt
+        Instant sentAt,
+        UUID orderId
 ) {
 }

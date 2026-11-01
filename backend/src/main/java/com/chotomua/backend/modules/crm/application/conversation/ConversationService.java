@@ -75,9 +75,7 @@ public class ConversationService {
                 type,
                 "web",
                 resolvedTopic,
-                ConversationText.TYPE_CHAT.equals(type)
-                        ? ConversationText.STATUS_IN_PROGRESS
-                        : ConversationText.STATUS_OPEN,
+                ConversationText.STATUS_OPEN,
                 ConversationText.PRIORITY_NORMAL,
                 now,
                 now);
@@ -128,10 +126,22 @@ public class ConversationService {
         throw new ConversationNotFoundException(conversationId);
     }
 
-    /** Nhân viên đổi loại, trạng thái hoặc mức ưu tiên. */
+    /**
+     * Nhân viên đổi loại, trạng thái hoặc mức ưu tiên. Quy trình trạng thái:
+     * mới ({@code open}) → đang xử lý ({@code in_progress}, luôn có người phụ trách) → đã đóng ({@code closed}).
+     * Chỉ đóng khi đã có người phụ trách và nhân viên đã trả lời khách; hội thoại đã đóng không mở lại
+     * (khách mở yêu cầu mới nếu vẫn cần hỗ trợ). Đang xử lý có thể trả về hàng đợi mới.
+     */
     public ConversationDetailResponse patch(UUID actorId, UUID conversationId, String status, String priority, String type) {
         requireStaff(actorId);
         Conversation conversation = require(conversationId);
+        String nextStatus = blankToNull(status);
+        if (nextStatus != null && !nextStatus.equals(conversation.status())) {
+            requireTransition(conversation, nextStatus);
+            if (ConversationText.STATUS_IN_PROGRESS.equals(nextStatus)) {
+                ensureAssigned(conversation.id(), actorId, Instant.now());
+            }
+        }
         if (status != null && !status.isBlank() && !ConversationText.knownStatus(status)) {
             throw new InvalidConversationException("Trạng thái hội thoại không hợp lệ.");
         }
@@ -212,6 +222,9 @@ public class ConversationService {
         }
         identity.requireCrmStaff(targetUserId);
         Conversation conversation = require(conversationId);
+        if (ConversationText.STATUS_CLOSED.equals(conversation.status())) {
+            throw new InvalidConversationException("Hội thoại đã đóng, không chuyển tiếp được.");
+        }
         AgentAssignment current = currentAssignment(conversation.id());
         if (current != null && current.employeeUserId().equals(targetUserId)) {
             throw new InvalidConversationException("Nhân viên này đang phụ trách hội thoại.");
@@ -320,6 +333,26 @@ public class ConversationService {
         Conversation touched = conversation.withLastMessageAt(when);
         store.save(touched);
         return touched;
+    }
+
+    /** Kiểm tra bước chuyển trạng thái hợp lệ (xem {@link #patch}). */
+    private void requireTransition(Conversation conversation, String nextStatus) {
+        if (ConversationText.STATUS_CLOSED.equals(conversation.status())) {
+            throw new InvalidConversationException("Hội thoại đã đóng, không mở lại được. Khách mở yêu cầu mới nếu vẫn cần hỗ trợ.");
+        }
+        if (!ConversationText.STATUS_CLOSED.equals(nextStatus)) {
+            return;
+        }
+        if (currentAssignment(conversation.id()) == null) {
+            throw new InvalidConversationException("Chưa có nhân viên phụ trách, không đóng được hội thoại.");
+        }
+        boolean answered = store.messagesOf(conversation.id()).stream().anyMatch(message ->
+                ConversationText.KIND_PUBLIC.equals(message.kind())
+                        && message.senderId() != null
+                        && !message.senderId().equals(conversation.userId()));
+        if (!answered) {
+            throw new InvalidConversationException("Chưa trả lời khách, không đóng được hội thoại.");
+        }
     }
 
     /** Gán nhân viên hiện tại nếu hội thoại chưa có người phụ trách. */

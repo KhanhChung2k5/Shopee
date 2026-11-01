@@ -19,8 +19,8 @@ public final class SegmentRules {
     public static final String RFM = "rfm";
     public static final String CATEGORY = "category";
     public static final String ALL = "all";
-    public static final List<String> CATEGORY_NAMES = List.of(
-            "Tay cầm", "Đĩa game", "Phụ kiện", "Tai nghe", "Máy chơi game", "Bàn phím");
+    /** Danh mục cửa hàng đang bán (bảng {@code categories}). */
+    public static final List<String> CATEGORY_NAMES = List.of("Tay cầm", "Đĩa game", "Phụ kiện");
 
     private SegmentRules() {
         // Tiện ích tĩnh, không tạo đối tượng.
@@ -234,7 +234,7 @@ public final class SegmentRules {
         for (String name : names) {
             if (!CATEGORY_NAMES.contains(name)) {
                 throw new InvalidSegmentRuleException(
-                        "Danh mục không có sẵn. Chọn Tay cầm, Đĩa game, Phụ kiện, Tai nghe, Máy chơi game hoặc Bàn phím.");
+                        "Danh mục không có sẵn. Chọn Tay cầm, Đĩa game hoặc Phụ kiện.");
             }
         }
         String first = names.isEmpty() ? null : names.get(0);
@@ -272,7 +272,7 @@ public final class SegmentRules {
         for (String name : names) {
             if (!CATEGORY_NAMES.contains(name)) {
                 throw new InvalidSegmentRuleException(
-                        "Danh mục không có sẵn. Chọn Tay cầm, Đĩa game, Phụ kiện, Tai nghe, Máy chơi game hoặc Bàn phím.");
+                        "Danh mục không có sẵn. Chọn Tay cầm, Đĩa game hoặc Phụ kiện.");
             }
         }
         return names;

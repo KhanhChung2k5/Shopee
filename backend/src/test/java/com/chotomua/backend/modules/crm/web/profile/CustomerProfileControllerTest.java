@@ -87,13 +87,15 @@ class CustomerProfileControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.fullName").value("An"))
                 .andExpect(jsonPath("$.totalOrders").value(1))
-                .andExpect(jsonPath("$.ltv").value(1890000))
+                .andExpect(jsonPath("$.totalSpent").value(1890000))
+                .andExpect(jsonPath("$.ltv").value(5670000))
                 .andExpect(jsonPath("$.rfmSegment").value(expectedLabel("2026-08-01T10:00:00Z", 1, "1890000")));
 
         mockMvc.perform(get("/api/crm/profiles/" + customer.id()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalOrders").value(1))
-                .andExpect(jsonPath("$.ltv").value(1890000))
+                .andExpect(jsonPath("$.totalSpent").value(1890000))
+                .andExpect(jsonPath("$.ltv").value(5670000))
                 .andExpect(jsonPath("$.rfmSegment").value(expectedLabel("2026-08-01T10:00:00Z", 1, "1890000")));
     }
 

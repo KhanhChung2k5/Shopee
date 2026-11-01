@@ -2,6 +2,7 @@ package com.chotomua.backend.modules.crm.application.customer;
 
 import com.chotomua.backend.modules.crm.application.exception.InvalidCustomerStatusException;
 import com.chotomua.backend.modules.crm.port.IdentityPort;
+import com.chotomua.backend.modules.crm.port.OrderPort;
 import com.chotomua.backend.modules.crm.port.dto.AddressView;
 import com.chotomua.backend.modules.crm.port.dto.CreateCustomerCommand;
 import com.chotomua.backend.modules.crm.port.dto.CustomerFilter;
@@ -11,6 +12,7 @@ import com.chotomua.backend.modules.crm.port.dto.UpsertAddressCommand;
 import com.chotomua.backend.modules.crm.web.dto.CustomerDetailResponse;
 import com.chotomua.backend.modules.crm.web.dto.CustomerListResponse;
 import com.chotomua.backend.modules.crm.web.dto.PaginationResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,10 +27,29 @@ public class CustomerAccountService {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final IdentityPort identity;
+    private final OrderPort orders;
 
     /** Mọi thao tác khách đi qua {@link IdentityPort}, không ghi thẳng bảng user. */
     public CustomerAccountService(IdentityPort identity) {
+        this(identity, null);
+    }
+
+    @Autowired
+    public CustomerAccountService(IdentityPort identity, OrderPort orders) {
         this.identity = identity;
+        this.orders = orders;
+    }
+
+    /** Không khóa / xóa khách khi còn đơn đang xử lý hoặc tiền hoàn chưa trả xong. */
+    private void requireNoOpenWork(UUID customerId, String action) {
+        if (orders == null) {
+            return;
+        }
+        OrderPort.OpenWork open = orders.openWork(customerId);
+        if (open.any()) {
+            throw new InvalidCustomerStatusException(
+                    "Không thể " + action + " khách đang có " + open.describe() + ". Hãy xử lý xong trước.");
+        }
     }
 
     /** Câu chuyện 1: thêm khách. Chỉ quản trị / quản lý CRM. */
@@ -46,6 +67,7 @@ public class CustomerAccountService {
     /** Khóa tài khoản đang hoạt động. */
     public CustomerView lock(UUID actorId, UUID customerId) {
         identity.requireCustomerAdmin(actorId);
+        requireNoOpenWork(customerId, "khóa");
         identity.lock(customerId);
         return identity.getCustomer(customerId);
     }
@@ -60,6 +82,7 @@ public class CustomerAccountService {
     /** Câu chuyện 2: xóa mềm. */
     public CustomerView softDelete(UUID actorId, UUID customerId) {
         identity.requireCustomerAdmin(actorId);
+        requireNoOpenWork(customerId, "xóa");
         identity.softDeleteCustomer(customerId);
         return identity.getCustomer(customerId);
     }

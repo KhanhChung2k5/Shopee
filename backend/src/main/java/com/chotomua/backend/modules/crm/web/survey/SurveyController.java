@@ -82,6 +82,11 @@ public class SurveyController {
         return surveys.archive(currentActor.requireUserId(), id);
     }
 
+    @PostMapping("/{id}/publish")
+    public SurveyResponse publish(@PathVariable UUID id) {
+        return surveys.publish(currentActor.requireUserId(), id);
+    }
+
     @PostMapping("/{id}/inbox")
     public SurveySendResponse sendToInbox(@PathVariable UUID id, @Valid @RequestBody SendSurveyRequest request) {
         return surveys.sendToInbox(currentActor.requireUserId(), id, request.segmentIds());

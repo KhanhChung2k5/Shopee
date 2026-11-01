@@ -74,7 +74,7 @@ public class InMemorySurveyStore implements SurveyStore {
 
     @Override
     public synchronized void saveSubmission(SurveySubmission submission) {
-        String key = key(submission.surveyId(), submission.userId());
+        String key = key(submission.surveyId(), submission.userId(), submission.orderId());
         if (submissions.containsKey(key)) {
             throw new InvalidSurveyException("Bạn đã gửi khảo sát này.");
         }
@@ -82,8 +82,8 @@ public class InMemorySurveyStore implements SurveyStore {
     }
 
     @Override
-    public synchronized Optional<SurveySubmission> findSubmission(UUID surveyId, UUID userId) {
-        return Optional.ofNullable(submissions.get(key(surveyId, userId)));
+    public synchronized Optional<SurveySubmission> findSubmission(UUID surveyId, UUID userId, UUID orderId) {
+        return Optional.ofNullable(submissions.get(key(surveyId, userId, orderId)));
     }
 
     @Override
@@ -101,8 +101,8 @@ public class InMemorySurveyStore implements SurveyStore {
         submissions.entrySet().removeIf(entry -> entry.getValue().surveyId().equals(id));
     }
 
-    /** Khóa bài nộp: {@code surveyId:userId}. */
-    private static String key(UUID surveyId, UUID userId) {
-        return surveyId + ":" + userId;
+    /** Khóa bài nộp: {@code surveyId:userId:orderId}. */
+    private static String key(UUID surveyId, UUID userId, UUID orderId) {
+        return surveyId + ":" + userId + ":" + orderId;
     }
 }

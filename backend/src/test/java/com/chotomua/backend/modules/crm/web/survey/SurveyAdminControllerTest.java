@@ -193,6 +193,7 @@ class SurveyAdminControllerTest {
     @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
     void sendPutsSurveyInActiveCustomerInboxWithoutCampaign() throws Exception {
         String surveyId = createDraft();
+        addQuestion(surveyId);
         UUID activeId = UUID.fromString("aaaa1111-1111-1111-1111-111111111111");
         UUID lockedId = UUID.fromString("bbbb2222-2222-2222-2222-222222222222");
         UUID segmentId = UUID.fromString("cccc3333-3333-3333-3333-333333333333");
@@ -240,6 +241,7 @@ class SurveyAdminControllerTest {
     @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
     void keepsChosenAudienceAndDescriptionAfterSend() throws Exception {
         String surveyId = createDraft();
+        addQuestion(surveyId);
         UUID segmentId = UUID.fromString("cccc3333-3333-3333-3333-333333333333");
         identity.seedCustomer(UUID.fromString("aaaa1111-1111-1111-1111-111111111111"), "Trần Thị Bình",
                 "binh@seed.local", "0901000001", "female", LocalDate.of(2002, 1, 1), CustomerStatus.ACTIVE);
@@ -297,6 +299,7 @@ class SurveyAdminControllerTest {
                 .andReturn();
         String surveyId = created.getResponse().getContentAsString()
                 .replaceAll("(?s).*\"id\"\\s*:\\s*\"([^\"]+)\".*", "$1");
+        addQuestion(surveyId);
         UUID activeId = UUID.fromString("aaaa1111-1111-1111-1111-111111111111");
         UUID segmentId = UUID.fromString("cccc3333-3333-3333-3333-333333333333");
         identity.seedCustomer(activeId, "Trần Thị Bình", "binh@seed.local", "0901000001", "female",
@@ -368,6 +371,16 @@ class SurveyAdminControllerTest {
         mockMvc.perform(get("/api/surveys"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.message", containsString("quyền")));
+    }
+
+    /** A survey reaches customers only with at least one question. */
+    private void addQuestion(String surveyId) throws Exception {
+        mockMvc.perform(post("/api/surveys/" + surveyId + "/questions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"questionText":"Bạn hài lòng với đơn hàng không?","answerType":"rating","options":[]}
+                                """))
+                .andExpect(status().isOk());
     }
 
     private String createDraft() throws Exception {

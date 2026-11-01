@@ -59,7 +59,7 @@ export default function NotificationsPage() {
                 </div>
                 <p className="font-body-lg text-body-lg text-on-surface whitespace-pre-line">{n.content}</p>
                 <div className="flex flex-wrap gap-space-xs">
-                  {isSurvey && <Link className={buttonClass('primary', 'sm')} to={`/khao-sat/${n.referenceId}`} onClick={() => void markRead(n)}>Làm khảo sát</Link>}
+                  {isSurvey && <Link className={buttonClass('primary', 'sm')} to={`/khao-sat/${n.referenceId}${n.orderId ? `?order=${n.orderId}` : ''}`} onClick={() => void markRead(n)}>Làm khảo sát</Link>}
                   {unreadItem && <button type="button" className={buttonClass('ghost', 'sm')} onClick={() => void markRead(n)}>Đánh dấu đã đọc</button>}
                 </div>
               </div>

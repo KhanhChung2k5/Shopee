@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /**
  * Chiến dịch trên {@code campaigns} / {@code campaign_targets}.
- * Bảng không có cột khảo sát; {@code surveyId} chỉ sống trên thông báo ({@code reference_id}).
+ * {@code survey_id}: khảo sát chiến dịch mang theo (V11).
  */
 @Component
 @Profile("!crm-fake")
@@ -32,19 +32,21 @@ public class JdbcCampaignStore implements CampaignStore {
     @Transactional
     public void save(Campaign campaign, List<CampaignTarget> targets) {
         jdbc.update("""
-                INSERT INTO campaigns (id, name, channel, start_at, end_at)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO campaigns (id, name, channel, start_at, end_at, survey_id)
+                VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     name = EXCLUDED.name,
                     channel = EXCLUDED.channel,
                     start_at = EXCLUDED.start_at,
-                    end_at = EXCLUDED.end_at
+                    end_at = EXCLUDED.end_at,
+                    survey_id = EXCLUDED.survey_id
                 """,
                 campaign.id(),
                 campaign.name(),
                 campaign.channel(),
                 timestamp(campaign.startAt()),
-                timestamp(campaign.endAt()));
+                timestamp(campaign.endAt()),
+                campaign.surveyId());
         jdbc.update("DELETE FROM campaign_targets WHERE campaign_id = ?", campaign.id());
         for (CampaignTarget target : targets) {
             jdbc.update("""
@@ -57,22 +59,24 @@ public class JdbcCampaignStore implements CampaignStore {
     @Override
     public Optional<Campaign> find(UUID id) {
         List<Campaign> rows = jdbc.query("""
-                SELECT id, name, channel, start_at, end_at
+                SELECT id, name, channel, start_at, end_at, survey_id
                 FROM campaigns
                 WHERE id = ?
                 """, (rs, rowNum) -> map(rs.getObject("id", UUID.class), rs.getString("name"),
-                rs.getString("channel"), rs.getTimestamp("start_at"), rs.getTimestamp("end_at")), id);
+                rs.getString("channel"), rs.getTimestamp("start_at"), rs.getTimestamp("end_at"),
+                rs.getObject("survey_id", UUID.class)), id);
         return rows.stream().findFirst();
     }
 
     @Override
     public List<Campaign> findAll() {
         return jdbc.query("""
-                SELECT id, name, channel, start_at, end_at
+                SELECT id, name, channel, start_at, end_at, survey_id
                 FROM campaigns
                 ORDER BY start_at DESC NULLS LAST
                 """, (rs, rowNum) -> map(rs.getObject("id", UUID.class), rs.getString("name"),
-                rs.getString("channel"), rs.getTimestamp("start_at"), rs.getTimestamp("end_at")));
+                rs.getString("channel"), rs.getTimestamp("start_at"), rs.getTimestamp("end_at"),
+                rs.getObject("survey_id", UUID.class)));
     }
 
     @Override
@@ -91,8 +95,8 @@ public class JdbcCampaignStore implements CampaignStore {
                 rs.getObject("segment_id", UUID.class)), campaignId);
     }
 
-    private static Campaign map(UUID id, String name, String channel, Timestamp startAt, Timestamp endAt) {
-        return new Campaign(id, name, channel, instant(startAt), instant(endAt), null);
+    private static Campaign map(UUID id, String name, String channel, Timestamp startAt, Timestamp endAt, UUID surveyId) {
+        return new Campaign(id, name, channel, instant(startAt), instant(endAt), surveyId);
     }
 
     private static Timestamp timestamp(Instant instant) {

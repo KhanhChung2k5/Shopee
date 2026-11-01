@@ -204,6 +204,14 @@ class ConversationControllerTest {
     @WithMockUser(username = AN_ID, authorities = "ROLE_BUYER")
     void customerRatesAfterTheCaseIsClosed() throws Exception {
         String id = create("ticket", "Muốn đánh giá sau khi xong");
+        // A case is closed only once an agent has taken it and answered the customer.
+        mockMvc.perform(post("/api/conversations/" + id + "/messages")
+                        .with(user(CS_ID, "cs"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"content":"Đã xử lý xong yêu cầu của bạn."}
+                                """))
+                .andExpect(status().isOk());
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/conversations/" + id)
                         .with(user(CS_ID, "cs"))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -220,6 +228,41 @@ class ConversationControllerTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.csatScore").value(5));
+    }
+
+    @Test
+    @WithMockUser(username = AN_ID, authorities = "ROLE_BUYER")
+    void aCaseNobodyAnsweredCannotBeClosedAndAClosedCaseStaysClosed() throws Exception {
+        String id = create("ticket", "Chưa ai trả lời");
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/conversations/" + id)
+                        .with(user(CS_ID, "cs"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status":"closed"}
+                                """))
+                .andExpect(status().isUnprocessableEntity());
+
+        mockMvc.perform(post("/api/conversations/" + id + "/messages")
+                        .with(user(CS_ID, "cs"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"content":"Bên mình đã ghi nhận."}
+                                """))
+                .andExpect(status().isOk());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/conversations/" + id)
+                        .with(user(CS_ID, "cs"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status":"closed"}
+                                """))
+                .andExpect(status().isOk());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/conversations/" + id)
+                        .with(user(CS_ID, "cs"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status":"in_progress"}
+                                """))
+                .andExpect(status().isUnprocessableEntity());
     }
 
     private String create(String type, String content) throws Exception {

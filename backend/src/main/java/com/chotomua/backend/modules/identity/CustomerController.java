@@ -1,5 +1,6 @@
 package com.chotomua.backend.modules.identity;
 
+import com.chotomua.backend.modules.crm.port.OrderPort;
 import com.chotomua.backend.modules.identity.dto.CustomerResponse;
 import com.chotomua.backend.modules.identity.dto.CustomerStatusUpdateRequest;
 import jakarta.validation.Valid;
@@ -20,9 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class CustomerController {
     // Repository for User
     private final UserRepository userRepository;
+    // Unfinished orders / refunds of a buyer (shared with the CRM customer service)
+    private final OrderPort orders;
     // Constructor for CustomerController
-    public CustomerController(UserRepository userRepository) {
+    public CustomerController(UserRepository userRepository, OrderPort orders) {
         this.userRepository = userRepository;
+        this.orders = orders;
     }
 
     // List all customers
@@ -47,6 +51,14 @@ public class CustomerController {
         // A soft-deleted account only comes back through POST /api/customers/{id}/restore (admin only, audited)
         if ("deleted".equals(user.getStatus()) && !"deleted".equals(request.status())) {
             throw new IllegalStateException("Khách hàng đã xoá mềm. Chỉ quản trị viên được khôi phục bằng chức năng Khôi phục.");
+        }
+        // Locking or deleting a buyer mid-order would strand the delivery or the money still owed to them
+        if (("locked".equals(request.status()) || "deleted".equals(request.status())) && !request.status().equals(user.getStatus())) {
+            OrderPort.OpenWork open = orders.openWork(id);
+            if (open.any()) {
+                throw new IllegalStateException("Không thể " + ("locked".equals(request.status()) ? "khóa" : "xóa")
+                        + " khách đang có " + open.describe() + ". Hãy xử lý xong trước.");
+            }
         }
         // Update the status of the user
         user.setStatus(request.status());

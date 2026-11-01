@@ -173,11 +173,11 @@ public class GoodsReceiptController {
         }
     }
 
-    public record GoodsReceiptItemResponse(UUID id, UUID variantId, String sku, Integer quantity,
+    public record GoodsReceiptItemResponse(UUID id, UUID variantId, String sku, String productName, Integer quantity,
                                             BigDecimal unitCost, BigDecimal lineTotal) {
         static GoodsReceiptItemResponse from(GoodsReceiptItem item) {
-            return new GoodsReceiptItemResponse(item.getId(), item.getVariant().getId(),
-                    item.getVariant().getSku(), item.getQuantity(), item.getUnitCost(), item.getLineTotal());
+            return new GoodsReceiptItemResponse(item.getId(), item.getVariant().getId(), item.getVariant().getSku(),
+                    item.getVariant().getProduct().getName(), item.getQuantity(), item.getUnitCost(), item.getLineTotal());
         }
     }
 }

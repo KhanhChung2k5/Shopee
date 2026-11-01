@@ -6,17 +6,24 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
- * LTV từng khách: (AOV năm lịch × tần suất mua năm lịch) × số năm từ lần giao đầu đến lần giao cuối.
- * Tần suất = số đơn năm lịch vì mẫu số unique customer = 1. Chưa có đơn trong năm lịch thì 0.
- * Một mốc giao (hoặc cùng Instant) thì lifespan = 1 năm, tránh nhân 0.
+ * LTV (giá trị vòng đời) dự báo của một khách, tính từ các đơn đã giao (tiền thực trả, đã trừ hoàn tiền):
+ * <pre>
+ *   LTV = giá trị đơn trung bình × số đơn mỗi năm × vòng đời kỳ vọng
+ *   giá trị đơn trung bình = tổng đã chi / số đơn
+ *   số đơn mỗi năm        = số đơn / số năm đã gắn bó (từ đơn đầu tiên đến hôm nay, tối thiểu 1 năm)
+ *   vòng đời kỳ vọng      = max(3 năm, số năm đã gắn bó)
+ * </pre>
+ * Nhờ vòng đời không ngắn hơn thời gian đã gắn bó, LTV dự báo không bao giờ nhỏ hơn số tiền khách đã chi,
+ * và không về 0 khi sang năm mới. Tổng đã chi ({@code historicalSpend}) được giữ riêng để hiển thị và chấm RFM.
  */
 public final class LifetimeValue {
+
+    /** Một khách trung bình gắn bó với cửa hàng bao lâu (giả định nghiệp vụ). */
+    public static final BigDecimal EXPECTED_LIFESPAN_YEARS = new BigDecimal("3");
 
     private static final int SCALE = 2;
     private static final BigDecimal DAYS_PER_YEAR = new BigDecimal("365");
@@ -30,11 +37,7 @@ public final class LifetimeValue {
 
     public static Snapshot snapshot(List<DeliveredOrderView> delivered, Clock clock) {
         List<DeliveredOrderView> orders = delivered == null ? List.of() : delivered;
-        ZoneId zone = clock.getZone();
-        int calendarYear = LocalDate.now(clock).getYear();
         BigDecimal historicalSpend = BigDecimal.ZERO;
-        BigDecimal annualRevenue = BigDecimal.ZERO;
-        int annualOrders = 0;
         Instant firstPurchaseAt = null;
         Instant lastPurchaseAt = null;
         for (DeliveredOrderView order : orders) {
@@ -51,47 +54,37 @@ public final class LifetimeValue {
             if (lastPurchaseAt == null || deliveredAt.isAfter(lastPurchaseAt)) {
                 lastPurchaseAt = deliveredAt;
             }
-            if (LocalDate.ofInstant(deliveredAt, zone).getYear() == calendarYear) {
-                annualOrders++;
-                if (order.totalAmount() != null) {
-                    annualRevenue = annualRevenue.add(order.totalAmount());
-                }
-            }
         }
         return new Snapshot(
-                ltv(annualRevenue, annualOrders, firstPurchaseAt, lastPurchaseAt),
-                historicalSpend,
+                ltv(historicalSpend, orders.size(), firstPurchaseAt, Instant.now(clock)),
+                historicalSpend.setScale(SCALE, RoundingMode.HALF_UP),
                 lastPurchaseAt);
     }
 
-    private static BigDecimal ltv(
-            BigDecimal annualRevenue,
-            int annualOrders,
-            Instant firstPurchaseAt,
-            Instant lastPurchaseAt) {
-        if (annualOrders <= 0) {
+    private static BigDecimal ltv(BigDecimal spend, int orderCount, Instant firstPurchaseAt, Instant now) {
+        if (orderCount <= 0 || spend.signum() <= 0) {
             return BigDecimal.ZERO.setScale(SCALE, RoundingMode.HALF_UP);
         }
-        BigDecimal averageOrderValue = annualRevenue.divide(
-                BigDecimal.valueOf(annualOrders), 8, RoundingMode.HALF_UP);
-        BigDecimal purchaseFrequency = BigDecimal.valueOf(annualOrders);
-        BigDecimal customerValue = averageOrderValue.multiply(purchaseFrequency);
-        return customerValue.multiply(lifespanYears(firstPurchaseAt, lastPurchaseAt))
+        BigDecimal averageOrderValue = spend.divide(BigDecimal.valueOf(orderCount), 8, RoundingMode.HALF_UP);
+        BigDecimal tenureYears = tenureYears(firstPurchaseAt, now);
+        BigDecimal ordersPerYear = BigDecimal.valueOf(orderCount).divide(tenureYears, 8, RoundingMode.HALF_UP);
+        BigDecimal lifespanYears = EXPECTED_LIFESPAN_YEARS.max(tenureYears);
+        // Vietnamese đồng has no minor unit: the forecast is rounded to whole đồng.
+        return averageOrderValue.multiply(ordersPerYear).multiply(lifespanYears).setScale(0, RoundingMode.HALF_UP)
                 .setScale(SCALE, RoundingMode.HALF_UP);
     }
 
-    private static BigDecimal lifespanYears(Instant firstPurchaseAt, Instant lastPurchaseAt) {
-        if (firstPurchaseAt == null || lastPurchaseAt == null || !lastPurchaseAt.isAfter(firstPurchaseAt)) {
+    /** Số năm từ đơn đầu tiên đến hôm nay, tối thiểu 1 năm (khách mới không bị thổi phồng tần suất). */
+    private static BigDecimal tenureYears(Instant firstPurchaseAt, Instant now) {
+        if (firstPurchaseAt == null || !now.isAfter(firstPurchaseAt)) {
             return BigDecimal.ONE;
         }
-        long days = ChronoUnit.DAYS.between(firstPurchaseAt, lastPurchaseAt);
-        if (days <= 0) {
-            return BigDecimal.ONE;
-        }
-        return BigDecimal.valueOf(days).divide(DAYS_PER_YEAR, 8, RoundingMode.HALF_UP);
+        BigDecimal years = BigDecimal.valueOf(ChronoUnit.DAYS.between(firstPurchaseAt, now))
+                .divide(DAYS_PER_YEAR, 8, RoundingMode.HALF_UP);
+        return years.max(BigDecimal.ONE);
     }
 
-    /** LTV công thức infographic; {@code historicalSpend} dùng chấm RFM Monetary. */
+    /** {@code ltv}: LTV dự báo; {@code historicalSpend}: tổng đã chi (dùng chấm RFM Monetary). */
     public record Snapshot(BigDecimal ltv, BigDecimal historicalSpend, Instant lastPurchaseAt) {
     }
 }
