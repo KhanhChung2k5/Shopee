@@ -2,7 +2,7 @@ import { apiFetch } from './api'
 
 /** Types + calls for the CRM module (backend modules/crm). Shapes mirror its web/dto records. */
 
-export type RfmSegment = 'champions' | 'loyal' | 'potential' | 'at_risk' | 'lost' | 'other'
+export type RfmSegment = 'champions' | 'loyal' | 'potential' | 'at_risk' | 'lost' | 'other' | 'new'
 
 export const RFM_LABEL: Record<string, string> = {
   champions: 'Champions',
@@ -11,6 +11,7 @@ export const RFM_LABEL: Record<string, string> = {
   at_risk: 'Có nguy cơ rời bỏ',
   lost: 'Đã rời bỏ',
   other: 'Khác',
+  new: 'Chưa mua hàng',
 }
 
 export const RFM_TONE: Record<string, 'success' | 'info' | 'primary' | 'danger' | 'neutral'> = {
@@ -20,6 +21,7 @@ export const RFM_TONE: Record<string, 'success' | 'info' | 'primary' | 'danger' 
   at_risk: 'danger',
   lost: 'neutral',
   other: 'neutral',
+  new: 'info',
 }
 
 export const AGE_BUCKETS = ['UNDER_18', '18–24', '25–34', '35–44', '45+'] as const

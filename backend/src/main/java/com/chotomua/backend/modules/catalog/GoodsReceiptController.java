@@ -1,5 +1,8 @@
 package com.chotomua.backend.modules.catalog;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import com.chotomua.backend.common.config.CacheConfig;
 import com.chotomua.backend.modules.identity.Employee;
 import com.chotomua.backend.modules.identity.EmployeeRepository;
 import jakarta.validation.Valid;
@@ -84,28 +87,39 @@ public class GoodsReceiptController {
         return GoodsReceiptResponse.from(receipts.save(receipt));
     }
 
+    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS}, allEntries = true)
     @PostMapping("/{id}/approve")
     @Transactional
-    public GoodsReceiptResponse approve(@PathVariable UUID id) {
+    public GoodsReceiptResponse approve(@PathVariable UUID id, Authentication authentication) {
         GoodsReceipt receipt = receipts.findByIdForUpdate(id)
                 .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy phiếu nhập: " + id));
-        requirePending(receipt);
+        Employee approver = requireDecider(receipt, authentication);
         List<InventoryStockService.ImportLine> importLines = receipt.getItems().stream()
                 .map(item -> new InventoryStockService.ImportLine(item.getVariant(), item.getQuantity()))
                 .toList();
         inventoryStockService.importForReceipt(receipt.getId(), receipt.getWarehouse(), importLines);
-        receipt.setStatus("approved");
+        receipt.decide("approved", approver);
         return GoodsReceiptResponse.from(receipts.save(receipt));
     }
 
     @PostMapping("/{id}/reject")
     @Transactional
-    public GoodsReceiptResponse reject(@PathVariable UUID id) {
+    public GoodsReceiptResponse reject(@PathVariable UUID id, Authentication authentication) {
         GoodsReceipt receipt = receipts.findByIdForUpdate(id)
                 .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy phiếu nhập: " + id));
-        requirePending(receipt);
-        receipt.setStatus("rejected");
+        receipt.decide("rejected", requireDecider(receipt, authentication));
         return GoodsReceiptResponse.from(receipts.save(receipt));
+    }
+
+    /** Segregation of duties: a pending receipt is approved or rejected by someone other than the employee who drew it up. */
+    private Employee requireDecider(GoodsReceipt receipt, Authentication authentication) {
+        requirePending(receipt);
+        Employee decider = employees.findByUserId(UUID.fromString(authentication.getName()))
+                .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy hồ sơ nhân viên của tài khoản hiện tại."));
+        if (decider.getId().equals(receipt.getEmployee().getId())) {
+            throw new IllegalArgumentException("Người lập phiếu không được tự duyệt hoặc từ chối phiếu nhập của mình.");
+        }
+        return decider;
     }
 
     private GoodsReceipt find(UUID id) {
@@ -139,15 +153,23 @@ public class GoodsReceiptController {
     public record GoodsReceiptResponse(UUID id, String code, UUID employeeId, UUID warehouseId,
                                        String warehouseName, String supplierName, String status,
                                        OffsetDateTime receivedAt, BigDecimal totalCost,
-                                       List<GoodsReceiptItemResponse> items) {
+                                       List<GoodsReceiptItemResponse> items, UUID createdByUserId, String createdByName,
+                                       String decidedByName, OffsetDateTime decidedAt) {
         static GoodsReceiptResponse from(GoodsReceipt receipt) {
             List<GoodsReceiptItemResponse> items = receipt.getItems().stream()
                     .map(GoodsReceiptItemResponse::from).toList();
             BigDecimal total = items.stream().map(GoodsReceiptItemResponse::lineTotal)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
+            Employee decider = receipt.getDecidedBy();
             return new GoodsReceiptResponse(receipt.getId(), receipt.getCode(), receipt.getEmployee().getId(),
                     receipt.getWarehouse().getId(), receipt.getWarehouse().getName(), receipt.getSupplierName(),
-                    receipt.getStatus(), receipt.getReceivedAt(), total, items);
+                    receipt.getStatus(), receipt.getReceivedAt(), total, items,
+                    receipt.getEmployee().getUser() == null ? null : receipt.getEmployee().getUser().getId(), nameOf(receipt.getEmployee()),
+                    decider == null ? null : nameOf(decider), receipt.getDecidedAt());
+        }
+
+        private static String nameOf(Employee employee) {
+            return employee.getUser() == null ? null : employee.getUser().getFullName();
         }
     }
 

@@ -17,10 +17,39 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class ProductVariantLookup {
 
+    /**
+     * Sellable units per variant: stock on hand minus what open orders still hold. An order holds its units from
+     * checkout until it is packed (then the stock really leaves the warehouse) or cancelled — so two buyers can
+     * never both buy the last unit.
+     */
+    static final String AVAILABLE_STOCK = """
+            SELECT s.variant_id,
+                   GREATEST(SUM(s.quantity - s.reserved_qty) - COALESCE(MAX(held.quantity), 0), 0) AS available_quantity
+            FROM inventory_stocks s
+            LEFT JOIN (
+                SELECT oi.variant_id, SUM(oi.quantity) AS quantity
+                FROM order_items oi
+                JOIN orders o ON o.id = oi.order_id
+                WHERE o.status IN ('pending', 'confirmed', 'cancel_requested') AND o.shipment_status = 'pending'
+                GROUP BY oi.variant_id
+            ) held ON held.variant_id = s.variant_id
+            GROUP BY s.variant_id
+            """;
+
     private final EntityManager entityManager;
 
     public ProductVariantLookup(EntityManager entityManager) {
         this.entityManager = entityManager;
+    }
+
+    /**
+     * Locks the variant's stock rows until the checkout transaction ends, so concurrent checkouts of the same
+     * variant run one after the other and each sees the units the previous one took. Call in a stable order.
+     */
+    public void lockStock(UUID variantId) {
+        entityManager.createNativeQuery("SELECT id FROM inventory_stocks WHERE variant_id = :variantId ORDER BY id FOR UPDATE")
+                .setParameter("variantId", variantId)
+                .getResultList();
     }
 
     public boolean existsActiveById(UUID variantId) {
@@ -29,6 +58,14 @@ public class ProductVariantLookup {
 
     /** Returns display data even when a product was disabled after it entered the cart. */
     public Optional<CartProductSnapshot> findCartProductById(UUID variantId) {
+        return Optional.ofNullable(findCartProductsByIds(List.of(variantId)).get(variantId));
+    }
+
+    /** Display data for many variants in one query (cart list, order lines) instead of one query per line. */
+    public java.util.Map<UUID, CartProductSnapshot> findCartProductsByIds(java.util.Collection<UUID> variantIds) {
+        if (variantIds == null || variantIds.isEmpty()) {
+            return java.util.Map.of();
+        }
         List<?> results = entityManager.createNativeQuery("""
                         SELECT pv.id,
                                p.name,
@@ -41,31 +78,26 @@ public class ProductVariantLookup {
                                COALESCE(stock.available_quantity, 0)
                         FROM product_variants pv
                         JOIN products p ON p.id = pv.product_id
-                        LEFT JOIN (
-                            SELECT variant_id,
-                                   GREATEST(SUM(quantity - reserved_qty), 0) AS available_quantity
-                            FROM inventory_stocks
-                            GROUP BY variant_id
-                        ) stock ON stock.variant_id = pv.id
-                        WHERE pv.id = :variantId
-                        """)
-                .setParameter("variantId", variantId)
+                        LEFT JOIN (%s) stock ON stock.variant_id = pv.id
+                        WHERE pv.id IN (:variantIds)
+                        """.formatted(AVAILABLE_STOCK))
+                .setParameter("variantIds", java.util.Set.copyOf(variantIds))
                 .getResultList();
-        if (results.isEmpty()) {
-            return Optional.empty();
+        java.util.Map<UUID, CartProductSnapshot> byId = new java.util.HashMap<>();
+        for (Object result : results) {
+            Object[] row = (Object[]) result;
+            byId.put((UUID) row[0], new CartProductSnapshot(
+                    (UUID) row[0],
+                    (String) row[1],
+                    (String) row[2],
+                    (String) row[3],
+                    (BigDecimal) row[4],
+                    (String) row[5],
+                    (Boolean) row[6],
+                    ((Number) row[7]).intValue()
+            ));
         }
-
-        Object[] row = (Object[]) results.getFirst();
-        return Optional.of(new CartProductSnapshot(
-                (UUID) row[0],
-                (String) row[1],
-                (String) row[2],
-                (String) row[3],
-                (BigDecimal) row[4],
-                (String) row[5],
-                (Boolean) row[6],
-                ((Number) row[7]).intValue()
-        ));
+        return byId;
     }
 
     /** Returns only the Catalog fields P3 must snapshot while creating an order. */
@@ -79,16 +111,11 @@ public class ProductVariantLookup {
                                p.product_type
                         FROM product_variants pv
                         JOIN products p ON p.id = pv.product_id
-                        LEFT JOIN (
-                            SELECT variant_id,
-                                   GREATEST(SUM(quantity - reserved_qty), 0) AS available_quantity
-                            FROM inventory_stocks
-                            GROUP BY variant_id
-                        ) stock ON stock.variant_id = pv.id
+                        LEFT JOIN (%s) stock ON stock.variant_id = pv.id
                         WHERE pv.id = :variantId
                           AND pv.status = 'active'
                           AND p.status = 'published'
-                        """)
+                        """.formatted(AVAILABLE_STOCK))
                 .setParameter("variantId", variantId)
                 .getResultList();
         if (results.isEmpty()) {

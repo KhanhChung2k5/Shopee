@@ -42,6 +42,27 @@ public class CrmOrderEvents {
         }
     }
 
+    /** Money was refunded on an order: the customer's LTV / RFM must drop accordingly (after commit). */
+    public void onOrderRefunded(UUID userId) {
+        Runnable recalc = () -> {
+            try {
+                profiles.recalculate(userId);
+            } catch (RuntimeException e) {
+                log.warn("CRM profile recalculation failed after refund (user {})", userId, e);
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    recalc.run();
+                }
+            });
+        } else {
+            recalc.run();
+        }
+    }
+
     private void handleDelivered(UUID userId, UUID orderId) {
         try {
             profiles.recalculate(userId);

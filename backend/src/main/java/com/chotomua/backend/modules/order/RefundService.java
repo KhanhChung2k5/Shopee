@@ -1,5 +1,6 @@
 package com.chotomua.backend.modules.order;
 
+import com.chotomua.backend.modules.catalog.InventoryStockService;
 import com.chotomua.backend.modules.identity.Employee;
 import com.chotomua.backend.modules.identity.EmployeeRepository;
 import com.chotomua.backend.modules.identity.User;
@@ -39,6 +40,22 @@ public class RefundService {
     private final UserRepository users;
     private final CheckoutPaymentService payments;
     private final LoyaltyAwardService loyalty;
+
+    /** Optional so unit tests run without CRM: recalculates LTV / RFM once money has gone back. */
+    private com.chotomua.backend.modules.crm.application.CrmOrderEvents crmOrderEvents;
+
+    /** Optional so unit tests run without the catalog: returned goods fit for sale go back into stock. */
+    private InventoryStockService inventoryStockService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setInventoryStockService(InventoryStockService inventoryStockService) {
+        this.inventoryStockService = inventoryStockService;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setCrmOrderEvents(com.chotomua.backend.modules.crm.application.CrmOrderEvents crmOrderEvents) {
+        this.crmOrderEvents = crmOrderEvents;
+    }
 
     public RefundService(RefundReturnRepository refunds, OrderRepository orders, OrderItemRepository items,
                          OrderStatusHistoryRepository history, EmployeeRepository employees, UserRepository users,
@@ -95,9 +112,20 @@ public class RefundService {
         return toResponse(refund, false);
     }
 
+    /** Money already sent back, per order — for order lists and revenue. */
+    @Transactional(readOnly = true)
+    public java.util.Map<UUID, BigDecimal> refundedTotals(java.util.Collection<UUID> orderIds) {
+        if (orderIds.isEmpty()) return java.util.Map.of();
+        java.util.Map<UUID, BigDecimal> totals = new java.util.HashMap<>();
+        for (RefundReturn refund : refunds.findByOrderIdInAndStatus(orderIds, "refunded")) {
+            totals.merge(refund.getOrderId(), refund.getRefundAmount(), BigDecimal::add);
+        }
+        return totals;
+    }
+
     @Transactional(readOnly = true)
     public List<RefundResponse> forOrder(UUID orderId, boolean withCustomer) {
-        return refunds.findByOrderIdOrderByRequestedAtAsc(orderId).stream().map(r -> toResponse(r, withCustomer)).toList();
+        return toResponses(refunds.findByOrderIdOrderByRequestedAtAsc(orderId), withCustomer);
     }
 
     @Transactional(readOnly = true)
@@ -106,7 +134,7 @@ public class RefundService {
         List<RefundReturn> found = status == null || status.isBlank()
                 ? refunds.findAllByOrderByRequestedAtDesc()
                 : refunds.findByStatusOrderByRequestedAtDesc(status.trim());
-        return found.stream().map(r -> toResponse(r, true)).toList();
+        return toResponses(found, true);
     }
 
     @Transactional
@@ -129,6 +157,37 @@ public class RefundService {
         return toResponse(refund, true);
     }
 
+    /**
+     * The returned goods reached the shop. Fit to sell again: they go back into the warehouse the order shipped
+     * from (or the one given) as a "return" stock movement. Damaged: only the receipt is recorded.
+     */
+    @Transactional
+    public RefundResponse receiveReturn(UUID staffUserId, UUID refundId, boolean restock, UUID warehouseId) {
+        Employee employee = requireCsOrAdmin(staffUserId);
+        RefundReturn refund = requireRefund(refundId);
+        if (!RefundReturn.RETURN.equals(refund.getKind())) {
+            throw new IllegalStateException("Chỉ yêu cầu trả hàng mới có hàng hoàn về");
+        }
+        if (!"approved".equals(refund.getStatus())) {
+            throw new IllegalStateException("Chỉ nhận hàng hoàn cho yêu cầu đã duyệt");
+        }
+        if (refund.getReceivedAt() != null) throw new IllegalStateException("Đã ghi nhận nhận hàng hoàn trước đó");
+        UUID target = null;
+        if (restock) {
+            target = warehouseId != null ? warehouseId
+                    : orders.findById(refund.getOrderId()).map(Order::getWarehouseId).orElse(null);
+            if (target == null) throw new IllegalArgumentException("Phải chọn kho nhập lại hàng hoàn");
+            OrderItem item = items.findById(refund.getOrderItemId())
+                    .orElseThrow(() -> new NoSuchElementException("Không tìm thấy sản phẩm trong đơn"));
+            if (inventoryStockService != null) {
+                inventoryStockService.restockReturn(refund.getId(), target,
+                        new InventoryStockService.ExportLine(item.getVariantId(), item.getQuantity()));
+            }
+        }
+        refund.markReceived(employee.getId(), target);
+        return toResponse(refund, true);
+    }
+
     /** CS has transferred the money back: record the bank transaction code and settle payment + loyalty. */
     @Transactional
     public RefundResponse markRefunded(UUID staffUserId, UUID refundId, String transferRef) {
@@ -136,6 +195,9 @@ public class RefundService {
         RefundReturn refund = requireRefund(refundId);
         if (!"approved".equals(refund.getStatus())) {
             throw new IllegalStateException("Chỉ ghi nhận đã hoàn tiền cho yêu cầu đã duyệt");
+        }
+        if (RefundReturn.RETURN.equals(refund.getKind()) && refund.getReceivedAt() == null) {
+            throw new IllegalStateException("Chưa nhận được hàng khách trả — ghi nhận nhận hàng hoàn trước khi hoàn tiền");
         }
         if (!refund.hasBankAccount()) {
             throw new IllegalStateException("Khách chưa cung cấp tài khoản ngân hàng nhận tiền");
@@ -149,9 +211,11 @@ public class RefundService {
                 .map(RefundReturn::getRefundAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         payments.recordRefunded(refund.getOrderId(), refundedSoFar);
+        Optional<Order> order = orders.findById(refund.getOrderId());
         if (RefundReturn.RETURN.equals(refund.getKind()) && loyalty != null) {
-            orders.findById(refund.getOrderId()).ifPresent(order -> loyalty.revoke(order, refund.getRefundAmount()));
+            order.ifPresent(o -> loyalty.revoke(o, refund.getRefundAmount()));
         }
+        if (crmOrderEvents != null) order.ifPresent(o -> crmOrderEvents.onOrderRefunded(o.getUserId()));
         return toResponse(refund, true);
     }
 
@@ -190,6 +254,27 @@ public class RefundService {
             throw new AccessDeniedException("Chỉ CSKH hoặc Admin được xử lý hoàn tiền");
         }
         return employee;
+    }
+
+    /** A list of refunds with their lines, orders and buyers loaded in three queries — not three per refund. */
+    private List<RefundResponse> toResponses(List<RefundReturn> list, boolean withCustomer) {
+        if (list.isEmpty()) return List.of();
+        java.util.Map<UUID, OrderItem> itemById = new java.util.HashMap<>();
+        items.findAllById(list.stream().map(RefundReturn::getOrderItemId).filter(java.util.Objects::nonNull).distinct().toList())
+                .forEach(item -> itemById.put(item.getId(), item));
+        java.util.Map<UUID, User> buyerByOrder = new java.util.HashMap<>();
+        if (withCustomer) {
+            List<Order> found = orders.findAllById(list.stream().map(RefundReturn::getOrderId).distinct().toList());
+            java.util.Map<UUID, User> userById = new java.util.HashMap<>();
+            users.findAllById(found.stream().map(Order::getUserId).distinct().toList()).forEach(u -> userById.put(u.getId(), u));
+            found.forEach(order -> buyerByOrder.put(order.getId(), userById.get(order.getUserId())));
+        }
+        return list.stream().map(refund -> {
+            OrderItem item = refund.getOrderItemId() == null ? null : itemById.get(refund.getOrderItemId());
+            User buyer = buyerByOrder.get(refund.getOrderId());
+            return RefundResponse.from(refund, item == null ? null : item.getProductNameSnapshot(), item == null ? null : item.getQuantity(),
+                    buyer == null ? null : buyer.getFullName(), buyer == null ? null : buyer.getEmail());
+        }).toList();
     }
 
     private RefundResponse toResponse(RefundReturn refund, boolean withCustomer) {

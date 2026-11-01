@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     List<Payment> findByOrderIdAndPurpose(UUID orderId, String purpose);
+
+    List<Payment> findByOrderIdInAndPurpose(java.util.Collection<UUID> orderIds, String purpose);
 }

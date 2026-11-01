@@ -20,6 +20,10 @@ export interface Refund {
   requestedAt: string
   handledAt: string | null
   refundedAt: string | null
+  /** Returned goods reached the shop (kind = return); required before the money is sent back. */
+  receivedAt: string | null
+  /** Warehouse they were put back into; null = damaged, not restocked. */
+  restockWarehouseId: string | null
   customerName: string | null
   customerEmail: string | null
 }

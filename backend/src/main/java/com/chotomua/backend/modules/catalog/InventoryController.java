@@ -1,5 +1,8 @@
 package com.chotomua.backend.modules.catalog;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import com.chotomua.backend.common.config.CacheConfig;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -56,6 +59,7 @@ public class InventoryController {
         return result.stream().map(StockResponse::from).toList();
     }
 
+    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS}, allEntries = true)
     @PutMapping("/stocks/{variantId}/{warehouseId}")
     @Transactional
     public StockResponse setStock(@PathVariable UUID variantId, @PathVariable UUID warehouseId,
@@ -71,6 +75,7 @@ public class InventoryController {
         }
 
         int change = Math.subtractExact(request.quantity(), stock.getQuantity());
+        if (change < 0) inventoryStockService.requireNotHeld(variantId, -change);
         stock.setQuantity(request.quantity());
         InventoryStock savedStock = stocks.save(stock);
         if (change != 0) {
@@ -80,6 +85,7 @@ public class InventoryController {
         return StockResponse.from(savedStock);
     }
 
+    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS}, allEntries = true)
     @PostMapping("/exports")
     @Transactional
     public StockResponse exportStock(@Valid @RequestBody ExportStockRequest request) {

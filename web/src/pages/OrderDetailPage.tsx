@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { Alert, Badge, Button, ButtonLink, Card, CardTitle, EmptyState, Loading, Page, PageHeader, SummaryRow, cx, inputClass } from '../components/ui'
 import ProductThumb from '../components/ProductThumb'
-import { fetchProducts, formatVnd } from '../lib/catalog'
+import { formatVnd } from '../lib/catalog'
 import { apiFetch, ApiError } from '../lib/api'
 import { SHIPMENT_LABEL, STATUS_LABEL, STATUS_TONE, formatOrderDate as formatDate, type OrderStatus } from '../lib/orderStatus'
 import { useAuth } from '../state/AuthContext'
@@ -134,38 +134,9 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
   const [cancelReason, setCancelReason] = useState('')
   const [isCancelling, setIsCancelling] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
-  const [catalogMap, setCatalogMap] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    fetchProducts(new URLSearchParams({ size: '100' }))
-      .then((res) => {
-        const map: Record<string, string> = {}
-        for (const prod of res.content) {
-          if (prod.imageUrls && prod.imageUrls.length > 0) {
-            const mainUrl = prod.imageUrls[0]
-            map[prod.id] = mainUrl
-            map[prod.name.trim().toLowerCase()] = mainUrl
-          }
-        }
-        setCatalogMap(map)
-      })
-      .catch(() => {
-        // non-blocking fallback
-      })
-  }, [])
-
-  const resolveItemImage = (item: OrderItem) => {
-    if (item.imageUrl) return item.imageUrl
-    if (catalogMap[item.variantId]) return catalogMap[item.variantId]
-    const normalizedName = item.productNameSnapshot.trim().toLowerCase()
-    if (catalogMap[normalizedName]) return catalogMap[normalizedName]
-    for (const [key, url] of Object.entries(catalogMap)) {
-      if (key.length > 4 && (normalizedName.includes(key) || key.includes(normalizedName))) {
-        return url
-      }
-    }
-    return undefined
-  }
+  // The backend already returns each line's picture (variant image, else the product's first image),
+  // so no second request for the whole catalogue just to look pictures up.
+  const resolveItemImage = (item: OrderItem) => item.imageUrl ?? undefined
 
   useEffect(() => {
     const controller = new AbortController()
@@ -309,7 +280,7 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
                 <li key={entry.id} className="relative pl-space-lg">
                   <span className={cx('absolute -left-[7px] top-1 w-3 h-3 rounded-full ring-4 ring-surface-container-lowest', TIMELINE_DOT[entry.status] ?? 'bg-outline')} aria-hidden="true" />
                   <strong className="block font-title-md text-title-md text-on-surface">{STATUS_LABEL[entry.status] ?? entry.status}</strong>
-                  <span className="block font-label-md text-label-md text-on-surface-variant">{formatDate(entry.changedAt)} · {entry.changedByType === 'buyer' ? 'Khách hàng' : 'Nhân viên'}</span>
+                  <span className="block font-label-md text-label-md text-on-surface-variant">{formatDate(entry.changedAt)} · {entry.changedByType === 'buyer' ? 'Khách hàng' : entry.changedByType === 'system' ? 'Hệ thống' : 'Nhân viên'}</span>
                   {entry.reason && <p className="mt-1 font-body-md text-body-md text-on-surface bg-surface-container-low rounded-lg px-space-sm py-space-xs">{entry.reason}</p>}
                 </li>
               ))}
@@ -341,7 +312,11 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
               </div>
             )}
             {order.payment?.method === 'bank_transfer' && order.payment.status === 'pending' && order.status !== 'cancelled' && (
-              <p className="font-label-md text-label-md text-on-surface-variant">Shop sẽ xác nhận sau khi đối chiếu tiền chuyển khoản của bạn.</p>
+              <p className="font-label-md text-label-md text-on-surface-variant">
+                Shop sẽ xác nhận sau khi đối chiếu tiền chuyển khoản của bạn. Hạn chuyển khoản:{' '}
+                {new Date(new Date(order.createdAt).getTime() + 24 * 60 * 60 * 1000).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                {' '}— quá hạn đơn sẽ tự huỷ.
+              </p>
             )}
           </Card>
 

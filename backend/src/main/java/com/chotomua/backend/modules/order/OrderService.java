@@ -91,6 +91,14 @@ public class OrderService {
         this.invoiceApplications = invoiceApplications;
     }
 
+    /** Optional: serialises one buyer's checkouts (double click, two tabs) — see {@link #createFromSelectedCart}. */
+    private com.chotomua.backend.modules.identity.UserRepository userRepository;
+
+    @Autowired(required = false)
+    void setUserRepository(com.chotomua.backend.modules.identity.UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
     /** Optional: refunds owed when an already-paid order is cancelled, and the refunds shown on an order. */
     private RefundService refundService;
 
@@ -171,6 +179,9 @@ public class OrderService {
      */
     @Transactional
     public OrderResponse createFromSelectedCart(UUID userId, OrderCreateRequest request) {
+        // A second "Đặt hàng" from the same buyer waits here until the first commits, then reads the (now empty)
+        // cart — instead of building a duplicate order from a stale cart or reusing a once-per-customer voucher.
+        if (userRepository != null) userRepository.findByIdForUpdate(userId);
         Address address = requireOwnedAddress(userId, request.addressId());
         CartPricing pricing = priceSelectedCart(userId, request.voucherCode(), true);
         List<CartItem> selectedItems = pricing.items();
@@ -274,6 +285,9 @@ public class OrderService {
                 && !ShipmentStatus.PACKED.value().equals(order.getShipmentStatus())) {
             throw new IllegalStateException("Không thể thay đổi thông tin đóng gói ở trạng thái hiện tại");
         }
+        if (checkoutPaymentService != null && checkoutPaymentService.awaitsTransfer(order.getId())) {
+            throw new IllegalStateException("Đơn chuyển khoản chưa được xác nhận nhận tiền — chưa thể đóng gói");
+        }
         if (!warehouseLookup.existsById(request.warehouseId())) {
             throw new NoSuchElementException("Không tìm thấy kho xuất hàng");
         }
@@ -364,11 +378,7 @@ public class OrderService {
         List<Order> orders = status == null
                 ? orderRepository.findAllByOrderByCreatedAtDesc()
                 : orderRepository.findByStatusOrderByCreatedAtDesc(status);
-        Map<UUID, OrderCustomerResponse> customers = customersByAddress(orders);
-        return orders.stream()
-                .map(order -> OrderSummaryResponse.from(order, orderItemRepository.countByOrderId(order.getId()),
-                        customers.get(order.getAddressId())))
-                .toList();
+        return toSummaries(orders, customersByAddress(orders));
     }
 
     @Transactional(readOnly = true)
@@ -381,11 +391,27 @@ public class OrderService {
     }
 
     private List<OrderSummaryResponse> toSummaries(List<Order> orders) {
+        return toSummaries(orders, Map.of());
+    }
+
+    /** Each order with its payment state and what was refunded — loaded for the whole page in two queries. */
+    private List<OrderSummaryResponse> toSummaries(List<Order> orders, Map<UUID, OrderCustomerResponse> customers) {
+        List<UUID> ids = orders.stream().map(Order::getId).toList();
+        Map<UUID, Payment> payments = checkoutPaymentService == null ? Map.of() : checkoutPaymentService.checkoutPaymentsOf(ids);
+        Map<UUID, BigDecimal> refunded = refundService == null ? Map.of() : refundService.refundedTotals(ids);
+        Map<UUID, Long> lineCounts = new java.util.HashMap<>();
+        if (!ids.isEmpty()) {
+            List<Object[]> counted = orderItemRepository.countLinesByOrderIds(ids);
+            if (counted != null) counted.forEach(row -> lineCounts.put((UUID) row[0], ((Number) row[1]).longValue()));
+        }
         return orders.stream()
-                .map(order -> OrderSummaryResponse.from(
-                        order,
-                        orderItemRepository.countByOrderId(order.getId())
-                ))
+                .map(order -> {
+                    Payment payment = payments.get(order.getId());
+                    return OrderSummaryResponse.from(order, lineCounts.getOrDefault(order.getId(), 0L),
+                            order.getAddressId() == null ? null : customers.get(order.getAddressId()),
+                            payment == null ? null : payment.getMethod(), payment == null ? null : payment.getStatus(),
+                            refunded.getOrDefault(order.getId(), BigDecimal.ZERO));
+                })
                 .toList();
     }
 
@@ -397,10 +423,15 @@ public class OrderService {
 
     /** order_items keeps no image of its own, so show the variant's current picture. */
     private List<OrderItemResponse> itemsWithImages(Order order) {
-        return orderItemRepository.findByOrderId(order.getId()).stream()
-                .map(item -> OrderItemResponse.from(item, productVariantLookup == null ? null
-                        : productVariantLookup.findCartProductById(item.getVariantId())
-                                .map(CartProductSnapshot::imageUrl).orElse(null)))
+        List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+        // Every line's picture in one query, not one per line.
+        Map<UUID, CartProductSnapshot> products = productVariantLookup == null ? Map.of()
+                : productVariantLookup.findCartProductsByIds(items.stream().map(OrderItem::getVariantId).toList());
+        return items.stream()
+                .map(item -> {
+                    CartProductSnapshot product = products == null ? null : products.get(item.getVariantId());
+                    return OrderItemResponse.from(item, product == null ? null : product.imageUrl());
+                })
                 .toList();
     }
 
@@ -409,7 +440,7 @@ public class OrderService {
         List<UUID> addressIds = orders.stream().map(Order::getAddressId).filter(java.util.Objects::nonNull).distinct().toList();
         if (addressIds.isEmpty()) return Map.of();
         Map<UUID, OrderCustomerResponse> result = new java.util.HashMap<>();
-        for (Address address : addressRepository.findAllById(addressIds)) {
+        for (Address address : addressRepository.findAllWithUserByIdIn(addressIds)) {
             var user = address.getUser();
             result.put(address.getId(), new OrderCustomerResponse(user.getId(), user.getFullName(), user.getEmail(),
                     user.getPhone(), address.getRecipientName(), address.getPhone()));
@@ -486,6 +517,12 @@ public class OrderService {
             String rawReason
     ) {
         String previousStatus = order.getStatus();
+        if (OrderStatus.CANCEL_REQUESTED.value().equals(previousStatus)
+                && OrderStatus.CONFIRMED.value().equals(requestedStatus)) {
+            // Turning a cancel request down puts the order back where it was: one the sales team had not
+            // confirmed yet goes back to pending instead of being confirmed by the refusal.
+            requestedStatus = statusBeforeCancelRequest(order.getId());
+        }
         validateStatusTransition(previousStatus, requestedStatus);
         String reason = normalizeReason(rawReason);
         if ((OrderStatus.CANCEL_REQUESTED.value().equals(requestedStatus)
@@ -520,12 +557,24 @@ public class OrderService {
         // A buyer's cancel request is either accepted (cancelled) or turned down (confirmed — the order goes ahead).
         allowed = allowed || OrderStatus.CANCEL_REQUESTED.value().equals(currentStatus)
                 && (OrderStatus.CANCELLED.value().equals(requestedStatus)
-                || OrderStatus.CONFIRMED.value().equals(requestedStatus));
+                || OrderStatus.CONFIRMED.value().equals(requestedStatus)
+                || OrderStatus.PENDING.value().equals(requestedStatus));
         if (!allowed) {
             throw new IllegalStateException(
                     "Không thể chuyển trạng thái đơn hàng từ " + currentStatus + " sang " + requestedStatus
             );
         }
+    }
+
+    /** The status an order had when the buyer asked to cancel it (pending or confirmed); confirmed if unknown. */
+    private String statusBeforeCancelRequest(UUID orderId) {
+        String before = OrderStatus.CONFIRMED.value();
+        String last = null;
+        for (OrderStatusHistory entry : orderStatusHistoryRepository.findByOrderIdOrderByChangedAtAsc(orderId)) {
+            if (OrderStatus.CANCEL_REQUESTED.value().equals(entry.getStatus()) && last != null) before = last;
+            last = entry.getStatus();
+        }
+        return OrderStatus.PENDING.value().equals(before) ? before : OrderStatus.CONFIRMED.value();
     }
 
     private String normalizeReason(String rawReason) {
@@ -549,6 +598,11 @@ public class OrderService {
         List<CartItem> selectedItems = cartItemRepository.findByUserIdAndIsSelectedTrueOrderByUpdatedAtAsc(userId);
         if (selectedItems.isEmpty()) {
             throw new IllegalArgumentException("Giỏ hàng chưa có sản phẩm nào được chọn");
+        }
+        if (placing && productVariantLookup != null) {
+            // Hold the stock rows (sorted, so two checkouts never wait on each other in a cycle) before reading
+            // availability: a concurrent checkout of the same variant waits and then sees these units as taken.
+            selectedItems.stream().map(CartItem::getVariantId).distinct().sorted().forEach(productVariantLookup::lockStock);
         }
         List<CheckoutLine> lines = selectedItems.stream().map(item -> toCheckoutLine(userId, item, placing)).toList();
         BigDecimal subtotal = lines.stream().map(CheckoutLine::lineTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -611,6 +665,33 @@ public class OrderService {
                         quantityByItem.getOrDefault(application.getOrderItemId(), 0));
             }
         }
+    }
+
+    /** How long a bank-transfer order waits for its money before it is cancelled automatically. */
+    public static final java.time.Duration TRANSFER_DEADLINE = java.time.Duration.ofHours(24);
+
+    @Transactional(readOnly = true)
+    public List<UUID> findExpiredTransferOrders(java.time.OffsetDateTime now) {
+        return orderRepository.findUnpaidTransferOrderIds(now.minus(TRANSFER_DEADLINE));
+    }
+
+    /**
+     * Cancels one bank-transfer order whose money did not arrive in time: the held stock and flash-sale units go back.
+     * Re-checks the payment, so a transfer confirmed in the meantime is never cancelled.
+     */
+    @Transactional
+    public boolean expireUnpaidTransfer(UUID orderId) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || checkoutPaymentService == null) return false;
+        boolean stillUnpaid = checkoutPaymentService.checkoutPaymentOf(orderId)
+                .map(p -> "bank_transfer".equals(p.getMethod()) && "pending".equals(p.getStatus()))
+                .orElse(false);
+        boolean open = List.of(OrderStatus.PENDING.value(), OrderStatus.CONFIRMED.value(), OrderStatus.CANCEL_REQUESTED.value())
+                .contains(order.getStatus());
+        if (!stillUnpaid || !open) return false;
+        applyStatusChange(order, OrderStatus.CANCELLED.value(), null, "system",
+                "Tự động huỷ: quá " + TRANSFER_DEADLINE.toHours() + " giờ chưa nhận được tiền chuyển khoản");
+        return true;
     }
 
     private void openRefundIfPaid(Order order, String reason) {

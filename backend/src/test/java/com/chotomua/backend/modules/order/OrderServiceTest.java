@@ -310,7 +310,7 @@ class OrderServiceTest {
         Order order = orderOf(userId);
         when(orderRepository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, "pending"))
                 .thenReturn(List.of(order));
-        when(orderItemRepository.countByOrderId(order.getId())).thenReturn(2L);
+        when(orderItemRepository.countLinesByOrderIds(any())).thenReturn(java.util.Collections.singletonList(new Object[] {order.getId(), 2L}));
 
         var result = orderService.listForBuyer(userId, " PENDING ");
 
@@ -368,8 +368,8 @@ class OrderServiceTest {
         Address address = ownedAddress(buyerId, newOrder.getAddressId());
         address.getUser().setFullName("Nguyễn Văn A");
         when(orderRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(newOrder));
-        when(addressRepository.findAllById(any())).thenReturn(List.of(address));
-        when(orderItemRepository.countByOrderId(newOrder.getId())).thenReturn(2L);
+        when(addressRepository.findAllWithUserByIdIn(any())).thenReturn(List.of(address));
+        when(orderItemRepository.countLinesByOrderIds(any())).thenReturn(java.util.Collections.singletonList(new Object[] {newOrder.getId(), 2L}));
 
         var result = orderService.listForEmployeeUser(employeeUserId, null);
 
@@ -795,6 +795,27 @@ class OrderServiceTest {
     }
 
     @Test
+    void turningDownACancelRequestOnAnUnconfirmedOrderPutsItBackToPending() {
+        UUID salesUserId = UUID.randomUUID();
+        Order order = orderOf(UUID.randomUUID());
+        order.setStatus("cancel_requested");
+        when(employeeRepository.findByUserId(salesUserId)).thenReturn(Optional.of(employeeOf(salesUserId, "sales")));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+        when(orderStatusHistoryRepository.save(any(OrderStatusHistory.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderStatusHistoryRepository.findByOrderIdOrderByChangedAtAsc(order.getId())).thenReturn(List.of(
+                new OrderStatusHistory(order.getId(), "pending", UUID.randomUUID(), "buyer", "Tạo đơn hàng"),
+                new OrderStatusHistory(order.getId(), "cancel_requested", UUID.randomUUID(), "buyer", "Đặt nhầm")));
+
+        var result = orderService.updateStatusForEmployeeUser(salesUserId, order.getId(),
+                new OrderStatusUpdateRequest("confirmed", null));
+
+        // Refusing the cancellation must not confirm an order nobody in sales has checked yet.
+        assertThat(result.status()).isEqualTo("pending");
+        assertThat(order.getStatus()).isEqualTo("pending");
+    }
+
+    @Test
     void cancellingAnOrderWhoseTransferArrivedOpensARefund() {
         CheckoutPaymentService payments = mock(CheckoutPaymentService.class);
         RefundService refunds = mock(RefundService.class);
@@ -815,6 +836,52 @@ class OrderServiceTest {
         orderService.updateStatusForEmployeeUser(salesUserId, order.getId(), new OrderStatusUpdateRequest("cancelled", "Hết hàng"));
 
         verify(refunds).openForCancelledOrder(order, new BigDecimal("799000"), "Hết hàng");
+    }
+
+    @Test
+    void unpaidBankTransferOrderCannotBePacked() {
+        CheckoutPaymentService payments = mock(CheckoutPaymentService.class);
+        orderService = new OrderService(cartItemRepository, orderRepository, orderItemRepository, orderStatusHistoryRepository,
+                addressRepository, employeeRepository, productVariantLookup, warehouseLookup, voucherQuoteService,
+                voucherUsageRepository, payments, null, null);
+        UUID warehouseUserId = UUID.randomUUID();
+        Order order = orderOf(UUID.randomUUID());
+        order.setStatus("confirmed");
+        when(employeeRepository.findByUserId(warehouseUserId)).thenReturn(Optional.of(employeeOf(warehouseUserId, "warehouse")));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(payments.awaitsTransfer(order.getId())).thenReturn(true);
+
+        assertThatThrownBy(() -> orderService.updateShippingInfo(warehouseUserId, order.getId(),
+                new OrderShippingInfoRequest(UUID.randomUUID(), "GHN")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("chưa được xác nhận nhận tiền");
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void unpaidTransferIsCancelledAutomaticallyButAConfirmedOneIsLeftAlone() {
+        CheckoutPaymentService payments = mock(CheckoutPaymentService.class);
+        orderService = new OrderService(cartItemRepository, orderRepository, orderItemRepository, orderStatusHistoryRepository,
+                addressRepository, employeeRepository, productVariantLookup, warehouseLookup, voucherQuoteService,
+                voucherUsageRepository, payments, null, null);
+        Order unpaid = orderOf(UUID.randomUUID());
+        Order paid = orderOf(UUID.randomUUID());
+        Payment paidTransfer = Payment.checkout(paid.getId(), "bank_transfer", new BigDecimal("100000"));
+        paidTransfer.markPaid();
+        when(orderRepository.findById(unpaid.getId())).thenReturn(Optional.of(unpaid));
+        when(orderRepository.findById(paid.getId())).thenReturn(Optional.of(paid));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderStatusHistoryRepository.save(any(OrderStatusHistory.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(payments.checkoutPaymentOf(unpaid.getId()))
+                .thenReturn(Optional.of(Payment.checkout(unpaid.getId(), "bank_transfer", new BigDecimal("100000"))));
+        when(payments.checkoutPaymentOf(paid.getId())).thenReturn(Optional.of(paidTransfer));
+
+        assertThat(orderService.expireUnpaidTransfer(unpaid.getId())).isTrue();
+        assertThat(orderService.expireUnpaidTransfer(paid.getId())).isFalse();
+
+        assertThat(unpaid.getStatus()).isEqualTo("cancelled");
+        assertThat(paid.getStatus()).isEqualTo("pending");
+        verify(payments).cancelForOrder(unpaid.getId());
     }
 
     @Test

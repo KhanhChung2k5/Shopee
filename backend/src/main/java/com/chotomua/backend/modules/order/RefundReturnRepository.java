@@ -12,4 +12,6 @@ public interface RefundReturnRepository extends JpaRepository<RefundReturn, UUID
     List<RefundReturn> findByOrderIdOrderByRequestedAtAsc(UUID orderId);
 
     List<RefundReturn> findByOrderItemId(UUID orderItemId);
+
+    List<RefundReturn> findByOrderIdInAndStatus(java.util.Collection<UUID> orderIds, String status);
 }

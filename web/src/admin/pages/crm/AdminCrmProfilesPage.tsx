@@ -80,7 +80,7 @@ export default function AdminCrmProfilesPage() {
       <div className={a.toolbar}>
         <input className={`${a.input} !w-72`} type="search" placeholder="Tìm theo tên khách hàng..." value={query} onChange={(e) => setQuery(e.target.value)} />
         <div className={a.filterBar}>
-          {['all', 'champions', 'loyal', 'potential', 'at_risk', 'lost', 'other'].map((key) => (
+          {['all', 'champions', 'loyal', 'potential', 'at_risk', 'lost', 'new', 'other'].map((key) => (
             <button key={key} type="button" className={chipClass(rfm === key)} onClick={() => setRfm(key)}>
               {key === 'all' ? 'Tất cả' : RFM_LABEL[key]} {key !== 'all' && <span className="opacity-70">({rfmCounts[key] ?? 0})</span>}
             </button>

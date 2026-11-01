@@ -10,24 +10,25 @@ class SampleData {
   SampleData._();
 
   static const banners = [
+    // Only claims the shop actually honours (same as the web hero): no invented discounts or codes.
     BannerSlide(
-      eyebrow: 'Ưu đãi tay cầm chính hãng',
-      title: 'Giảm đến 30% tay cầm không dây',
-      description: 'Áp dụng cho tay cầm PS5, Xbox Series X/S, Switch Pro',
+      eyebrow: 'Hàng chính hãng',
+      title: 'Tay cầm, đĩa game & phụ kiện chính hãng',
+      description: 'Dành cho PlayStation, Xbox, Nintendo Switch và PC',
       ctaLabel: 'Mua ngay',
       gradient: [Color(0xFFFFB199), AppColors.primary],
     ),
     BannerSlide(
       eyebrow: 'Miễn phí vận chuyển',
-      title: 'Freeship mọi đơn từ 99K',
-      description: 'Nhập mã FREE99 tại trang thanh toán',
-      ctaLabel: 'Lấy mã ngay',
+      title: 'Miễn phí giao hàng cho mọi đơn',
+      description: 'Thanh toán khi nhận hàng (COD) hoặc chuyển khoản ngân hàng',
+      ctaLabel: 'Mua sắm ngay',
       gradient: [Color(0xFF7DD8A6), AppColors.trust],
     ),
     BannerSlide(
-      eyebrow: 'Đĩa game mới về',
-      title: 'Hàng trăm tựa game mới cập bến',
-      description: 'Giảm thêm 15% cho đơn hàng đầu tiên',
+      eyebrow: 'Tích điểm thành viên',
+      title: '1 điểm cho mỗi 10.000đ',
+      description: 'Điểm được cộng khi đơn hàng giao thành công',
       ctaLabel: 'Khám phá',
       gradient: [Color(0xFF2B2B3D), Color(0xFF55506B)],
     ),

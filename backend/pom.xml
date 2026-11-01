@@ -50,6 +50,15 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-jackson</artifactId>
 		</dependency>
+		<!-- In-memory read cache for rarely-changing data (catalog, categories, reports) — see common/config/CacheConfig. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-cache</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>org.postgresql</groupId>
@@ -160,6 +169,7 @@
 						<DB_POOL_SIZE>2</DB_POOL_SIZE>
 						<!-- no background @Scheduled jobs while tests run (see SchedulingConfig) -->
 						<app.scheduling.enabled>false</app.scheduling.enabled>
+						<app.cache.enabled>false</app.cache.enabled>
 					</systemPropertyVariables>
 				</configuration>
 			</plugin>

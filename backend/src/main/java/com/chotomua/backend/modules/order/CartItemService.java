@@ -26,8 +26,11 @@ public class CartItemService {
 
     @Transactional(readOnly = true)
     public List<CartItemResponse> listForUser(UUID userId) {
-        return cartItemRepository.findByUserIdOrderByUpdatedAtDesc(userId).stream()
-                .map(this::toResponse)
+        List<CartItem> items = cartItemRepository.findByUserIdOrderByUpdatedAtDesc(userId);
+        // Every line's product in one query, not one per line.
+        var products = productVariantLookup.findCartProductsByIds(items.stream().map(CartItem::getVariantId).toList());
+        return items.stream()
+                .map(item -> CartItemResponse.from(item, products.get(item.getVariantId())))
                 .toList();
     }
 

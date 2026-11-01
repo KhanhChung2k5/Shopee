@@ -62,7 +62,7 @@ class CustomerProfileServiceTest {
 
         assertThat(profile.totalOrders()).isZero();
         assertThat(profile.ltv()).isEqualByComparingTo("0");
-        assertThat(profile.rfmSegment()).isEqualTo(RfmClassifier.LOST);
+        assertThat(profile.rfmSegment()).isEqualTo(RfmClassifier.NEW);
         assertThat(profile.lastPurchaseAt()).isNull();
         assertThat(profile.calculatedAt()).isEqualTo(NOW);
     }

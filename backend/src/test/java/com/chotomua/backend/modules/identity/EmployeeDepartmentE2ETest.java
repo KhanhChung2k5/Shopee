@@ -8,7 +8,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,6 +24,16 @@ import tools.jackson.databind.ObjectMapper;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class EmployeeDepartmentE2ETest {
+
+    private final E2eAccounts accounts = new E2eAccounts();
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @org.junit.jupiter.api.AfterEach
+    void removeTestAccounts() {
+        accounts.deleteAll(jdbc);
+    }
 
     @LocalServerPort
     private int port;
@@ -47,7 +56,7 @@ class EmployeeDepartmentE2ETest {
 
     @Test
     void warehouseEmployeeCannotAccessAdminOnlyEmployeeRoute() throws Exception {
-        String adminEmail = "e2e-admin-" + UUID.randomUUID() + "@example.com";
+        String adminEmail = accounts.newEmail("e2e-admin-");
         String adminPassword = "admin1234";
         User adminUser = new User("staff", passwordEncoder.encode(adminPassword));
         adminUser.setEmail(adminEmail);
@@ -57,7 +66,7 @@ class EmployeeDepartmentE2ETest {
 
         String adminToken = login(adminEmail, adminPassword);
 
-        String warehouseEmail = "e2e-warehouse-" + UUID.randomUUID() + "@example.com";
+        String warehouseEmail = accounts.newEmail("e2e-warehouse-");
         String warehousePassword = "warehouse1234";
         HttpResponse<String> createResponse = postJson("/employees", Map.of(
                 "email", warehouseEmail,

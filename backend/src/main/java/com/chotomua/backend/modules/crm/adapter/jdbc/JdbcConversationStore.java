@@ -89,17 +89,36 @@ public class JdbcConversationStore implements ConversationStore {
                 FROM conversation_messages
                 WHERE conversation_id = ?
                 ORDER BY sent_at
-                """, (rs, rowNum) -> {
-            ConversationMessageText.Decoded decoded = ConversationMessageText.decode(rs.getString("content"));
-            return new ConversationMessage(
-                    rs.getObject("id", UUID.class),
-                    rs.getObject("conversation_id", UUID.class),
-                    rs.getObject("sender_id", UUID.class),
-                    decoded.kind(),
-                    decoded.text(),
-                    decoded.score(),
-                    instant(rs.getTimestamp("sent_at")));
-        }, conversationId);
+                """, (rs, rowNum) -> message(rs), conversationId);
+    }
+
+    @Override
+    public java.util.Map<UUID, List<ConversationMessage>> messagesOfAll(java.util.Collection<UUID> conversationIds) {
+        java.util.Map<UUID, List<ConversationMessage>> result = new java.util.HashMap<>();
+        if (conversationIds.isEmpty()) return result;
+        List<UUID> ids = List.copyOf(new java.util.LinkedHashSet<>(conversationIds));
+        jdbc.query("""
+                SELECT id, conversation_id, sender_id, content, sent_at
+                FROM conversation_messages
+                WHERE conversation_id IN (%s)
+                ORDER BY sent_at
+                """.formatted(String.join(",", java.util.Collections.nCopies(ids.size(), "?"))), rs -> {
+            ConversationMessage message = message(rs);
+            result.computeIfAbsent(message.conversationId(), key -> new java.util.ArrayList<>()).add(message);
+        }, ids.toArray());
+        return result;
+    }
+
+    private static ConversationMessage message(java.sql.ResultSet rs) throws java.sql.SQLException {
+        ConversationMessageText.Decoded decoded = ConversationMessageText.decode(rs.getString("content"));
+        return new ConversationMessage(
+                rs.getObject("id", UUID.class),
+                rs.getObject("conversation_id", UUID.class),
+                rs.getObject("sender_id", UUID.class),
+                decoded.kind(),
+                decoded.text(),
+                decoded.score(),
+                instant(rs.getTimestamp("sent_at")));
     }
 
     @Override
@@ -110,12 +129,34 @@ public class JdbcConversationStore implements ConversationStore {
                 JOIN employees e ON e.id = a.employee_id
                 WHERE a.conversation_id = ?
                 ORDER BY a.assigned_at
-                """, (rs, rowNum) -> new AgentAssignment(
+                """, (rs, rowNum) -> assignment(rs), conversationId);
+    }
+
+    @Override
+    public java.util.Map<UUID, List<AgentAssignment>> assignmentsOfAll(java.util.Collection<UUID> conversationIds) {
+        java.util.Map<UUID, List<AgentAssignment>> result = new java.util.HashMap<>();
+        if (conversationIds.isEmpty()) return result;
+        List<UUID> ids = List.copyOf(new java.util.LinkedHashSet<>(conversationIds));
+        jdbc.query("""
+                SELECT a.id, a.conversation_id, e.user_id, a.is_current, a.assigned_at
+                FROM agent_assignments a
+                JOIN employees e ON e.id = a.employee_id
+                WHERE a.conversation_id IN (%s)
+                ORDER BY a.assigned_at
+                """.formatted(String.join(",", java.util.Collections.nCopies(ids.size(), "?"))), rs -> {
+            AgentAssignment assignment = assignment(rs);
+            result.computeIfAbsent(assignment.conversationId(), key -> new java.util.ArrayList<>()).add(assignment);
+        }, ids.toArray());
+        return result;
+    }
+
+    private static AgentAssignment assignment(java.sql.ResultSet rs) throws java.sql.SQLException {
+        return new AgentAssignment(
                 rs.getObject("id", UUID.class),
                 rs.getObject("conversation_id", UUID.class),
                 rs.getObject("user_id", UUID.class),
                 rs.getBoolean("is_current"),
-                instant(rs.getTimestamp("assigned_at"))), conversationId);
+                instant(rs.getTimestamp("assigned_at")));
     }
 
     @Override

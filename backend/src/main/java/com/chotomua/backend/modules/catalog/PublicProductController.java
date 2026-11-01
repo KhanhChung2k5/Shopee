@@ -1,5 +1,8 @@
 package com.chotomua.backend.modules.catalog;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import com.chotomua.backend.common.config.CacheConfig;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.JsonNodeFactory;
 import org.springframework.data.domain.Page;
@@ -50,7 +53,9 @@ public class PublicProductController {
      * non-cancelled orders. Reads order_items directly (snapshot-safe even
      * if a variant is later deactivated). */
     @GetMapping("/top-sellers")
+    @Cacheable(cacheNames = CacheConfig.TOP_SELLERS, key = "T(java.lang.Math).max(1, T(java.lang.Math).min(#limit, 20))")
     public List<TopSellerResponse> topSellers(@RequestParam(defaultValue = "5") int limit) {
+        limit = Math.max(1, Math.min(limit, 20)); // bounded, so callers cannot fill the cache with endless keys
         List<Object[]> rows = entityManager.createNativeQuery(
                 "SELECT p.id, p.name, MIN(pv.price), SUM(oi.quantity) AS total_qty, p.image_urls ->> 0 "
               + "FROM order_items oi "
@@ -73,6 +78,8 @@ public class PublicProductController {
     }
 
     @GetMapping
+    @Cacheable(cacheNames = CacheConfig.PUBLIC_PRODUCTS,
+            key = "#categoryId + '|' + #brandName + '|' + #productType + '|' + #search + '|' + #page + '|' + #size")
     public PageResponse<ProductSummary> list(
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) String brandName,
@@ -105,6 +112,7 @@ public class PublicProductController {
     }
 
     @GetMapping("/{id}")
+    @Cacheable(cacheNames = CacheConfig.PUBLIC_PRODUCT, key = "#id")
     public ProductDetails get(@PathVariable UUID id) {
         Product product = products.findByIdAndStatus(id, "published")
                 .orElseThrow(() -> new CatalogNotFoundException("Không tìm thấy sản phẩm đang bán: " + id));
@@ -115,7 +123,7 @@ public class PublicProductController {
                 : stocks.findAvailabilityByVariantIds(variantIds).stream().collect(Collectors.toMap(
                         InventoryStockRepository.VariantAvailability::getVariantId,
                         availability -> availability.getAvailableQuantity() == null
-                                ? 0 : Math.toIntExact(availability.getAvailableQuantity())));
+                                ? 0 : availability.getAvailableQuantity().intValue()));
 
         List<VariantDetails> variantDetails = activeVariants.stream()
                 .map(variant -> VariantDetails.from(variant,

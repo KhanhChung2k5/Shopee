@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiFetch } from '../lib/api'
-import { resolveCatalogImageUrl } from '../lib/catalog'
+import { fetchTopSellers, resolveCatalogImageUrl } from '../lib/catalog'
 
 interface TopSeller {
   productId: string
@@ -34,7 +34,7 @@ export default function LeaderboardReviews() {
 
   useEffect(() => {
     let active = true
-    apiFetch<TopSeller[]>('/api/products/top-sellers?limit=5')
+    fetchTopSellers(5)
       .then((items) => { if (active) setTopSellers(items) })
       .catch(() => { if (active) setTopSellers([]) })
     apiFetch<ShowcaseReview[]>('/reviews?limit=4')

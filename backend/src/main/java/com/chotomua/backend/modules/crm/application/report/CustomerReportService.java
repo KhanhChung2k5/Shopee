@@ -40,6 +40,14 @@ public class CustomerReportService {
     private final OrderPort orders;
     private final Clock clock;
 
+    /** Optional (absent in tests): keeps the built report for a couple of minutes — see CacheConfig.CRM_CUSTOMER_REPORT. */
+    private org.springframework.cache.CacheManager cacheManager;
+
+    @Autowired(required = false)
+    void setCacheManager(org.springframework.cache.CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
+
     @Autowired
     public CustomerReportService(IdentityPort identity, OrderPort orders) {
         this(identity, orders, Clock.systemDefaultZone());
@@ -54,16 +62,25 @@ public class CustomerReportService {
 
     /** Câu chuyện 5: quản trị, quản lý CRM và CSKH được xem. */
     public CustomerReportResponse build(UUID actorId) {
-        identity.requireCrmStaff(actorId);
+        identity.requireCrmStaff(actorId); // always checked — the cache only skips rebuilding the same report
+        org.springframework.cache.Cache cache = cacheManager == null ? null
+                : cacheManager.getCache(com.chotomua.backend.common.config.CacheConfig.CRM_CUSTOMER_REPORT);
+        return cache == null ? buildReport() : cache.get("all", this::buildReport);
+    }
+
+    private CustomerReportResponse buildReport() {
         List<CustomerView> customers = identity.findCustomers(new CustomerFilter(null, null), false);
         LocalDate today = LocalDate.now(clock);
         List<DeliveredOrderLine> lines = new ArrayList<>();
         List<ReportFact> facts = new ArrayList<>();
         List<ReportCustomer> rows = new ArrayList<>();
+        // One batched read for everyone instead of a round trip to the database per customer.
+        java.util.Map<UUID, List<DeliveredOrderView>> deliveredByCustomer =
+                orders.listDeliveredOrdersByUser(customers.stream().map(CustomerView::id).toList());
         for (CustomerView customer : customers) {
             AgeBucket age = AgeBucket.fromDob(customer.dob(), today);
             GenderBucket gender = GenderBucket.fromGender(customer.gender());
-            List<DeliveredOrderView> delivered = orders.listDeliveredOrders(customer.id());
+            List<DeliveredOrderView> delivered = deliveredByCustomer.get(customer.id());
             if (delivered == null) {
                 delivered = List.of();
             }

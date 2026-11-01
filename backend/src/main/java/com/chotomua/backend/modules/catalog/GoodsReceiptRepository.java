@@ -12,11 +12,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface GoodsReceiptRepository extends JpaRepository<GoodsReceipt, UUID> {
-    @EntityGraph(attributePaths = {"employee", "warehouse", "items", "items.variant"})
+    @EntityGraph(attributePaths = {"employee", "employee.user", "decidedBy", "decidedBy.user", "warehouse", "items", "items.variant"})
     List<GoodsReceipt> findAllByOrderByReceivedAtDesc();
 
     @Override
-    @EntityGraph(attributePaths = {"employee", "warehouse", "items", "items.variant"})
+    @EntityGraph(attributePaths = {"employee", "employee.user", "decidedBy", "decidedBy.user", "warehouse", "items", "items.variant"})
     Optional<GoodsReceipt> findById(UUID id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

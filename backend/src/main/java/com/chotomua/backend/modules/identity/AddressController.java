@@ -1,4 +1,4 @@
-package com.chotomua.backend.modules.identity;
+   package com.chotomua.backend.modules.identity;
 
 import com.chotomua.backend.modules.identity.dto.AddressRequest;
 import com.chotomua.backend.modules.identity.dto.AddressResponse;
@@ -28,28 +28,33 @@ public class AddressController {
         this.addressService = addressService;
     }
 
+    // List all addresses for the current user
     @GetMapping
     public List<AddressResponse> list(Authentication authentication) {
         return addressService.listForUser(currentUserId(authentication));
     }
 
+    // Create a new address for the current user
     @PostMapping
     public ResponseEntity<AddressResponse> create(Authentication authentication, @Valid @RequestBody AddressRequest request) {
         AddressResponse created = addressService.create(currentUserId(authentication), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    // Update an existing address for the current user
     @PutMapping("/{id}")
     public AddressResponse update(Authentication authentication, @PathVariable UUID id, @Valid @RequestBody AddressRequest request) {
         return addressService.update(currentUserId(authentication), id, request);
     }
 
+    // Delete an existing address for the current user
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(Authentication authentication, @PathVariable UUID id) {
         addressService.delete(currentUserId(authentication), id);
         return ResponseEntity.noContent().build();
     }
 
+    // Get the current user ID from the authentication token
     private UUID currentUserId(Authentication authentication) {
         return UUID.fromString((String) authentication.getPrincipal());
     }

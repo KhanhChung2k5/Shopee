@@ -21,24 +21,30 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/employees")
 public class EmployeeController {
 
+    // Repository for Employee
     private final EmployeeService employeeService;
+    // Constructor for EmployeeController
 
     public EmployeeController(EmployeeService employeeService) {
         this.employeeService = employeeService;
     }
 
+    // List all employees
     @GetMapping
     public List<EmployeeResponse> list() {
         return employeeService.listAll();
     }
 
+    // Create a new employee
     @PostMapping
     public ResponseEntity<EmployeeResponse> create(@Valid @RequestBody EmployeeRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(employeeService.create(request));
     }
 
+    // Update an existing employee
     @PatchMapping("/{id}")
     public EmployeeResponse update(@PathVariable UUID id, @Valid @RequestBody EmployeeUpdateRequest request) {
+        // Update the employee
         return employeeService.update(id, request);
     }
 }

@@ -35,6 +35,32 @@ class CheckoutPaymentLifecycleTest {
     }
 
     @Test
+    void deliveryNeverSettlesABankTransferOnlySalesConfirmationDoes() {
+        Payment transfer = Payment.checkout(orderId, "bank_transfer", new BigDecimal("500000"));
+        when(payments.findByOrderIdAndPurpose(orderId, "checkout")).thenReturn(List.of(transfer));
+
+        service.settleOnDelivery(orderId);
+        assertThat(transfer.getStatus()).isEqualTo("pending");
+        assertThat(service.awaitsTransfer(orderId)).isTrue();
+
+        service.confirmTransferReceived(orderId);
+        assertThat(transfer.getStatus()).isEqualTo("paid");
+        assertThat(service.awaitsTransfer(orderId)).isFalse();
+    }
+
+    @Test
+    void moneyArrivingAfterTheOrderWasCancelledCanStillBeRecorded() {
+        Payment transfer = Payment.checkout(orderId, "bank_transfer", new BigDecimal("500000"));
+        when(payments.findByOrderIdAndPurpose(orderId, "checkout")).thenReturn(List.of(transfer));
+        service.cancelForOrder(orderId);
+        assertThat(transfer.getStatus()).isEqualTo("cancelled");
+
+        service.confirmTransferReceived(orderId);
+
+        assertThat(transfer.getStatus()).isEqualTo("paid");
+    }
+
+    @Test
     void aCollectedPaymentIsNotVoidedByALateCancel() {
         Payment cod = Payment.checkout(orderId, "cod", new BigDecimal("500000"));
         cod.markPaid();

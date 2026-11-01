@@ -31,6 +31,12 @@ import java.util.UUID;
 @Profile("!crm-fake")
 public class JdbcOrderPort implements OrderPort {
 
+    /** What the buyer actually kept paying for: the order total minus money already refunded (returns). */
+    private static final String NET_TOTAL = """
+            (total_amount - COALESCE((SELECT SUM(r.refund_amount) FROM refund_returns r
+                                      WHERE r.order_id = orders.id AND r.status = 'refunded'), 0)) AS total_amount""";
+
+
     private final JdbcTemplate jdbc;
 
     public JdbcOrderPort(JdbcTemplate jdbc) {
@@ -50,21 +56,42 @@ public class JdbcOrderPort implements OrderPort {
     @Override
     public List<DeliveredOrderView> listDeliveredOrders(UUID userId) {
         List<OrderHeader> headers = jdbc.query("""
-                SELECT id, user_id, total_amount, created_at
+                SELECT id, user_id, %s, created_at
                 FROM orders
                 WHERE user_id = ? AND status = 'delivered'
                 ORDER BY created_at
-                """, (rs, rowNum) -> header(rs), userId);
+                """.formatted(NET_TOTAL), (rs, rowNum) -> header(rs), userId);
         return attachLines(headers);
+    }
+
+    /** Every customer's delivered orders in a couple of queries (chunks of 500 ids), not one round trip per customer. */
+    @Override
+    public Map<UUID, List<DeliveredOrderView>> listDeliveredOrdersByUser(Collection<UUID> userIds) {
+        List<UUID> ids = copyIds(userIds);
+        Map<UUID, List<DeliveredOrderView>> result = new LinkedHashMap<>();
+        ids.forEach(id -> result.put(id, new ArrayList<>()));
+        for (int from = 0; from < ids.size(); from += 500) {
+            List<UUID> chunk = ids.subList(from, Math.min(ids.size(), from + 500));
+            List<OrderHeader> headers = jdbc.query("""
+                    SELECT id, user_id, %s, created_at
+                    FROM orders
+                    WHERE user_id IN (%s) AND status = 'delivered'
+                    ORDER BY created_at
+                    """.formatted(NET_TOTAL, placeholders(chunk.size())), (rs, rowNum) -> header(rs), chunk.toArray());
+            for (DeliveredOrderView order : attachLines(headers)) {
+                result.computeIfAbsent(order.userId(), key -> new ArrayList<>()).add(order);
+            }
+        }
+        return result;
     }
 
     @Override
     public Optional<DeliveredOrderView> getDeliveredOrder(UUID orderId) {
         List<OrderHeader> found = jdbc.query("""
-                SELECT id, user_id, total_amount, created_at
+                SELECT id, user_id, %s, created_at
                 FROM orders
                 WHERE id = ? AND status = 'delivered'
-                """, (rs, rowNum) -> header(rs), orderId);
+                """.formatted(NET_TOTAL), (rs, rowNum) -> header(rs), orderId);
         if (found.isEmpty()) {
             return Optional.empty();
         }

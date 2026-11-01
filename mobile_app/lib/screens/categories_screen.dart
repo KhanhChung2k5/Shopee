@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../data/sample_data.dart';
 import '../models/product.dart';
 import '../services/catalog_service.dart';
 import '../theme/app_theme.dart';
@@ -17,7 +16,7 @@ class CategoriesScreen extends StatefulWidget {
 
 class _CategoriesScreenState extends State<CategoriesScreen> {
   late final CatalogService _catalog = widget.catalogService ?? CatalogService();
-  List<CategoryItem> _categories = SampleData.categories;
+  List<CategoryItem> _categories = const [];
   bool _loading = true;
   bool _usingSampleData = false;
 
@@ -35,7 +34,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         if (categories.isNotEmpty) {
           _categories = categories;
         } else {
-          _categories = SampleData.categories;
+          _categories = const [];
           _usingSampleData = true;
         }
         _loading = false;
@@ -43,7 +42,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _categories = SampleData.categories;
+        _categories = const [];
         _usingSampleData = true;
         _loading = false;
       });
@@ -64,7 +63,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     color: AppColors.primaryLight,
                     child: const Text(
-                      'Không tải được danh mục từ máy chủ; đang giữ dữ liệu mẫu để màn hình không bị trống.',
+                      'Không tải được danh mục từ máy chủ. Vui lòng kiểm tra kết nối và mở lại.',
                       style: TextStyle(fontSize: 12, color: AppColors.primaryDark),
                     ),
                   ),

@@ -74,6 +74,18 @@ export default function AdminRefundsPage() {
     if (note != null) void act(refund, 'reject', { note })
   }
 
+  const receive = async (refund: Refund, restock: boolean) => {
+    const ok = await confirm({
+      title: restock ? 'Nhận hàng hoàn – nhập lại kho' : 'Nhận hàng hoàn bị lỗi',
+      message: restock
+        ? <>Đã nhận <strong>{refund.productName}{refund.quantity ? ` × ${refund.quantity}` : ''}</strong> còn bán được? Hàng sẽ được nhập lại vào kho đã xuất đơn.</>
+        : <>Đã nhận <strong>{refund.productName}</strong> nhưng hàng lỗi, không bán lại được? Hàng sẽ không được cộng vào tồn kho.</>,
+      confirmLabel: restock ? 'Nhập lại kho' : 'Ghi nhận hàng lỗi',
+      tone: restock ? 'primary' : 'danger',
+    })
+    if (ok) void act(refund, 'received', { restock })
+  }
+
   const markRefunded = async (refund: Refund) => {
     const transferRef = await prompt({
       title: 'Ghi nhận đã chuyển tiền',
@@ -129,6 +141,11 @@ export default function AdminRefundsPage() {
               <div><dt className="font-label-md text-label-md text-on-surface-variant">Chủ tài khoản</dt><dd>{r.bankAccountName ?? '—'}</dd></div>
             </dl>
 
+            {r.kind === 'return' && r.receivedAt && (
+              <p className="mt-space-xs font-body-md text-body-md text-on-surface-variant">
+                Đã nhận hàng hoàn {timeVi(r.receivedAt)} · {r.restockWarehouseId ? 'đã nhập lại kho' : 'hàng lỗi, không nhập kho'}
+              </p>
+            )}
             {r.status === 'rejected' && r.staffNote && <p className="mt-space-xs font-body-md text-body-md text-error">Lý do từ chối: {r.staffNote}</p>}
             {r.status === 'refunded' && (
               <p className="mt-space-xs font-body-md text-body-md text-secondary">
@@ -144,7 +161,14 @@ export default function AdminRefundsPage() {
                     <button type="button" className={buttonClass('outline', 'sm')} disabled={busy === r.id} onClick={() => void reject(r)}>Từ chối</button>
                   </>
                 )}
-                {r.status === 'approved' && (r.bankAccountNo
+                {r.status === 'approved' && r.kind === 'return' && !r.receivedAt && (
+                  <>
+                    <button type="button" className={buttonClass('primary', 'sm')} disabled={busy === r.id} onClick={() => void receive(r, true)}>Đã nhận hàng – nhập lại kho</button>
+                    <button type="button" className={buttonClass('outline', 'sm')} disabled={busy === r.id} onClick={() => void receive(r, false)}>Đã nhận – hàng lỗi</button>
+                    <span className="font-label-md text-label-md text-on-surface-variant">Chỉ chuyển tiền sau khi đã nhận lại hàng.</span>
+                  </>
+                )}
+                {r.status === 'approved' && (r.kind === 'cancellation' || r.receivedAt) && (r.bankAccountNo
                   ? <button type="button" className={buttonClass('primary', 'sm')} disabled={busy === r.id} onClick={() => void markRefunded(r)}>Ghi nhận đã chuyển tiền</button>
                   : <span className="font-label-md text-label-md text-on-surface-variant">Chờ khách khai tài khoản nhận tiền trong chi tiết đơn hàng.</span>)}
               </div>

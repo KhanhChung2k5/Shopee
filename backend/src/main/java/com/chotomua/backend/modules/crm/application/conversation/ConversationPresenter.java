@@ -54,15 +54,48 @@ public class ConversationPresenter {
 
     /** Dòng hàng đợi: mã ticket, SLA, người đang phụ trách, cờ {@code mine}. */
     public ConversationSummaryResponse summary(Conversation conversation, UUID viewerId) {
-        List<ConversationMessage> messages = store.messagesOf(conversation.id());
-        List<AgentAssignment> assignments = store.assignmentsOf(conversation.id());
+        return summary(conversation, viewerId, store.messagesOf(conversation.id()), store.assignmentsOf(conversation.id()),
+                customerName(conversation.userId()), this::staffName);
+    }
+
+    /**
+     * Cả hàng đợi một lượt: tin nhắn, người phụ trách và tên khách được đọc theo lô
+     * (vài truy vấn tổng cộng thay vì ~4 truy vấn mỗi hội thoại).
+     */
+    public List<ConversationSummaryResponse> summaries(List<Conversation> conversations, UUID viewerId) {
+        if (conversations.isEmpty()) {
+            return List.of();
+        }
+        List<UUID> ids = conversations.stream().map(Conversation::id).toList();
+        java.util.Map<UUID, List<ConversationMessage>> messages = store.messagesOfAll(ids);
+        java.util.Map<UUID, List<AgentAssignment>> assignments = store.assignmentsOfAll(ids);
+        java.util.Map<UUID, String> customerNames = new java.util.HashMap<>();
+        for (CustomerView customer : identity.findCustomers(new com.chotomua.backend.modules.crm.port.dto.CustomerFilter(null, null), true)) {
+            customerNames.put(customer.id(), customer.fullName() == null || customer.fullName().isBlank() ? "Khách hàng" : customer.fullName());
+        }
+        java.util.Map<UUID, String> staffNames = new java.util.HashMap<>();
+        java.util.function.Function<UUID, String> staffName = id -> staffNames.computeIfAbsent(id, this::staffName);
+        List<ConversationSummaryResponse> rows = new ArrayList<>();
+        for (Conversation conversation : conversations) {
+            rows.add(summary(conversation, viewerId,
+                    messages.getOrDefault(conversation.id(), List.of()),
+                    assignments.getOrDefault(conversation.id(), List.of()),
+                    customerNames.getOrDefault(conversation.userId(), "Khách hàng"),
+                    staffName));
+        }
+        return rows;
+    }
+
+    private ConversationSummaryResponse summary(Conversation conversation, UUID viewerId, List<ConversationMessage> messages,
+                                                List<AgentAssignment> assignments, String customerName,
+                                                java.util.function.Function<UUID, String> staffName) {
         AgentAssignment current = currentOf(assignments);
         Instant now = Instant.now();
         return new ConversationSummaryResponse(
                 conversation.id(),
                 ConversationText.code(conversation.id()),
                 conversation.userId(),
-                customerName(conversation.userId()),
+                customerName,
                 conversation.type(),
                 ConversationText.channelLabel(conversation.type()),
                 ConversationText.topicLabel(conversation.topic(), conversation.type()),
@@ -74,7 +107,7 @@ public class ConversationPresenter {
                 ConversationText.slaDueAt(conversation),
                 ConversationText.slaState(conversation, now),
                 current == null ? null : current.employeeUserId(),
-                current == null ? null : staffName(current.employeeUserId()),
+                current == null ? null : staffName.apply(current.employeeUserId()),
                 current != null && current.employeeUserId().equals(viewerId));
     }
 

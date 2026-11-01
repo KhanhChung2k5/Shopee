@@ -1,4 +1,4 @@
-import { API_BASE, apiFetch } from './api'
+import { API_BASE, cachedPublicFetch } from './api'
 
 export type ProductType = 'game_disc' | 'controller' | 'accessory'
 
@@ -124,9 +124,14 @@ export interface GoodsReceipt {
   receivedAt: string
   totalCost: number
   items: GoodsReceiptItem[]
+  /** Account that drew the receipt up — it may not approve or reject it (segregation of duties). */
+  createdByUserId: string | null
+  createdByName: string | null
+  decidedByName: string | null
+  decidedAt: string | null
 }
 
-export const fetchCategories = () => apiFetch<CatalogCategory[]>('/api/catalog/categories')
+export const fetchCategories = () => cachedPublicFetch<CatalogCategory[]>('/api/catalog/categories')
 
 const CATEGORY_CACHE_KEY = 'chotomua_catalog_categories_v1'
 
@@ -159,10 +164,26 @@ export function cacheCategories(categories: CatalogCategory[]) {
 
 export function fetchProducts(params: URLSearchParams) {
   const query = params.toString()
-  return apiFetch<PageResult<CatalogProductSummary>>(`/api/products${query ? `?${query}` : ''}`)
+  return cachedPublicFetch<PageResult<CatalogProductSummary>>(`/api/products${query ? `?${query}` : ''}`)
 }
 
-export const fetchProduct = (id: string) => apiFetch<CatalogProduct>(`/api/products/${id}`)
+export const fetchProduct = (id: string) => cachedPublicFetch<CatalogProduct>(`/api/products/${id}`)
+
+/** Best sellers, as GET /api/products/top-sellers returns them. */
+export interface TopSellerItem {
+  productId: string
+  name: string
+  price: number | null
+  soldQuantity: number
+  imageUrl: string | null
+}
+
+/**
+ * Best sellers — always the same request (top 10) sliced per caller, so the header, the hero and the leaderboard
+ * on one page share a single call.
+ */
+export const fetchTopSellers = (limit: number) =>
+  cachedPublicFetch<TopSellerItem[]>('/api/products/top-sellers?limit=10').then((items) => items.slice(0, limit))
 
 export const formatVnd = (amount: number | null | undefined) =>
   amount == null ? 'Chưa có giá' : `${amount.toLocaleString('vi-VN')} ₫`

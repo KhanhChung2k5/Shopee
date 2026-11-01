@@ -80,7 +80,7 @@ class CustomerProfileControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalOrders").value(0))
                 .andExpect(jsonPath("$.ltv").value(0))
-                .andExpect(jsonPath("$.rfmSegment").value(RfmClassifier.LOST))
+                .andExpect(jsonPath("$.rfmSegment").value(RfmClassifier.NEW))
                 .andExpect(jsonPath("$.calculatedAt").value(nullValue()));
 
         mockMvc.perform(post("/api/crm/profiles/" + customer.id() + "/recalculate"))
@@ -106,7 +106,7 @@ class CustomerProfileControllerTest {
         mockMvc.perform(post("/api/crm/profiles/" + customer.id() + "/recalculate"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalOrders").value(0))
-                .andExpect(jsonPath("$.rfmSegment").value(RfmClassifier.LOST));
+                .andExpect(jsonPath("$.rfmSegment").value(RfmClassifier.NEW));
     }
 
     @Test

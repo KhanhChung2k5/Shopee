@@ -53,8 +53,19 @@ export default function FlashSale() {
   }, [])
 
   const running = items.filter((item) => new Date(item.endsAt).getTime() > now)
-  // Only real, running flash-sale lines from /flash-sales; with none on, the homepage shows no Flash Sale block.
-  if (running.length === 0) return null
+  // Only real, running flash-sale lines from /flash-sales. With none on, keep a slim block so the header's
+  // "Flash Sale Giờ Vàng" link still lands somewhere and says so.
+  if (running.length === 0) {
+    return (
+      <section id="flash-sale" className="rounded-xl bg-surface-container-lowest shadow-sm scroll-mt-44 p-space-lg flex flex-wrap items-center gap-space-md">
+        <span className="material-symbols-outlined text-3xl text-primary" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">bolt</span>
+        <div>
+          <h2 className="font-title-lg text-title-lg text-on-surface font-bold uppercase">Flash Sale Giờ Vàng</h2>
+          <p className="font-body-md text-body-md text-on-surface-variant">Hiện chưa có Flash Sale nào đang diễn ra. Hãy quay lại sau để săn deal giờ vàng!</p>
+        </div>
+      </section>
+    )
+  }
   const nextEnd = Math.min(...running.map((item) => new Date(item.endsAt).getTime()))
   const { hours, minutes, seconds } = countdown(nextEnd, now)
 

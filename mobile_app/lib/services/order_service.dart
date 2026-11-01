@@ -8,12 +8,37 @@ class OrderService {
 
   final ApiClient _api;
 
+  /// POST /orders builds the order from the buyer's *server* cart (the one the web shop uses), not from anything
+  /// in the request. So first make the server cart match this device's cart: the lines being bought are selected
+  /// with these quantities; anything else already there (e.g. added on the web) is only deselected, never deleted.
+  Future<void> syncServerCart(Map<String, int> quantitiesByVariant, {required String token}) async {
+    final remaining = Map<String, int>.from(quantitiesByVariant);
+    final serverLines = await _api.getList('/cart-items', token: token);
+    for (final raw in serverLines) {
+      final line = _asMap(raw);
+      final id = line['id'] as String?;
+      if (id == null) continue;
+      final wanted = remaining.remove(line['variantId']);
+      if (wanted != null) {
+        if (line['quantity'] != wanted) await _api.patch('/cart-items/$id', {'quantity': wanted}, token: token);
+        if (line['isSelected'] != true) await _api.patch('/cart-items/$id/selection', {'isSelected': true}, token: token);
+      } else if (line['isSelected'] == true) {
+        await _api.patch('/cart-items/$id/selection', {'isSelected': false}, token: token);
+      }
+    }
+    for (final entry in remaining.entries) {
+      await _api.post('/cart-items', {'variantId': entry.key, 'quantity': entry.value}, token: token);
+    }
+  }
+
   Future<OrderDetail> checkout({
     required String addressId,
+    required Map<String, int> quantitiesByVariant,
     String? voucherCode,
     String paymentMethod = 'cod',
     required String token,
   }) async {
+    await syncServerCart(quantitiesByVariant, token: token);
     final body = <String, dynamic>{'addressId': addressId, 'paymentMethod': paymentMethod};
     if (voucherCode != null && voucherCode.trim().isNotEmpty) body['voucherCode'] = voucherCode.trim();
     final json = await _api.post('/orders', body, token: token);

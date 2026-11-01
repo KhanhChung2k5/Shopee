@@ -51,10 +51,15 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/health", "/api/crm/health", "/auth/register", "/auth/login", "/flash-sales").permitAll()
+                // Spring's error page: without this every unhandled server error reached the client as a bare 403.
+                .requestMatchers("/error").permitAll()
                 // Public storefront discovery, while catalog management stays staff-only.
                 .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/catalog/categories", "/api/catalog/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/reviews", "/api/products/top-sellers").permitAll()
+                // Sales only reads warehouse names (order panel shows which warehouse an order ships from).
+                .requestMatchers(HttpMethod.GET, "/api/catalog/warehouses", "/api/catalog/warehouses/**")
+                .hasAnyAuthority("DEPT_SALES", "DEPT_WAREHOUSE", "DEPT_ADMIN")
                 .requestMatchers("/api/catalog/warehouses/**", "/api/catalog/goods-receipts/**", "/api/catalog/inventory/**")
                 .hasAnyAuthority("DEPT_WAREHOUSE", "DEPT_ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/catalog/product-variants", "/api/catalog/product-variants/**")
@@ -86,6 +91,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PATCH, "/reviews/*/reply").hasAnyAuthority("DEPT_SALES", "DEPT_CS", "DEPT_ADMIN")
                 .requestMatchers(HttpMethod.GET, "/reviews/manage").hasAnyAuthority("DEPT_SALES", "DEPT_CS", "DEPT_ADMIN")
                 .requestMatchers("/marketing", "/marketing/**").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
+                // Báo cáo quản trị: doanh thu / lợi nhuận cho kinh doanh, nhập–xuất–tồn cho kho; admin xem cả hai.
+                .requestMatchers(HttpMethod.GET, "/api/reports/revenue").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/reports/inventory").hasAnyAuthority("DEPT_WAREHOUSE", "DEPT_ADMIN")
+                .requestMatchers("/api/reports/**").denyAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
