@@ -14,7 +14,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/** Audit record for stock imported, exported, or manually adjusted. */
+/** Audit record for stock imported, exported, returned by a buyer, or manually adjusted. */
 @Entity
 @Table(name = "inventory_movements")
 public class InventoryMovement {
@@ -33,6 +33,9 @@ public class InventoryMovement {
 
     @Column(name = "goods_receipt_id")
     private UUID goodsReceiptId;
+
+    @Column(name = "refund_return_id")
+    private UUID refundReturnId;
 
     @Column(nullable = false, length = 20)
     private String type;
@@ -71,6 +74,14 @@ public class InventoryMovement {
 
     public void setOrderId(UUID orderId) {
         this.orderId = orderId;
+    }
+
+    public UUID getRefundReturnId() {
+        return refundReturnId;
+    }
+
+    public void setRefundReturnId(UUID refundReturnId) {
+        this.refundReturnId = refundReturnId;
     }
 
     public UUID getGoodsReceiptId() {

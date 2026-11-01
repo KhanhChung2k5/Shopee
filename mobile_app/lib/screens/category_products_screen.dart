@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../data/sample_data.dart';
 import '../models/product.dart';
 import '../services/catalog_service.dart';
 import '../theme/app_theme.dart';
@@ -37,7 +36,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
   Future<void> _loadFirstPage() async {
     if (widget.category.id == null) {
       setState(() {
-        _products = SampleData.suggestedProducts;
+        _products = const [];
         _usingSampleData = true;
         _loading = false;
       });
@@ -57,7 +56,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _products = SampleData.suggestedProducts;
+        _products = const [];
         _usingSampleData = true;
         _error = error.toString();
         _loading = false;
@@ -106,8 +105,8 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                 if (_usingSampleData)
                   _CatalogNotice(
                     text: widget.category.id == null
-                        ? 'Danh mục mẫu chưa có mã API; đang hiển thị sản phẩm minh hoạ.'
-                        : 'Không tải được sản phẩm từ máy chủ; đang hiển thị dữ liệu mẫu.',
+                        ? 'Danh mục này chưa có trên máy chủ.'
+                        : 'Không tải được sản phẩm từ máy chủ. Vui lòng kiểm tra kết nối và thử lại.',
                   ),
                 if (_error != null && !_usingSampleData)
                   _CatalogNotice(text: 'Không tải thêm được sản phẩm: $_error'),

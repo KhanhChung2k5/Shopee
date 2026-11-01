@@ -104,8 +104,7 @@ public class ConversationService {
     public ConversationListResponse list(UUID actorId, String filter) {
         if (isStaff(actorId)) {
             List<ConversationSummaryResponse> items = new ArrayList<>();
-            for (Conversation conversation : store.listAll()) {
-                ConversationSummaryResponse summary = presenter.summary(conversation, actorId);
+            for (ConversationSummaryResponse summary : presenter.summaries(store.listAll(), actorId)) {
                 if (matches(summary, filter)) {
                     items.add(summary);
                 }
@@ -113,13 +112,8 @@ public class ConversationService {
             return new ConversationListResponse(sortedByUrgency(items), presence.isLive());
         }
         requireCustomer(actorId);
-        List<ConversationSummaryResponse> items = new ArrayList<>();
-        for (Conversation conversation : store.listAll()) {
-            if (conversation.userId().equals(actorId)) {
-                items.add(presenter.summary(conversation, actorId));
-            }
-        }
-        return new ConversationListResponse(sortedByUrgency(items), presence.isLive());
+        List<Conversation> own = store.listAll().stream().filter(c -> c.userId().equals(actorId)).toList();
+        return new ConversationListResponse(sortedByUrgency(new ArrayList<>(presenter.summaries(own, actorId))), presence.isLive());
     }
 
     /** Chi tiết một hội thoại. Khách không thấy hội thoại của người khác (404). */

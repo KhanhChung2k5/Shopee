@@ -1,5 +1,8 @@
 package com.chotomua.backend.modules.catalog;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import com.chotomua.backend.common.config.CacheConfig;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -28,15 +31,18 @@ public class CategoryController {
     }
 
     @GetMapping
+    @Cacheable(cacheNames = CacheConfig.CATEGORIES, key = "'all'")
     public List<CategoryResponse> list() {
         return categories.findAll().stream().map(CategoryResponse::from).toList();
     }
 
     @GetMapping("/{id}")
+    @Cacheable(cacheNames = CacheConfig.CATEGORIES, key = "#id")
     public CategoryResponse get(@PathVariable UUID id) {
         return CategoryResponse.from(find(id));
     }
 
+    @CacheEvict(cacheNames = {CacheConfig.CATEGORIES, CacheConfig.PUBLIC_PRODUCTS}, allEntries = true)
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CategoryResponse create(@Valid @RequestBody CategoryRequest request) {
@@ -49,6 +55,7 @@ public class CategoryController {
         return CategoryResponse.from(categories.save(category));
     }
 
+    @CacheEvict(cacheNames = {CacheConfig.CATEGORIES, CacheConfig.PUBLIC_PRODUCTS}, allEntries = true)
     @PutMapping("/{id}")
     public CategoryResponse update(@PathVariable UUID id, @Valid @RequestBody CategoryRequest request) {
         Category category = find(id);
@@ -65,6 +72,7 @@ public class CategoryController {
         return CategoryResponse.from(categories.save(category));
     }
 
+    @CacheEvict(cacheNames = {CacheConfig.CATEGORIES, CacheConfig.PUBLIC_PRODUCTS}, allEntries = true)
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID id) {

@@ -22,6 +22,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     items: [
       { to: '/admin', end: true, label: 'Tổng quan', icon: <path d="M4 13h6V4H4v9ZM14 20h6v-9h-6v9ZM4 20h6v-5H4v5ZM14 11h6V4h-6v7Z" /> },
+      { to: '/admin/bao-cao-quan-tri', label: 'Báo cáo quản trị', icon: <path d="M4 20h16M6 16l4-5 3 3 5-7M15 7h3v3" /> },
     ],
   },
   {
@@ -76,6 +77,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/hoan-tien': 'Hoàn tiền',
   '/admin/marketing': 'Marketing',
   '/admin/khach-hang': 'Quản lý khách hàng',
+  '/admin/bao-cao-quan-tri': 'Báo cáo quản trị',
   '/admin/bao-cao': 'Báo cáo nhân khẩu học',
   '/admin/crm': 'Hồ sơ & RFM khách hàng',
   '/admin/ho-tro': 'Hỗ trợ khách hàng',
@@ -99,7 +101,7 @@ export default function AdminLayout() {
   const { user } = useAuth()
   const department = (user?.department ?? null) as Department | null
   const pageTitle = PAGE_TITLES[location.pathname]
-    ?? (location.pathname.startsWith('/admin/don-hang/') ? 'Chi tiết đơn hàng' : 'Quản trị')
+    ?? (location.pathname.startsWith('/admin/don-hang/') ? 'Đơn hàng' : 'Quản trị')
 
   const visibleGroups = NAV_GROUPS.map((group) => ({
     ...group,

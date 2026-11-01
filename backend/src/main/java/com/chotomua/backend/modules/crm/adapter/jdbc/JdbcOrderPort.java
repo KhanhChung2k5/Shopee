@@ -64,6 +64,27 @@ public class JdbcOrderPort implements OrderPort {
         return attachLines(headers);
     }
 
+    /** Every customer's delivered orders in a couple of queries (chunks of 500 ids), not one round trip per customer. */
+    @Override
+    public Map<UUID, List<DeliveredOrderView>> listDeliveredOrdersByUser(Collection<UUID> userIds) {
+        List<UUID> ids = copyIds(userIds);
+        Map<UUID, List<DeliveredOrderView>> result = new LinkedHashMap<>();
+        ids.forEach(id -> result.put(id, new ArrayList<>()));
+        for (int from = 0; from < ids.size(); from += 500) {
+            List<UUID> chunk = ids.subList(from, Math.min(ids.size(), from + 500));
+            List<OrderHeader> headers = jdbc.query("""
+                    SELECT id, user_id, %s, created_at
+                    FROM orders
+                    WHERE user_id IN (%s) AND status = 'delivered'
+                    ORDER BY created_at
+                    """.formatted(NET_TOTAL, placeholders(chunk.size())), (rs, rowNum) -> header(rs), chunk.toArray());
+            for (DeliveredOrderView order : attachLines(headers)) {
+                result.computeIfAbsent(order.userId(), key -> new ArrayList<>()).add(order);
+            }
+        }
+        return result;
+    }
+
     @Override
     public Optional<DeliveredOrderView> getDeliveredOrder(UUID orderId) {
         List<OrderHeader> found = jdbc.query("""

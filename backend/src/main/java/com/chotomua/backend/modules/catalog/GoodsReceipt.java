@@ -48,6 +48,14 @@ public class GoodsReceipt {
     @Column(name = "received_at", nullable = false, updatable = false)
     private OffsetDateTime receivedAt;
 
+    /** Who approved or rejected the receipt — never the employee who drew it up. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "decided_by")
+    private Employee decidedBy;
+
+    @Column(name = "decided_at")
+    private OffsetDateTime decidedAt;
+
     @OneToMany(mappedBy = "receipt", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<GoodsReceiptItem> items = new ArrayList<>();
 
@@ -67,6 +75,16 @@ public class GoodsReceipt {
     }
 
     public void setStatus(String status) { this.status = status; }
+
+    /** Approve or reject: records the deciding employee and the time. */
+    public void decide(String status, Employee decidedBy) {
+        this.status = status;
+        this.decidedBy = decidedBy;
+        this.decidedAt = OffsetDateTime.now();
+    }
+
+    public Employee getDecidedBy() { return decidedBy; }
+    public OffsetDateTime getDecidedAt() { return decidedAt; }
     public UUID getId() { return id; }
     public String getCode() { return code; }
     public Employee getEmployee() { return employee; }

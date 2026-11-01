@@ -16,11 +16,11 @@ import AdminLayout from './admin/AdminLayout'
 import AdminDashboardPage from './admin/pages/AdminDashboardPage'
 import AdminCustomersPage from './admin/pages/AdminCustomersPage'
 import AdminDemographicsPage from './admin/pages/AdminDemographicsPage'
+import AdminReportsPage from './admin/pages/AdminReportsPage'
 import AdminProductsPage from './admin/pages/AdminProductsPage'
 import AdminInventoryPage from './admin/pages/AdminInventoryPage'
 import AdminGoodsReceiptsPage from './admin/pages/AdminGoodsReceiptsPage'
 import AdminOrdersPage from './admin/pages/AdminOrdersPage'
-import AdminOrderDetailPage from './admin/pages/AdminOrderDetailPage'
 import AdminRefundsPage from './admin/pages/AdminRefundsPage'
 import AdminMarketingPage from './admin/pages/AdminMarketingPage'
 import AdminEmployeesPage from './admin/pages/AdminEmployeesPage'
@@ -97,10 +97,11 @@ function App() {
           <Route path="kho" element={<RequireDepartment><AdminInventoryPage /></RequireDepartment>} />
           <Route path="phieu-nhap" element={<RequireDepartment><AdminGoodsReceiptsPage /></RequireDepartment>} />
           <Route path="don-hang" element={<RequireDepartment><AdminOrdersPage /></RequireDepartment>} />
-          <Route path="don-hang/:id" element={<RequireDepartment section="/admin/don-hang"><AdminOrderDetailPage /></RequireDepartment>} />
+          <Route path="don-hang/:id" element={<RequireDepartment section="/admin/don-hang"><AdminOrdersPage /></RequireDepartment>} />
           <Route path="hoan-tien" element={<RequireDepartment><AdminRefundsPage /></RequireDepartment>} />
           <Route path="marketing" element={<RequireDepartment><AdminMarketingPage /></RequireDepartment>} />
           <Route path="khach-hang" element={<RequireDepartment><AdminCustomersPage /></RequireDepartment>} />
+          <Route path="bao-cao-quan-tri" element={<RequireDepartment><AdminReportsPage /></RequireDepartment>} />
           <Route path="bao-cao" element={<RequireDepartment><AdminDemographicsPage /></RequireDepartment>} />
           <Route path="nhan-vien" element={<RequireDepartment><AdminEmployeesPage /></RequireDepartment>} />
           <Route path="nhat-ky" element={<RequireDepartment><AdminAuditLogPage /></RequireDepartment>} />

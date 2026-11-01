@@ -7,6 +7,7 @@ import java.util.Set;
  * Chấm R, F, M trên thang 1–5 rồi xếp một trong năm nhóm.
  * Champions được xét trước; nhóm sau loại phần đã khớp nhóm trước.
  * Bộ điểm không rơi vào năm nhóm thì nhận {@code other}.
+ * Khách chưa có đơn giao thành công nào nhận {@code new} — chưa mua thì không thể "rời bỏ".
  */
 public final class RfmClassifier {
 
@@ -16,8 +17,9 @@ public final class RfmClassifier {
     public static final String AT_RISK = "at_risk";
     public static final String LOST = "lost";
     public static final String OTHER = "other";
+    public static final String NEW = "new";
 
-    public static final Set<String> LABELS = Set.of(CHAMPIONS, LOYAL, POTENTIAL, AT_RISK, LOST, OTHER);
+    public static final Set<String> LABELS = Set.of(CHAMPIONS, LOYAL, POTENTIAL, AT_RISK, LOST, OTHER, NEW);
 
     private RfmClassifier() {
     }
@@ -28,6 +30,9 @@ public final class RfmClassifier {
      * @param monetary tổng tiền các đơn đã giao (không dùng LTV dự báo)
      */
     public static String segment(Integer daysSinceLastPurchase, int orderCount, BigDecimal monetary) {
+        if (orderCount <= 0) {
+            return NEW;
+        }
         int recency = recencyScore(daysSinceLastPurchase);
         int frequency = frequencyScore(orderCount);
         int money = monetaryScore(monetary);

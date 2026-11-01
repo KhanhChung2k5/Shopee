@@ -1,5 +1,8 @@
 package com.chotomua.backend.modules.catalog;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import com.chotomua.backend.common.config.CacheConfig;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -28,6 +31,7 @@ public class WarehouseController {
     }
 
     @GetMapping
+    @Cacheable(cacheNames = CacheConfig.WAREHOUSES, key = "'all'")
     public List<WarehouseResponse> list() {
         return warehouses.findAll().stream().map(WarehouseResponse::from).toList();
     }
@@ -37,6 +41,7 @@ public class WarehouseController {
         return WarehouseResponse.from(find(id));
     }
 
+    @CacheEvict(cacheNames = CacheConfig.WAREHOUSES, allEntries = true)
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public WarehouseResponse create(@Valid @RequestBody WarehouseRequest request) {
@@ -45,6 +50,7 @@ public class WarehouseController {
         return WarehouseResponse.from(warehouses.save(warehouse));
     }
 
+    @CacheEvict(cacheNames = CacheConfig.WAREHOUSES, allEntries = true)
     @PutMapping("/{id}")
     public WarehouseResponse update(@PathVariable UUID id, @Valid @RequestBody WarehouseRequest request) {
         Warehouse warehouse = find(id);
@@ -53,6 +59,7 @@ public class WarehouseController {
         return WarehouseResponse.from(warehouses.save(warehouse));
     }
 
+    @CacheEvict(cacheNames = CacheConfig.WAREHOUSES, allEntries = true)
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID id) {

@@ -20,6 +20,19 @@ public interface OrderPort {
     /** Chỉ đơn đã giao ({@code delivered}) — không dùng trạng thái {@code COMPLETED}. */
     List<DeliveredOrderView> listDeliveredOrders(UUID userId);
 
+    /**
+     * Đơn đã giao của nhiều khách một lần (báo cáo). Mặc định gọi từng khách; bản JDBC ghi đè bằng truy vấn theo lô
+     * để không phải đi tới DB một lần cho mỗi khách.
+     */
+    default java.util.Map<UUID, List<DeliveredOrderView>> listDeliveredOrdersByUser(Collection<UUID> userIds) {
+        java.util.Map<UUID, List<DeliveredOrderView>> result = new java.util.HashMap<>();
+        for (UUID userId : userIds) {
+            List<DeliveredOrderView> delivered = listDeliveredOrders(userId);
+            result.put(userId, delivered == null ? List.of() : delivered);
+        }
+        return result;
+    }
+
     /** Một đơn đã giao theo mã; đơn chưa delivered hoặc không có thì empty. */
     Optional<DeliveredOrderView> getDeliveredOrder(UUID orderId);
 

@@ -13,6 +13,7 @@ export type Department = 'sales' | 'warehouse' | 'admin' | 'cs'
  * - hoan-tien  : CSKH duyệt yêu cầu trả hàng và chuyển khoản hoàn tiền thủ công (khớp /refund-returns ở backend)
  * - marketing  : voucher/flash sale là quyết định kinh doanh của sales
  * - khach-hang : quản lý khách hàng (thêm/khoá/xoá mềm) thuộc CRM, do CS phụ trách
+ * - bao-cao-quan-tri : báo cáo quản trị — doanh thu/lợi nhuận (sales, admin), nhập–xuất–tồn (warehouse, admin)
  * - bao-cao    : báo cáo khách hàng — admin + CS (CS chỉ xem, phục vụ chăm sóc khách hàng)
  * - nhan-vien  : chỉ admin — đã enforce ở backend (DEPT_ADMIN)
  *
@@ -27,6 +28,7 @@ export const ADMIN_SECTION_ACCESS: Record<string, Department[]> = {
   '/admin/hoan-tien': ['cs', 'admin'],
   '/admin/marketing': ['sales', 'admin'],
   '/admin/khach-hang': ['cs', 'admin'],
+  '/admin/bao-cao-quan-tri': ['sales', 'warehouse', 'admin'],
   '/admin/bao-cao': ['cs', 'admin'],
   // Phân hệ CRM — docs/phan-quyen-he-thong.md mục 2.1
   '/admin/crm': ['cs', 'admin'],
@@ -45,4 +47,13 @@ export function canAccessSection(path: string, department: Department | null): b
   if (!department) return false
   const allowed = ADMIN_SECTION_ACCESS[path]
   return allowed ? allowed.includes(department) : false
+}
+
+/** Tabs of the management report page — matches /api/reports/* in SecurityConfig. */
+export function canSeeRevenueReport(department: Department | null): boolean {
+  return department === 'sales' || department === 'admin'
+}
+
+export function canSeeInventoryReport(department: Department | null): boolean {
+  return department === 'warehouse' || department === 'admin'
 }

@@ -33,7 +33,9 @@ function useToast() {
 }
 
 export default function AdminCustomersPage() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
+  // Restoring a soft-deleted account is admin-only (enforced by POST /api/customers/{id}/restore).
+  const canRestore = user?.department === 'admin'
   const { confirm } = useDialog()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -114,17 +116,35 @@ export default function AdminCustomersPage() {
     toast.show(`Đã xoá mềm "${c.fullName}"`)
   }
 
+  const restore = async (id: string) => {
+    const c = customers.find((x) => x.id === id)
+    if (!c) return
+    if (!(await confirm({ title: 'Khôi phục khách hàng', message: <>Khôi phục <strong>{c.fullName}</strong>? Tài khoản trở lại trạng thái hoạt động và khách hàng đăng nhập được như trước.</>, confirmLabel: 'Khôi phục' }))) return
+    try {
+      await apiFetch(`/api/customers/${id}/restore`, { method: 'POST' }, token)
+      toast.show(`Đã khôi phục "${c.fullName}"`)
+      refresh()
+    } catch (err) {
+      toast.show(err instanceof ApiError ? err.message : 'Khôi phục thất bại')
+    }
+  }
+
+  // Bulk actions skip soft-deleted rows: the backend refuses to change them (only restore brings them back).
+  const selectedNotDeleted = () => [...selected].filter((id) => customers.find((c) => c.id === id)?.status !== 'deleted')
+
   const bulkLock = async () => {
-    await Promise.all([...selected].map((id) => apiFetch(`/customers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'locked' }) }, token)))
-    toast.show(`Đã khoá ${selected.size} khách hàng`)
+    const ids = selectedNotDeleted()
+    await Promise.all(ids.map((id) => apiFetch(`/customers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'locked' }) }, token)))
+    toast.show(`Đã khoá ${ids.length} khách hàng`)
     setSelected(new Set())
     refresh()
   }
 
   const bulkSoftDelete = async () => {
-    if (!(await confirm({ title: 'Xoá mềm nhiều khách hàng', message: <>Xoá mềm <strong>{selected.size}</strong> khách hàng đã chọn? Dữ liệu và lịch sử đơn hàng vẫn được giữ nguyên.</>, confirmLabel: 'Xoá mềm', tone: 'danger' }))) return
-    await Promise.all([...selected].map((id) => apiFetch(`/customers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'deleted' }) }, token)))
-    toast.show(`Đã xoá mềm ${selected.size} khách hàng`)
+    const ids = selectedNotDeleted()
+    if (!(await confirm({ title: 'Xoá mềm nhiều khách hàng', message: <>Xoá mềm <strong>{ids.length}</strong> khách hàng đã chọn? Dữ liệu và lịch sử đơn hàng vẫn được giữ nguyên.</>, confirmLabel: 'Xoá mềm', tone: 'danger' }))) return
+    await Promise.all(ids.map((id) => apiFetch(`/customers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'deleted' }) }, token)))
+    toast.show(`Đã xoá mềm ${ids.length} khách hàng`)
     setSelected(new Set())
     refresh()
   }
@@ -249,22 +269,32 @@ export default function AdminCustomersPage() {
                     <span className={statusPillClass(c.status)}>{STATUS_LABEL[c.status]}</span>
                   </td>
                   <td className="whitespace-nowrap">
-                    <button
-                      className={buttonClass('outline', 'sm', 'mr-1.5')}
-                      type="button"
-                      disabled={c.status === 'deleted'}
-                      onClick={() => toggleLock(c.id)}
-                    >
-                      {c.status === 'locked' ? 'Mở khoá' : 'Khoá'}
-                    </button>
-                    <button
-                      className={buttonClass('outline', 'sm')}
-                      type="button"
-                      disabled={c.status === 'deleted'}
-                      onClick={() => softDelete(c.id)}
-                    >
-                      Xoá mềm
-                    </button>
+                    {c.status === 'deleted' ? (
+                      canRestore ? (
+                        <button className={buttonClass('outline', 'sm')} type="button" onClick={() => restore(c.id)}>
+                          Khôi phục
+                        </button>
+                      ) : (
+                        <span className="text-on-surface-variant">Chỉ quản trị viên được khôi phục</span>
+                      )
+                    ) : (
+                      <>
+                        <button
+                          className={buttonClass('outline', 'sm', 'mr-1.5')}
+                          type="button"
+                          onClick={() => toggleLock(c.id)}
+                        >
+                          {c.status === 'locked' ? 'Mở khoá' : 'Khoá'}
+                        </button>
+                        <button
+                          className={buttonClass('outline', 'sm')}
+                          type="button"
+                          onClick={() => softDelete(c.id)}
+                        >
+                          Xoá mềm
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { ApiError, apiFetch } from '../../lib/api'
 import { formatVnd } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
 import { a, chipClass, statusPillClass, pageButtonClass } from '../adminUi'
 import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE, awaitsTransfer, orderCode, paymentShort, type OrderStatus, type StaffOrderSummary } from '../orders'
+import OrderDetailPanel from '../components/OrderDetailPanel'
 
 const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Tất cả' },
@@ -19,22 +20,30 @@ const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
 const PAGE_SIZE = 10
 const dateTime = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
 
-/** Real order board for sales / warehouse / admin; click a row to open the order. */
+/**
+ * Order board for sales / warehouse / admin as a list + detail view: clicking a row opens the order in a panel on
+ * the right (URL /admin/don-hang/:id, so links and reload still work) while the list, its filters and scroll stay put.
+ * ↑ / ↓ move to the previous / next order, Esc closes the panel. On narrow screens the panel slides over the list.
+ */
 export default function AdminOrdersPage() {
   const { token } = useAuth()
   const navigate = useNavigate()
+  const { id: selectedId } = useParams()
   const [orders, setOrders] = useState<StaffOrderSummary[] | null>(null)
   const [error, setError] = useState('')
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const rowRefs = useRef(new Map<string, HTMLTableRowElement>())
 
-  useEffect(() => {
+  const loadOrders = useCallback(() => {
     if (!token) return
     apiFetch<StaffOrderSummary[]>('/orders', {}, token)
       .then((data) => { setOrders(data); setError('') })
       .catch((e) => setError(e instanceof ApiError ? e.message : 'Không tải được đơn hàng'))
   }, [token])
+
+  useEffect(loadOrders, [loadOrders])
 
   const counts = useMemo(() => {
     const result: Partial<Record<OrderStatus, number>> = {}
@@ -55,71 +64,141 @@ export default function AdminOrdersPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const page = Math.min(currentPage, totalPages)
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const panelOpen = !!selectedId
+  const selectedIndex = selectedId ? filtered.findIndex((o) => o.id === selectedId) : -1
+
+  // Opening the first order adds a history entry; moving between orders replaces it, so Back closes the panel.
+  const openOrder = useCallback((orderId: string) => {
+    navigate(`/admin/don-hang/${orderId}`, { replace: panelOpen })
+  }, [navigate, panelOpen])
+  const closePanel = useCallback(() => navigate('/admin/don-hang'), [navigate])
+
+  // Keep the open order on the visible page and in view (e.g. after ↑/↓ crosses a page boundary).
+  useEffect(() => {
+    if (selectedIndex < 0) return
+    const wanted = Math.floor(selectedIndex / PAGE_SIZE) + 1
+    if (wanted !== page) setCurrentPage(wanted)
+    rowRefs.current.get(selectedId!)?.scrollIntoView({ block: 'nearest' })
+  }, [selectedIndex, selectedId, page])
+
+  useEffect(() => {
+    if (!panelOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const typing = !!target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)
+      if (typing || document.querySelector('[role="dialog"]')) return // never steal keys from a form or a dialog
+      if (event.key === 'Escape') { event.preventDefault(); closePanel() }
+      if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && selectedIndex >= 0) {
+        const next = filtered[selectedIndex + (event.key === 'ArrowDown' ? 1 : -1)]
+        if (next) { event.preventDefault(); openOrder(next.id) }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [panelOpen, selectedIndex, filtered, openOrder, closePanel])
+
+  // Compact list while the panel is open: only what you need to pick the next order.
+  const col = (always: boolean) => (always || !panelOpen ? '' : 'hidden')
 
   return (
-    <div>
-      <div className={a.toolbar}>
-        <h1 className="!mb-0">Đơn hàng ({filtered.length})</h1>
-        <input
-          type="search"
-          placeholder="Tìm mã đơn, tên, email, SĐT..."
-          value={searchQuery}
-          onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-          className={`${a.input} max-w-[300px] !rounded-full`}
-        />
-      </div>
-
-      <div className={`${a.filterBar} mb-space-md`}>
-        {STATUS_FILTERS.map((f) => (
-          <button key={f.value} type="button" className={chipClass(statusFilter === f.value)}
-            onClick={() => { setStatusFilter(f.value); setCurrentPage(1) }}>
-            {f.label}{f.value !== 'all' && counts[f.value] ? ` (${counts[f.value]})` : ''}
-          </button>
-        ))}
-      </div>
-
-      {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
-
-      <div className={a.tableWrap}>
-        <table className={a.table}>
-          <thead>
-            <tr><th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th>Tổng tiền</th><th>Thanh toán</th><th>Ngày đặt</th><th>Trạng thái</th></tr>
-          </thead>
-          <tbody>
-            {!orders && !error && <tr><td colSpan={7} className="text-center !py-space-xl text-on-surface-variant">Đang tải đơn hàng…</td></tr>}
-            {orders && visible.length === 0 && (
-              <tr><td colSpan={7} className="text-center !py-space-xl text-on-surface-variant">Không tìm thấy đơn hàng nào.</td></tr>
-            )}
-            {visible.map((o) => (
-              <tr key={o.id} className="cursor-pointer hover:bg-surface-container-low" onClick={() => navigate(`/admin/don-hang/${o.id}`)}>
-                <td><button type="button" className={a.linkButton} onClick={(e) => { e.stopPropagation(); navigate(`/admin/don-hang/${o.id}`) }}>{orderCode(o.id)}</button></td>
-                <td>
-                  <div className="font-semibold">{o.customer?.fullName ?? o.customer?.recipientName ?? '—'}</div>
-                  <div className="font-label-md text-label-md text-on-surface-variant">{o.customer?.email ?? o.customer?.recipientPhone ?? ''}</div>
-                </td>
-                <td>{o.itemCount}</td>
-                <td>{formatVnd(o.totalAmount)}{o.refundedAmount > 0 && <div className="font-label-sm text-label-sm text-error">Đã hoàn {formatVnd(o.refundedAmount)}</div>}</td>
-                <td className="whitespace-nowrap">
-                  {awaitsTransfer(o)
-                    ? <span className={statusPillClass('locked')}>CK · Chờ đối chiếu tiền</span>
-                    : <span className="font-body-md text-body-md text-on-surface-variant">{paymentShort(o)}</span>}
-                </td>
-                <td className="whitespace-nowrap">{dateTime.format(new Date(o.createdAt))}</td>
-                <td><span className={statusPillClass(ORDER_STATUS_TONE[o.status])}>{ORDER_STATUS_LABEL[o.status] ?? o.status}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-1.5 mt-space-lg">
-          <button className={pageButtonClass(false)} disabled={page === 1} onClick={() => setCurrentPage(page - 1)}>&lt;</button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button key={p} className={pageButtonClass(page === p)} onClick={() => setCurrentPage(p)}>{p}</button>
-          ))}
-          <button className={pageButtonClass(false)} disabled={page === totalPages} onClick={() => setCurrentPage(page + 1)}>&gt;</button>
+    <div className={panelOpen ? 'xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(460px,42%)] xl:gap-space-lg xl:items-start' : ''}>
+      <div className="min-w-0">
+        <div className={a.toolbar}>
+          <h1 className="!mb-0">Đơn hàng ({filtered.length})</h1>
+          <input
+            type="search"
+            placeholder="Tìm mã đơn, tên, email, SĐT..."
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+            className={`${a.input} max-w-[300px] !rounded-full`}
+          />
         </div>
+
+        <div className={`${a.filterBar} mb-space-md`}>
+          {STATUS_FILTERS.map((f) => (
+            <button key={f.value} type="button" className={chipClass(statusFilter === f.value)}
+              onClick={() => { setStatusFilter(f.value); setCurrentPage(1) }}>
+              {f.label}{f.value !== 'all' && counts[f.value] ? ` (${counts[f.value]})` : ''}
+            </button>
+          ))}
+        </div>
+
+        {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
+
+        <div className={a.tableWrap}>
+          <table className={`${a.table} ${panelOpen ? '!min-w-0' : ''}`}>
+            <thead>
+              <tr>
+                <th>Mã đơn</th><th>Khách hàng</th><th className={col(false)}>Sản phẩm</th><th>Tổng tiền</th>
+                <th className={col(false)}>Thanh toán</th><th className={col(false)}>Ngày đặt</th><th>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!orders && !error && <tr><td colSpan={7} className="text-center !py-space-xl text-on-surface-variant">Đang tải đơn hàng…</td></tr>}
+              {orders && visible.length === 0 && (
+                <tr><td colSpan={7} className="text-center !py-space-xl text-on-surface-variant">Không tìm thấy đơn hàng nào.</td></tr>
+              )}
+              {visible.map((o) => {
+                const selected = o.id === selectedId
+                return (
+                  <tr key={o.id} ref={(el) => { if (el) rowRefs.current.set(o.id, el); else rowRefs.current.delete(o.id) }}
+                    aria-selected={selected}
+                    className={`cursor-pointer hover:bg-surface-container-low ${selected ? 'is-selected' : ''}`}
+                    onClick={() => openOrder(o.id)}>
+                    <td><button type="button" className={a.linkButton} onClick={(e) => { e.stopPropagation(); openOrder(o.id) }}>{orderCode(o.id)}</button></td>
+                    <td>
+                      <div className="font-semibold">{o.customer?.fullName ?? o.customer?.recipientName ?? '—'}</div>
+                      <div className="font-label-md text-label-md text-on-surface-variant">
+                        {panelOpen ? dateTime.format(new Date(o.createdAt)) : (o.customer?.email ?? o.customer?.recipientPhone ?? '')}
+                      </div>
+                    </td>
+                    <td className={col(false)}>{o.itemCount}</td>
+                    <td className="whitespace-nowrap">
+                      {formatVnd(o.totalAmount)}
+                      {o.refundedAmount > 0 && <div className="font-label-sm text-label-sm text-error">Đã hoàn {formatVnd(o.refundedAmount)}</div>}
+                      {panelOpen && awaitsTransfer(o) && <div className="font-label-sm text-label-sm text-on-surface-variant">CK · chờ tiền</div>}
+                    </td>
+                    <td className={`whitespace-nowrap ${col(false)}`}>
+                      {awaitsTransfer(o)
+                        ? <span className={statusPillClass('locked')}>CK · Chờ đối chiếu tiền</span>
+                        : <span className="font-body-md text-body-md text-on-surface-variant">{paymentShort(o)}</span>}
+                    </td>
+                    <td className={`whitespace-nowrap ${col(false)}`}>{dateTime.format(new Date(o.createdAt))}</td>
+                    <td><span className={statusPillClass(ORDER_STATUS_TONE[o.status])}>{ORDER_STATUS_LABEL[o.status] ?? o.status}</span></td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-1.5 mt-space-lg flex-wrap">
+            <button className={pageButtonClass(false)} disabled={page === 1} onClick={() => setCurrentPage(page - 1)}>&lt;</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button key={p} className={pageButtonClass(page === p)} onClick={() => setCurrentPage(p)}>{p}</button>
+            ))}
+            <button className={pageButtonClass(false)} disabled={page === totalPages} onClick={() => setCurrentPage(page + 1)}>&gt;</button>
+          </div>
+        )}
+      </div>
+
+      {panelOpen && (
+        <>
+          {/* Narrow screens: the panel slides over the list, with a backdrop that closes it. */}
+          <div className="xl:hidden fixed inset-0 z-30 bg-black/40" aria-hidden="true" onClick={closePanel} />
+          <aside aria-label={`Chi tiết đơn ${orderCode(selectedId!)}`}
+            className="fixed inset-y-0 right-0 z-40 w-full sm:w-[560px] overflow-y-auto bg-surface-container-lowest shadow-2xl
+                       xl:sticky xl:top-24 xl:bottom-auto xl:right-auto xl:z-auto xl:w-auto xl:max-h-[calc(100vh-7rem)] xl:rounded-xl xl:shadow-sm xl:ring-1 xl:ring-line">
+            <OrderDetailPanel
+              key={selectedId}
+              orderId={selectedId!}
+              onClose={closePanel}
+              onChanged={loadOrders}
+              position={selectedIndex >= 0 ? `${selectedIndex + 1} / ${filtered.length}` : undefined}
+            />
+          </aside>
+        </>
       )}
     </div>
   )

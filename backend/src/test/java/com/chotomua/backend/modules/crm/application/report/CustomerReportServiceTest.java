@@ -174,7 +174,7 @@ class CustomerReportServiceTest {
         assertThat(idle.customerId()).isEqualTo(quiet.id());
         assertThat(idle.ltv()).isEqualByComparingTo("0");
         assertThat(idle.totalOrders()).isZero();
-        assertThat(idle.rfmSegment()).isEqualTo(RfmClassifier.LOST);
+        assertThat(idle.rfmSegment()).isEqualTo(RfmClassifier.NEW);
     }
 
     @Test

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { Alert, Badge, Button, ButtonLink, Card, CardTitle, EmptyState, Loading, Page, PageHeader, SummaryRow, cx, inputClass } from '../components/ui'
 import ProductThumb from '../components/ProductThumb'
-import { fetchProducts, formatVnd } from '../lib/catalog'
+import { formatVnd } from '../lib/catalog'
 import { apiFetch, ApiError } from '../lib/api'
 import { SHIPMENT_LABEL, STATUS_LABEL, STATUS_TONE, formatOrderDate as formatDate, type OrderStatus } from '../lib/orderStatus'
 import { useAuth } from '../state/AuthContext'
@@ -134,38 +134,9 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
   const [cancelReason, setCancelReason] = useState('')
   const [isCancelling, setIsCancelling] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
-  const [catalogMap, setCatalogMap] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    fetchProducts(new URLSearchParams({ size: '100' }))
-      .then((res) => {
-        const map: Record<string, string> = {}
-        for (const prod of res.content) {
-          if (prod.imageUrls && prod.imageUrls.length > 0) {
-            const mainUrl = prod.imageUrls[0]
-            map[prod.id] = mainUrl
-            map[prod.name.trim().toLowerCase()] = mainUrl
-          }
-        }
-        setCatalogMap(map)
-      })
-      .catch(() => {
-        // non-blocking fallback
-      })
-  }, [])
-
-  const resolveItemImage = (item: OrderItem) => {
-    if (item.imageUrl) return item.imageUrl
-    if (catalogMap[item.variantId]) return catalogMap[item.variantId]
-    const normalizedName = item.productNameSnapshot.trim().toLowerCase()
-    if (catalogMap[normalizedName]) return catalogMap[normalizedName]
-    for (const [key, url] of Object.entries(catalogMap)) {
-      if (key.length > 4 && (normalizedName.includes(key) || key.includes(normalizedName))) {
-        return url
-      }
-    }
-    return undefined
-  }
+  // The backend already returns each line's picture (variant image, else the product's first image),
+  // so no second request for the whole catalogue just to look pictures up.
+  const resolveItemImage = (item: OrderItem) => item.imageUrl ?? undefined
 
   useEffect(() => {
     const controller = new AbortController()

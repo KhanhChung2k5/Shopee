@@ -9,31 +9,18 @@ import { apiFetch } from '../../lib/api'
 import LineChart from '../components/LineChart'
 import DonutChart from '../components/DonutChart'
 import { a } from '../adminUi'
-import { canAccessSection, type Department } from '../access'
+import { canAccessSection, canSeeRevenueReport, type Department } from '../access'
+import { isoDay, type RevenueReport } from '../reports'
 
-const DAY_MS = 86_400_000
-const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
-
-/** Revenue (non-cancelled orders, minus money refunded for returns) for each of the last 7 days, plus the change against the 7 days before. */
-function revenueTrend(orders: StaffOrderSummary[]) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const days = Array.from({ length: 7 }, (_, i) => new Date(today.getTime() - (6 - i) * DAY_MS))
-  const byDay = new Map<string, number>()
-  let previousWeek = 0
-  for (const order of orders) {
-    if (order.status === 'cancelled') continue
-    const net = order.totalAmount - (order.refundedAmount ?? 0)
-    const created = new Date(order.createdAt)
-    const age = today.getTime() - new Date(created.getFullYear(), created.getMonth(), created.getDate()).getTime()
-    if (age >= 7 * DAY_MS && age < 14 * DAY_MS) previousWeek += net
-    byDay.set(dayKey(created), (byDay.get(dayKey(created)) ?? 0) + net)
-  }
-  const values = days.map((d) => byDay.get(dayKey(d)) ?? 0)
-  const thisWeek = values.reduce((sum, v) => sum + v, 0)
+/** Last 7 days of revenue recognised at delivery (net of refunds), plus the change against the 7 days before. */
+function revenueTrend(report: RevenueReport | null) {
+  const days = report?.days ?? []
+  const thisWeekDays = days.slice(-7)
+  const previousWeek = days.slice(0, -7).reduce((sum, d) => sum + d.netRevenue, 0)
+  const thisWeek = thisWeekDays.reduce((sum, d) => sum + d.netRevenue, 0)
   return {
-    labels: days.map((d) => `${d.getDate()}/${d.getMonth() + 1}`),
-    values: values.map((v) => Math.round(v / 10_000) / 100), // triệu đồng
+    labels: thisWeekDays.map((d) => { const [, m, day] = d.day.split('-'); return `${Number(day)}/${Number(m)}` }),
+    values: thisWeekDays.map((d) => Math.round(d.netRevenue / 10_000) / 100), // triệu đồng
     thisWeek,
     deltaPct: previousWeek > 0 ? Math.round(((thisWeek - previousWeek) / previousWeek) * 1000) / 10 : null,
   }
@@ -50,6 +37,7 @@ const ORDER_STATUS_COLOR: Record<OrderStatus, string> = {
 
 const QUICK_LINKS = [
   { to: '/admin/khach-hang', title: 'Quản lý khách hàng', hint: 'Thêm mới, khoá/mở, xoá mềm tài khoản' },
+  { to: '/admin/bao-cao-quan-tri', title: 'Báo cáo quản trị', hint: 'Doanh thu, lợi nhuận gộp, nhập – xuất – tồn' },
   { to: '/admin/bao-cao', title: 'Báo cáo nhân khẩu học', hint: 'Phân bố tuổi, giới tính, ngành hàng ưa thích' },
   { to: '/admin/san-pham', title: 'Sản phẩm', hint: 'Danh sách catalog, trạng thái đang bán/ẩn' },
   { to: '/admin/don-hang', title: 'Đơn hàng', hint: 'Theo dõi & cập nhật trạng thái xử lý' },
@@ -64,6 +52,17 @@ export default function AdminDashboardPage() {
   // GET /orders is for sales / warehouse / admin only.
   const canSeeOrders = canAccessSection('/admin/don-hang', department)
   const [orders, setOrders] = useState<StaffOrderSummary[]>([])
+  // Revenue comes from the report API (recognised on delivery) — sales / admin only.
+  const canSeeRevenue = canSeeRevenueReport(department)
+  const [revenue, setRevenue] = useState<RevenueReport | null>(null)
+
+  useEffect(() => {
+    if (!token || !canSeeRevenue) return
+    const to = new Date()
+    const from = new Date(to.getTime() - 13 * 86_400_000)
+    apiFetch<RevenueReport>(`/api/reports/revenue?from=${isoDay(from)}&to=${isoDay(to)}`, {}, token)
+      .then(setRevenue).catch(() => setRevenue(null))
+  }, [token, canSeeRevenue])
 
   useEffect(() => {
     if (!token || !canSeeOrders) return
@@ -86,7 +85,7 @@ export default function AdminDashboardPage() {
     .sort((a, b) => b.ltv - a.ltv)
     .slice(0, 5)
 
-  const trend = revenueTrend(orders)
+  const trend = revenueTrend(revenue)
 
   const orderStatusCounts = (Object.keys(ORDER_STATUS_LABEL) as OrderStatus[]).map((status) => ({
     status,
@@ -102,7 +101,7 @@ export default function AdminDashboardPage() {
         <div className={`${a.card} lg:col-span-2 flex flex-col`}>
           <div className="flex flex-wrap items-center justify-between gap-space-md">
             <div className={a.statLabel}>Tổng giá trị vòng đời khách hàng (LTV)</div>
-            {canSeeOrders && trend.deltaPct != null && (
+            {revenue && trend.deltaPct != null && (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-md text-label-md whitespace-nowrap">
                 <span className="material-symbols-outlined text-sm">{trend.deltaPct >= 0 ? 'trending_up' : 'trending_down'}</span>
                 Doanh thu 7 ngày {trend.deltaPct >= 0 ? '+' : ''}{trend.deltaPct}% so với tuần trước
@@ -110,10 +109,10 @@ export default function AdminDashboardPage() {
             )}
           </div>
           <div className="font-headline-xl text-headline-xl text-primary my-space-sm">{formatVnd(totalLtv)}</div>
-          {canSeeOrders && (
+          {revenue && (
             <>
               <div className="font-label-md text-label-md text-on-surface-variant mb-1">
-                Doanh thu 7 ngày gần nhất: {formatVnd(trend.thisWeek)} (biểu đồ theo triệu đồng, không tính đơn huỷ và tiền đã hoàn)
+                Doanh thu thuần 7 ngày gần nhất: {formatVnd(trend.thisWeek)} (ghi nhận khi đơn đã giao, trừ tiền hoàn; biểu đồ theo triệu đồng)
               </div>
               <LineChart values={trend.values} labels={trend.labels} color="var(--st-primary)" height={180} />
             </>

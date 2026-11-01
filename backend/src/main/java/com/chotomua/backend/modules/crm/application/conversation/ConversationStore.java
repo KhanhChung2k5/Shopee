@@ -28,6 +28,20 @@ public interface ConversationStore {
     /** Lịch sử gán agent, cũ trước. */
     List<AgentAssignment> assignmentsOf(UUID conversationId);
 
+    /** Messages of many conversations at once (support queue). Default: one call each; the JDBC store batches. */
+    default java.util.Map<UUID, List<ConversationMessage>> messagesOfAll(java.util.Collection<UUID> conversationIds) {
+        java.util.Map<UUID, List<ConversationMessage>> result = new java.util.HashMap<>();
+        conversationIds.forEach(id -> result.put(id, messagesOf(id)));
+        return result;
+    }
+
+    /** Assignments of many conversations at once (support queue). Default: one call each; the JDBC store batches. */
+    default java.util.Map<UUID, List<AgentAssignment>> assignmentsOfAll(java.util.Collection<UUID> conversationIds) {
+        java.util.Map<UUID, List<AgentAssignment>> result = new java.util.HashMap<>();
+        conversationIds.forEach(id -> result.put(id, assignmentsOf(id)));
+        return result;
+    }
+
     /** Tắt lượt đang xử lý rồi ghi một lượt mới {@code current=true}. Không xóa lịch sử. */
     void replaceCurrentAssignment(UUID conversationId, AgentAssignment next);
 }

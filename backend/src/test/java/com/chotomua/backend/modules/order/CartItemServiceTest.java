@@ -37,7 +37,7 @@ class CartItemServiceTest {
         UUID variantId = UUID.randomUUID();
         CartItem item = new CartItem(userId, variantId, 2);
         when(cartItemRepository.findByUserIdOrderByUpdatedAtDesc(userId)).thenReturn(List.of(item));
-        when(productVariantLookup.findCartProductById(variantId)).thenReturn(Optional.of(
+        when(productVariantLookup.findCartProductsByIds(List.of(variantId))).thenReturn(java.util.Map.of(variantId,
                 new CartProductSnapshot(
                         variantId,
                         "DualSense",

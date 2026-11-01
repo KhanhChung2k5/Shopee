@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { apiFetch } from '../lib/api'
-import { fetchProducts, formatVnd, resolveCatalogImageUrl, typeLabel } from '../lib/catalog'
+import { fetchProducts, fetchTopSellers, formatVnd, resolveCatalogImageUrl, typeLabel } from '../lib/catalog'
 import { LOYALTY_TIERS } from '../lib/loyalty'
 
 interface Slide {
@@ -34,7 +33,7 @@ export default function HeroCarousel() {
   useEffect(() => {
     let active = true
     const load = async () => {
-      const sellers = await apiFetch<TopSeller[]>(`/api/products/top-sellers?limit=${SLIDE_COUNT}`).catch(() => [])
+      const sellers: TopSeller[] = await fetchTopSellers(SLIDE_COUNT).catch(() => [])
       if (sellers.length > 0) {
         return sellers.map((item, index): Slide => ({
           productId: item.productId,
@@ -44,8 +43,9 @@ export default function HeroCarousel() {
           image: resolveCatalogImageUrl(item.imageUrl),
         }))
       }
-      const page = await fetchProducts(new URLSearchParams({ page: '0', size: String(SLIDE_COUNT) })).catch(() => null)
-      return (page?.content ?? []).map((product): Slide => ({
+      // Same request as the suggestions grid below (served once from the shared cache), first few products only.
+      const page = await fetchProducts(new URLSearchParams({ page: '0', size: '100' })).catch(() => null)
+      return (page?.content ?? []).slice(0, SLIDE_COUNT).map((product): Slide => ({
         productId: product.id,
         badge: typeLabel[product.productType] ?? 'Sản phẩm',
         title: product.name,

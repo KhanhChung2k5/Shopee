@@ -71,6 +71,14 @@ public class RefundReturn {
     @Column(name = "refunded_at")
     private OffsetDateTime refundedAt;
 
+    /** When the shop got the returned goods back; null until then. */
+    @Column(name = "received_at")
+    private OffsetDateTime receivedAt;
+
+    /** Warehouse the returned goods went back into; null when they were not fit to sell again. */
+    @Column(name = "restock_warehouse_id")
+    private UUID restockWarehouseId;
+
     protected RefundReturn() {
     }
 
@@ -127,6 +135,12 @@ public class RefundReturn {
         if (handledAt == null) handledAt = refundedAt;
     }
 
+    public void markReceived(UUID employeeId, UUID restockWarehouseId) {
+        this.employeeId = employeeId;
+        this.restockWarehouseId = restockWarehouseId;
+        this.receivedAt = OffsetDateTime.now();
+    }
+
     public UUID getId() { return id; }
     public UUID getOrderId() { return orderId; }
     public UUID getOrderItemId() { return orderItemId; }
@@ -143,4 +157,6 @@ public class RefundReturn {
     public OffsetDateTime getRequestedAt() { return requestedAt; }
     public OffsetDateTime getHandledAt() { return handledAt; }
     public OffsetDateTime getRefundedAt() { return refundedAt; }
+    public OffsetDateTime getReceivedAt() { return receivedAt; }
+    public UUID getRestockWarehouseId() { return restockWarehouseId; }
 }

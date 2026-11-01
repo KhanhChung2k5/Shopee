@@ -14,7 +14,9 @@ class AuthUser {
 /// /auth/login, /users/me) — session-only, cleared on app restart (no
 /// persistence package added, consistent with CartState's in-memory-only design).
 class AuthState extends ChangeNotifier {
-  final ApiClient _api = ApiClient();
+  AuthState({ApiClient? api}) : _api = api ?? ApiClient();
+
+  final ApiClient _api;
 
   String? _token;
   AuthUser? _user;

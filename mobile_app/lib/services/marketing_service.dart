@@ -33,16 +33,18 @@ class AvailableVoucher {
   });
 
   final String code;
-  final String type; // "fixed" | "percent"
+  final String type; // "fixed_amount" | "percentage" (backend VoucherRequest)
   final num value;
   final String programName;
   final DateTime? endsAt;
 
-  String get amountLabel => type == 'percent' ? 'Giảm ${value.toInt()}%' : 'Giảm ₫${_formatVnd(value)}';
+  bool get isPercentage => type == 'percentage' || type == 'percent';
+
+  String get amountLabel => isPercentage ? 'Giảm ${value.toInt()}%' : 'Giảm ₫${_formatVnd(value)}';
 
   factory AvailableVoucher.fromJson(Map<String, dynamic> json) => AvailableVoucher(
         code: json['code'] as String? ?? '',
-        type: json['type'] as String? ?? 'fixed',
+        type: json['type'] as String? ?? 'fixed_amount',
         value: (json['value'] as num?) ?? 0,
         programName: json['programName'] as String? ?? 'Khuyến mãi',
         endsAt: DateTime.tryParse(json['endsAt'] as String? ?? ''),
@@ -58,8 +60,10 @@ class FlashSaleDeal {
     required this.soldQty,
     required this.limitQty,
     this.imageUrl,
+    this.endsAt,
   });
 
+  final DateTime? endsAt;
   final String variantId;
   final String productName;
   final num originalPrice;
@@ -81,6 +85,7 @@ class FlashSaleDeal {
       soldQty: (json['soldQty'] as num?)?.toInt() ?? 0,
       limitQty: (json['limitQty'] as num?)?.toInt() ?? 0,
       imageUrl: resolvedImage,
+      endsAt: DateTime.tryParse(json['endsAt'] as String? ?? '')?.toLocal(),
     );
   }
 }

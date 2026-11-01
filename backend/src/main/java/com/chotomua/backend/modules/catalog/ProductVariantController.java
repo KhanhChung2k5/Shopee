@@ -1,5 +1,8 @@
 package com.chotomua.backend.modules.catalog;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import com.chotomua.backend.common.config.CacheConfig;
 import tools.jackson.databind.JsonNode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
@@ -43,6 +46,7 @@ public class ProductVariantController {
         return ProductVariantResponse.from(find(id));
     }
 
+    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS}, allEntries = true)
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ProductVariantResponse create(@Valid @RequestBody ProductVariantRequest request) {
@@ -53,6 +57,7 @@ public class ProductVariantController {
         return ProductVariantResponse.from(variants.save(variant));
     }
 
+    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS}, allEntries = true)
     @PutMapping("/{id}")
     public ProductVariantResponse update(@PathVariable UUID id,
                                          @Valid @RequestBody ProductVariantRequest request) {
@@ -66,6 +71,7 @@ public class ProductVariantController {
         return ProductVariantResponse.from(variants.save(variant));
     }
 
+    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS}, allEntries = true)
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID id) {

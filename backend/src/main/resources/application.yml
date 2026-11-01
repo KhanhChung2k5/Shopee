@@ -29,6 +29,10 @@ spring:
       minimum-idle: 0
       idle-timeout: 30000
   jpa:
+    # Release the DB connection as soon as the service/transaction is done, not after the JSON is written.
+    # The pool is tiny (Supabase allows 15 connections for the whole project), so holding one per request for its
+    # full lifetime made concurrent requests queue. Services/controllers that read lazy relations run in @Transactional.
+    open-in-view: false
     hibernate:
       # Flyway owns the schema (db/migration/*.sql); Hibernate only checks
       # that @Entity classes match it, never auto-generates/alters tables.

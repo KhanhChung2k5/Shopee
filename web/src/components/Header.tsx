@@ -4,8 +4,7 @@ import { useCart } from '../state/CartContext'
 import { useTheme } from '../state/useTheme'
 import { useAuth } from '../state/AuthContext'
 import NotificationBell from './NotificationBell'
-import { apiFetch } from '../lib/api'
-import { cacheCategories, fetchCategories, getCachedCategories, type CatalogCategory } from '../lib/catalog'
+import { cacheCategories, fetchCategories, fetchTopSellers, getCachedCategories, type CatalogCategory } from '../lib/catalog'
 
 const CATEGORY_ICONS: Record<string, string> = {
   'tay-cam': 'sports_esports',
@@ -35,7 +34,7 @@ export default function Header() {
   const [trending, setTrending] = useState<string[]>([])
   useEffect(() => {
     let active = true
-    apiFetch<{ name: string }[]>('/api/products/top-sellers?limit=6')
+    fetchTopSellers(6)
       .then((items) => { if (active) setTrending([...new Set(items.map((item) => shortProductName(item.name)))]) })
       .catch(() => { if (active) setTrending([]) })
     return () => { active = false }

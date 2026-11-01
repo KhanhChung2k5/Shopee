@@ -112,6 +112,8 @@ function SurveyEditor({ token, survey, segments, onChanged, onDeleted, onNotice,
   const [options, setOptions] = useState('')
   const [sendTo, setSendTo] = useState<string[]>([])
   const [auto, setAuto] = useState('none')
+  // A target saved as an explicit product list (no filter) — e.g. the seeded post-purchase survey — is still "auto send on".
+  const [pickedCount, setPickedCount] = useState(0)
   const [stats, setStats] = useState<SurveyStats | null>(null)
   const isDraft = survey.status === 'draft'
 
@@ -119,7 +121,8 @@ function SurveyEditor({ token, survey, segments, onChanged, onDeleted, onNotice,
     fetchSurveyProductTarget(token, survey.id)
       .then((t) => {
         const f = t.filter
-        setAuto(!f ? 'none' : f.productType ? f.productType : 'all')
+        setPickedCount(f ? 0 : t.productIds.length)
+        setAuto(f ? (f.productType ? f.productType : 'all') : t.productIds.length > 0 ? 'picked' : 'none')
       })
       .catch(() => setAuto('none'))
     if (survey.status !== 'draft') fetchSurveyStats(token, survey.id).then(setStats).catch(() => setStats(null))
@@ -139,7 +142,9 @@ function SurveyEditor({ token, survey, segments, onChanged, onDeleted, onNotice,
   }
 
   const changeAuto = (value: string) => {
+    if (value === 'picked') return
     setAuto(value)
+    setPickedCount(0)
     const target = AUTO_TARGETS.find((t) => t.value === value)
     void run(() => setSurveyProductTarget(token, survey.id, target?.filter ?? null), 'Không lưu được cài đặt tự gửi',
       value === 'none' ? 'Đã tắt tự gửi sau giao đơn.' : `Khảo sát sẽ tự gửi khi giao: ${target?.label.toLowerCase()}.`)
@@ -207,6 +212,7 @@ function SurveyEditor({ token, survey, segments, onChanged, onDeleted, onNotice,
             <span className={a.statLabel}>Tự gửi sau khi giao đơn (khảo sát NPS)</span>
             <select className={cx(a.input, '!w-auto')} value={auto} onChange={(e) => changeAuto(e.target.value)}>
               {AUTO_TARGETS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              {pickedCount > 0 && <option value="picked">{`Đơn có sản phẩm đã chọn (${pickedCount} sản phẩm)`}</option>}
             </select>
           </label>
         </div>

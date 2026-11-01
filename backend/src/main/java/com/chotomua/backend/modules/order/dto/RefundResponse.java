@@ -24,6 +24,8 @@ public record RefundResponse(
         OffsetDateTime requestedAt,
         OffsetDateTime handledAt,
         OffsetDateTime refundedAt,
+        OffsetDateTime receivedAt,
+        UUID restockWarehouseId,
         String customerName,
         String customerEmail
 ) {
@@ -33,6 +35,6 @@ public record RefundResponse(
                 productName, quantity, refund.getReason(), refund.getStatus(), refund.getRefundAmount(),
                 refund.getBankName(), refund.getBankAccountNo(), refund.getBankAccountName(), refund.getStaffNote(),
                 refund.getTransferRef(), refund.getRequestedAt(), refund.getHandledAt(), refund.getRefundedAt(),
-                customerName, customerEmail);
+                refund.getReceivedAt(), refund.getRestockWarehouseId(), customerName, customerEmail);
     }
 }

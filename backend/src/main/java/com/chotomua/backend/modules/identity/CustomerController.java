@@ -18,13 +18,14 @@ import org.springframework.transaction.annotation.Transactional;
 @RestController
 @RequestMapping("/customers")
 public class CustomerController {
-
+    // Repository for User
     private final UserRepository userRepository;
-
+    // Constructor for CustomerController
     public CustomerController(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
+    // List all customers
     @GetMapping
     @Transactional(readOnly = true)
     public List<CustomerResponse> list() {
@@ -33,12 +34,21 @@ public class CustomerController {
                 .toList();
     }
 
+    // Update the status of a customer
     @PatchMapping("/{id}/status")
     @Transactional
     public CustomerResponse updateStatus(@PathVariable UUID id, @Valid @RequestBody CustomerStatusUpdateRequest request) {
+        // Find the user by ID
         User user = userRepository.findById(id)
+                // Check if the user is a buyer
                 .filter(u -> "buyer".equals(u.getRole()))
+                // If the user is not a buyer, throw an exception
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy khách hàng"));
+        // A soft-deleted account only comes back through POST /api/customers/{id}/restore (admin only, audited)
+        if ("deleted".equals(user.getStatus()) && !"deleted".equals(request.status())) {
+            throw new IllegalStateException("Khách hàng đã xoá mềm. Chỉ quản trị viên được khôi phục bằng chức năng Khôi phục.");
+        }
+        // Update the status of the user
         user.setStatus(request.status());
         return CustomerResponse.from(user);
     }

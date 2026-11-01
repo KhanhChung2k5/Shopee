@@ -44,10 +44,13 @@ public final class ConversationText {
     private ConversationText() {
     }
 
-    /** Mã ticket ngắn dạng {@code TK-} + 8 hex đầu của UUID. */
+    /**
+     * Mã ticket ngắn dạng {@code TK-} + 8 hex cuối của UUID. Lấy phần cuối vì UUID đánh số tuần tự
+     * (vd. dữ liệu mẫu {@code b1000001-…-000000000001}, {@code …002}) trùng nhau ở phần đầu, khác nhau ở phần cuối.
+     */
     public static String code(UUID id) {
         String compact = id.toString().replace("-", "");
-        return "TK-" + compact.substring(0, 8).toUpperCase(Locale.ROOT);
+        return "TK-" + compact.substring(compact.length() - 8).toUpperCase(Locale.ROOT);
     }
 
     /** Nhãn kênh UI: Live chat hoặc Ticket. */

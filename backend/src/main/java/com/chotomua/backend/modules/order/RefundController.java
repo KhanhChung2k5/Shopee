@@ -61,6 +61,15 @@ public class RefundController {
         return service.markRefunded(userId(auth), id, request.transferRef());
     }
 
+    /** CS records the returned goods arrived; restock = true puts them back into a warehouse. */
+    @PatchMapping("/{id}/received")
+    public RefundResponse received(Authentication auth, @PathVariable UUID id, @RequestBody ReceiveReturnRequest request) {
+        return service.receiveReturn(userId(auth), id, request.restock(), request.warehouseId());
+    }
+
+    public record ReceiveReturnRequest(boolean restock, UUID warehouseId) {
+    }
+
     private static UUID userId(Authentication auth) {
         return UUID.fromString((String) auth.getPrincipal());
     }

@@ -52,6 +52,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body(HttpStatus.CONFLICT, ex.getMessage()));
     }
 
+    /** Two requests changed the same rows at once (optimistic / pessimistic lock lost): safe to retry. */
+    @ExceptionHandler(org.springframework.dao.ConcurrencyFailureException.class)
+    public ResponseEntity<Map<String, Object>> handleConcurrentChange(org.springframework.dao.ConcurrencyFailureException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(body(HttpStatus.CONFLICT, "Dữ liệu vừa được thay đổi bởi một thao tác khác, vui lòng tải lại và thử lại"));
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataConflict(DataIntegrityViolationException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

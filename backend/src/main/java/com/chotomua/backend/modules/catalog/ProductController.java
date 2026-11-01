@@ -1,5 +1,8 @@
 package com.chotomua.backend.modules.catalog;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import com.chotomua.backend.common.config.CacheConfig;
 import org.springframework.dao.DataIntegrityViolationException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ArrayNode;
@@ -50,6 +53,7 @@ public class ProductController {
         return ProductResponse.from(find(id));
     }
 
+    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS}, allEntries = true)
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ProductResponse create(@Valid @RequestBody ProductRequest request) {
@@ -58,6 +62,7 @@ public class ProductController {
         return ProductResponse.from(products.save(product));
     }
 
+    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS}, allEntries = true)
     @PutMapping("/{id}")
     public ProductResponse update(@PathVariable UUID id, @Valid @RequestBody ProductRequest request) {
         Product product = find(id);
@@ -66,6 +71,7 @@ public class ProductController {
         return ProductResponse.from(products.save(product));
     }
 
+    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS}, allEntries = true)
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @org.springframework.transaction.annotation.Transactional
@@ -80,6 +86,7 @@ public class ProductController {
         }
     }
 
+    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS}, allEntries = true)
     @PostMapping("/{id}/images")
     @ResponseStatus(HttpStatus.CREATED)
     public ProductResponse uploadImages(@PathVariable UUID id, @RequestPart("files") List<MultipartFile> files)

@@ -200,6 +200,7 @@ class SegmentServiceTest {
                 "Mot", "male", TODAY.minusYears(22), CustomerStatus.ACTIVE);
         CustomerView locked = identity.seedCustomer(
                 "Khoa", "male", TODAY.minusYears(22), CustomerStatus.LOCKED);
+        seedDelivered(lost.id(), "200000", "2025-01-10T10:00:00Z"); // bought once, long ago
         seedDelivered(potential.id(), "200000", "2026-09-10T10:00:00Z");
         seedDelivered(locked.id(), "200000", "2026-09-10T10:00:00Z");
 

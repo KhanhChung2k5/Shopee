@@ -40,8 +40,14 @@ class RfmClassifierTest {
 
     @Test
     void lostIsLowOnAllThree() {
-        assertThat(RfmClassifier.segment(null, 0, BigDecimal.ZERO))
+        assertThat(RfmClassifier.segment(400, 1, new BigDecimal("200000")))
                 .isEqualTo(RfmClassifier.LOST);
+    }
+
+    @Test
+    void neverBoughtIsNewNotLost() {
+        assertThat(RfmClassifier.segment(null, 0, BigDecimal.ZERO))
+                .isEqualTo(RfmClassifier.NEW);
     }
 
     @Test

@@ -121,8 +121,9 @@ class OrderDeliveredSurveyControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sentCount").value(0));
 
-        assertThrows(ClassNotFoundException.class,
-                () -> Class.forName("org.springframework.mail.javamail.JavaMailSender"));
+        // No mail transport on the classpath: surveys go out in-app only. (Spring's mail *interfaces* ship with
+        // spring-context-support, needed by the Caffeine cache, but nothing can send without jakarta.mail.)
+        assertThrows(ClassNotFoundException.class, () -> Class.forName("jakarta.mail.Session"));
     }
 
     @Test

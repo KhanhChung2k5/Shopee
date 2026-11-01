@@ -35,7 +35,11 @@ public class InMemoryOperationLogStore implements OperationLogStore {
 
     @Override
     public synchronized OperationLogPage search(OperationLogQuery query) {
-        List<OperationLog> matched = rows.stream()
+        // Newest first; rows logged within the same clock tick keep "last appended first" (stable sort on a
+        // reversed copy), so two actions in quick succession never swap places.
+        List<OperationLog> newestAppendedFirst = new java.util.ArrayList<>(rows);
+        java.util.Collections.reverse(newestAppendedFirst);
+        List<OperationLog> matched = newestAppendedFirst.stream()
                 .filter(row -> matchesExact(row.actorLogin(), query.actorLogin()))
                 .filter(row -> matchesExact(row.department(), query.department()))
                 .filter(row -> matchesExact(row.action(), query.action()))

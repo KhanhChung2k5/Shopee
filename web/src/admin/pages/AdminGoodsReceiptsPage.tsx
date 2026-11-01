@@ -13,7 +13,7 @@ interface ReceiptLine { variantId: string; quantity: string; unitCost: string }
 const EMPTY_LINE: ReceiptLine = { variantId: '', quantity: '1', unitCost: '' }
 
 export default function AdminGoodsReceiptsPage() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const { confirm } = useDialog()
   const [receipts, setReceipts] = useState<GoodsReceipt[]>([])
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
@@ -124,13 +124,16 @@ export default function AdminGoodsReceiptsPage() {
       <div className={a.formActions}><button className={buttonClass('primary')} disabled={saving || !warehouseId || variants.length === 0}>{saving ? 'Đang tạo…' : 'Tạo phiếu chờ duyệt'}</button></div>
     </form>}
     {loading ? <p>Đang tải phiếu nhập…</p> : <div className={a.tableWrap}><table className={a.table}>
-      <thead><tr><th>Mã phiếu</th><th>Thời gian</th><th>Kho / nhà cung cấp</th><th>Sản phẩm</th><th>Tổng giá trị</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+      <thead><tr><th>Mã phiếu</th><th>Thời gian</th><th>Kho / nhà cung cấp</th><th>Sản phẩm</th><th>Tổng giá trị</th><th>Người lập / người duyệt</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
       <tbody>{receipts.map((receipt) => <tr key={receipt.id}>
         <td>{receipt.code}</td><td>{new Date(receipt.receivedAt).toLocaleString('vi-VN')}</td>
         <td>{receipt.warehouseName}<br />{receipt.supplierName ?? '—'}</td>
         <td>{receipt.items.map((item) => `${item.sku} × ${item.quantity}`).join(', ')}</td><td>{formatVnd(receipt.totalCost)}</td>
+        <td>{receipt.createdByName ?? '—'}<br /><small>{receipt.decidedByName
+          ? `${receipt.status === 'rejected' ? 'Từ chối' : 'Duyệt'}: ${receipt.decidedByName}${receipt.decidedAt ? ` (${new Date(receipt.decidedAt).toLocaleDateString('vi-VN')})` : ''}`
+          : receipt.status === 'pending' ? 'Chờ người khác duyệt' : '—'}</small></td>
         <td><span className={statusPillClass(receipt.status === 'approved' ? 'active' : receipt.status === 'rejected' ? 'deleted' : 'locked')}>{receipt.status === 'pending' ? 'Chờ duyệt' : receipt.status === 'approved' ? 'Đã duyệt' : 'Đã từ chối'}</span></td>
-        <td>{receipt.status === 'pending' ? <div className={a.rowActions}><button className={buttonClass('primary')} type="button" onClick={() => void transition(receipt, 'approve')}>Duyệt</button><button className={buttonClass('outline')} type="button" onClick={() => void transition(receipt, 'reject')}>Từ chối</button></div> : '—'}</td>
+        <td>{receipt.status === 'pending' && receipt.createdByUserId === user?.id ? <small>Người lập không tự duyệt</small> : receipt.status === 'pending' ? <div className={a.rowActions}><button className={buttonClass('primary')} type="button" onClick={() => void transition(receipt, 'approve')}>Duyệt</button><button className={buttonClass('outline')} type="button" onClick={() => void transition(receipt, 'reject')}>Từ chối</button></div> : '—'}</td>
       </tr>)}</tbody>
     </table>{receipts.length === 0 && <p className={a.empty}>Chưa có phiếu nhập nào.</p>}</div>}
   </div>

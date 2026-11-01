@@ -207,6 +207,7 @@ class CartScreen extends StatelessWidget {
     try {
       final order = await OrderService().checkout(
         addressId: address.id,
+        quantitiesByVariant: {for (final line in cart.lines) line.product.variantId!: line.quantity},
         paymentMethod: paymentMethod,
         token: token,
       );

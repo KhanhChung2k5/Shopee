@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.chotomua.backend.modules.catalog.InventoryStockService;
 import com.chotomua.backend.modules.identity.Employee;
 import com.chotomua.backend.modules.identity.EmployeeRepository;
 import com.chotomua.backend.modules.identity.User;
@@ -122,15 +123,39 @@ class RefundServiceTest {
         assertThatThrownBy(() -> service.markRefunded(csUserId, id, "FT123"))
                 .hasMessageContaining("đã duyệt");
         service.approve(csUserId, id);
+        assertThatThrownBy(() -> service.markRefunded(csUserId, id, "FT24300123"))
+                .hasMessageContaining("Chưa nhận được hàng");
+        service.receiveReturn(csUserId, id, false, null); // damaged: received, not restocked
+        assertThatThrownBy(() -> service.receiveReturn(csUserId, id, false, null))
+                .hasMessageContaining("trước đó");
         assertThatThrownBy(() -> service.markRefunded(csUserId, id, " "))
                 .hasMessageContaining("mã giao dịch");
 
         var done = service.markRefunded(csUserId, id, "FT24300123");
 
+        assertThat(done.receivedAt()).isNotNull();
+        assertThat(done.restockWarehouseId()).isNull();
         assertThat(done.status()).isEqualTo("refunded");
         assertThat(done.transferRef()).isEqualTo("FT24300123");
         assertThat(payment.getStatus()).isEqualTo("partially_refunded"); // 900.000 of 1.350.000
         verify(loyalty).revoke(order, new BigDecimal("900000"));
+    }
+
+    @Test
+    void returnedGoodsFitForSaleGoBackIntoTheWarehouseTheOrderShippedFrom() {
+        InventoryStockService stock = mock(InventoryStockService.class);
+        ReflectionTestUtils.invokeMethod(service, "setInventoryStockService", stock);
+        UUID warehouseId = UUID.randomUUID();
+        order.setWarehouseId(warehouseId);
+        UUID id = service.requestReturn(buyerId, returnRequest()).id();
+        assertThatThrownBy(() -> service.receiveReturn(csUserId, id, true, null)).hasMessageContaining("đã duyệt");
+        service.approve(csUserId, id);
+
+        var received = service.receiveReturn(csUserId, id, true, null);
+
+        assertThat(received.restockWarehouseId()).isEqualTo(warehouseId);
+        verify(stock).restockReturn(id, warehouseId,
+                new InventoryStockService.ExportLine(controller.getVariantId(), controller.getQuantity()));
     }
 
     @Test

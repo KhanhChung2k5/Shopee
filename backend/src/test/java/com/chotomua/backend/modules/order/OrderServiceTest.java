@@ -310,7 +310,7 @@ class OrderServiceTest {
         Order order = orderOf(userId);
         when(orderRepository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, "pending"))
                 .thenReturn(List.of(order));
-        when(orderItemRepository.countByOrderId(order.getId())).thenReturn(2L);
+        when(orderItemRepository.countLinesByOrderIds(any())).thenReturn(java.util.Collections.singletonList(new Object[] {order.getId(), 2L}));
 
         var result = orderService.listForBuyer(userId, " PENDING ");
 
@@ -368,8 +368,8 @@ class OrderServiceTest {
         Address address = ownedAddress(buyerId, newOrder.getAddressId());
         address.getUser().setFullName("Nguyễn Văn A");
         when(orderRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(newOrder));
-        when(addressRepository.findAllById(any())).thenReturn(List.of(address));
-        when(orderItemRepository.countByOrderId(newOrder.getId())).thenReturn(2L);
+        when(addressRepository.findAllWithUserByIdIn(any())).thenReturn(List.of(address));
+        when(orderItemRepository.countLinesByOrderIds(any())).thenReturn(java.util.Collections.singletonList(new Object[] {newOrder.getId(), 2L}));
 
         var result = orderService.listForEmployeeUser(employeeUserId, null);
 
@@ -792,6 +792,27 @@ class OrderServiceTest {
 
         assertThat(result.previousStatus()).isEqualTo("cancel_requested");
         assertThat(result.status()).isEqualTo("confirmed");
+    }
+
+    @Test
+    void turningDownACancelRequestOnAnUnconfirmedOrderPutsItBackToPending() {
+        UUID salesUserId = UUID.randomUUID();
+        Order order = orderOf(UUID.randomUUID());
+        order.setStatus("cancel_requested");
+        when(employeeRepository.findByUserId(salesUserId)).thenReturn(Optional.of(employeeOf(salesUserId, "sales")));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+        when(orderStatusHistoryRepository.save(any(OrderStatusHistory.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderStatusHistoryRepository.findByOrderIdOrderByChangedAtAsc(order.getId())).thenReturn(List.of(
+                new OrderStatusHistory(order.getId(), "pending", UUID.randomUUID(), "buyer", "Tạo đơn hàng"),
+                new OrderStatusHistory(order.getId(), "cancel_requested", UUID.randomUUID(), "buyer", "Đặt nhầm")));
+
+        var result = orderService.updateStatusForEmployeeUser(salesUserId, order.getId(),
+                new OrderStatusUpdateRequest("confirmed", null));
+
+        // Refusing the cancellation must not confirm an order nobody in sales has checked yet.
+        assertThat(result.status()).isEqualTo("pending");
+        assertThat(order.getStatus()).isEqualTo("pending");
     }
 
     @Test

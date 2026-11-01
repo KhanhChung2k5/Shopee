@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../data/sample_data.dart';
 import '../models/product.dart';
 import '../services/catalog_service.dart';
+import '../services/marketing_service.dart';
+import '../state/auth_scope.dart';
 import '../state/cart_scope.dart';
 import '../theme/app_theme.dart';
 import '../widgets/category_grid.dart';
@@ -18,20 +20,25 @@ import 'cart_screen.dart';
 import 'vouchers_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.catalogService});
+  const HomeScreen({super.key, this.catalogService, this.marketingService});
 
   final CatalogService? catalogService;
+  final MarketingService? marketingService;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late final DateTime _flashSaleEndsAt = DateTime.now().add(const Duration(hours: 3, minutes: 15));
   late final CatalogService _catalog = widget.catalogService ?? CatalogService();
+  late final MarketingService _marketing = widget.marketingService ?? MarketingService();
 
-  List<CategoryItem> _categories = SampleData.categories;
-  List<Product> _suggestedProducts = SampleData.suggestedProducts;
+  // Only real data: on a network error the sections say so (with a retry) instead of showing sample products
+  // that cannot be ordered.
+  List<CategoryItem> _categories = const [];
+  List<Product> _suggestedProducts = const [];
+  List<FlashSaleDeal> _flashDeals = const [];
+  List<AvailableVoucher> _vouchers = const [];
   bool _categoriesFallback = false;
   bool _productsFallback = false;
 
@@ -43,9 +50,30 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadCategories();
     _loadSuggestedProducts();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadMarketing());
+  }
+
+  /// Running flash-sale lines (public) and, for a signed-in buyer, the vouchers they can use.
+  Future<void> _loadMarketing() async {
+    final token = AuthScope.of(context).token;
+    try {
+      final deals = await _marketing.fetchFlashSales(token: token);
+      final now = DateTime.now();
+      if (mounted) setState(() => _flashDeals = deals.where((d) => d.endsAt == null || d.endsAt!.isAfter(now)).toList());
+    } catch (_) {
+      // no flash-sale block when it cannot be loaded
+    }
+    if (token == null) return;
+    try {
+      final vouchers = await _marketing.fetchVouchers(token: token);
+      if (mounted) setState(() => _vouchers = vouchers);
+    } catch (_) {
+      // no voucher strip when it cannot be loaded
+    }
   }
 
   Future<void> _loadCategories() async {
+    if (_categoriesFallback) setState(() => _categoriesFallback = false);
     try {
       final categories = await _catalog.fetchCategories();
       if (!mounted) return;
@@ -62,6 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadSuggestedProducts() async {
+    if (_productsFallback) setState(() => _productsFallback = false);
     try {
       final result = await _catalog.fetchProducts(page: 0, size: 100);
       if (!mounted) return;
@@ -98,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             tooltip: 'Thông báo',
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsScreen())),
-            icon: const _BadgedIcon(icon: Icons.notifications_none_rounded, count: 3),
+            icon: const _BadgedIcon(icon: Icons.notifications_none_rounded, count: 0),
           ),
           IconButton(
             tooltip: 'Giỏ hàng',
@@ -123,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SectionHeader(title: 'Danh mục nổi bật'),
             if (_categoriesFallback)
-              const _CatalogFallbackNote(text: 'Đang giữ danh mục mẫu vì máy chủ chưa trả danh sách danh mục.'),
+              _CatalogFallbackNote(text: 'Không tải được danh mục.', onRetry: _loadCategories),
             CategoryGrid(
               categories: _categories,
               onCategoryTap: (c) => Navigator.of(context).push(
@@ -131,26 +160,30 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 28),
-            _FlashSaleSection(endsAt: _flashSaleEndsAt, onProductTap: _openProduct),
-            const SizedBox(height: 28),
-            SectionHeader(
-              title: 'Mã giảm giá dành cho bạn',
-              onSeeAll: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VouchersScreen())),
-            ),
-            SizedBox(
-              height: 104,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                scrollDirection: Axis.horizontal,
-                itemCount: SampleData.vouchers.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, i) => VoucherCard(voucher: SampleData.vouchers[i]),
+            if (_flashDeals.isNotEmpty) ...[
+              _FlashSaleSection(deals: _flashDeals, onProductTap: _openProduct),
+              const SizedBox(height: 28),
+            ],
+            if (_vouchers.isNotEmpty) ...[
+              SectionHeader(
+                title: 'Mã giảm giá dành cho bạn',
+                onSeeAll: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VouchersScreen())),
               ),
-            ),
-            const SizedBox(height: 28),
+              SizedBox(
+                height: 104,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _vouchers.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, i) => VoucherCard(voucher: _toOffer(_vouchers[i])),
+                ),
+              ),
+              const SizedBox(height: 28),
+            ],
             const SectionHeader(title: 'Gợi ý hôm nay'),
             if (_productsFallback)
-              const _CatalogFallbackNote(text: 'Không kết nối được Catalog API; đang hiển thị sản phẩm mẫu.'),
+              _CatalogFallbackNote(text: 'Không tải được sản phẩm.', onRetry: _loadSuggestedProducts),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: suggested.isEmpty
@@ -198,24 +231,50 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+VoucherOffer _toOffer(AvailableVoucher v) => VoucherOffer(
+      amountLabel: v.amountLabel,
+      conditionLabel: v.code,
+      title: v.programName,
+      expiryLabel: v.endsAt != null
+          ? 'HSD: ${v.endsAt!.day.toString().padLeft(2, '0')}/${v.endsAt!.month.toString().padLeft(2, '0')}/${v.endsAt!.year}'
+          : 'Không giới hạn',
+    );
+
 class _CatalogFallbackNote extends StatelessWidget {
-  const _CatalogFallbackNote({required this.text});
+  const _CatalogFallbackNote({required this.text, required this.onRetry});
   final String text;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-        child: Text(text, style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12)),
+        child: Row(children: [
+          Expanded(child: Text(text, style: const TextStyle(color: AppColors.mutedForeground, fontSize: 12))),
+          TextButton(onPressed: onRetry, child: const Text('Thử lại')),
+        ]),
       );
 }
 
 class _FlashSaleSection extends StatelessWidget {
-  const _FlashSaleSection({required this.endsAt, required this.onProductTap});
-  final DateTime endsAt;
+  const _FlashSaleSection({required this.deals, required this.onProductTap});
+  final List<FlashSaleDeal> deals;
   final ValueChanged<Product> onProductTap;
+
+  Product _toProduct(FlashSaleDeal deal) => Product(
+        name: deal.productName,
+        price: deal.flashPrice.toInt(),
+        comparePrice: deal.originalPrice.toInt(),
+        variantId: deal.variantId,
+        imageUrl: deal.imageUrl,
+        soldCount: deal.soldQty,
+        limitCount: deal.limitQty,
+      );
 
   @override
   Widget build(BuildContext context) {
+    final products = deals.map(_toProduct).toList();
+    // The real end of the soonest-ending deal (not a made-up timer).
+    final endings = deals.map((d) => d.endsAt).whereType<DateTime>().toList()..sort();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -237,7 +296,7 @@ class _FlashSaleSection extends StatelessWidget {
                   ),
                 ],
               ),
-              FlashSaleCountdown(endsAt: endsAt),
+              if (endings.isNotEmpty) FlashSaleCountdown(endsAt: endings.first),
             ],
           ),
         ),
@@ -247,11 +306,11 @@ class _FlashSaleSection extends StatelessWidget {
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
-            itemCount: SampleData.flashSaleProducts.length,
+            itemCount: products.length,
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, i) => ProductCard(
-              product: SampleData.flashSaleProducts[i],
-              onTap: () => onProductTap(SampleData.flashSaleProducts[i]),
+              product: products[i],
+              onTap: () => onProductTap(products[i]),
             ),
           ),
         ),

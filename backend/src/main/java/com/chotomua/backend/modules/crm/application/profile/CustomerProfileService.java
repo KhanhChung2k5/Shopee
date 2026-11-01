@@ -106,9 +106,9 @@ public class CustomerProfileService {
         return done;
     }
 
-    /** Hồ sơ mặc định khi chưa tính lại: LTV 0, nhãn lost, chưa có mốc. */
+    /** Hồ sơ mặc định khi chưa tính lại: LTV 0, chưa mua hàng, chưa có mốc. */
     private static CustomerProfileCRM empty(UUID userId) {
-        return new CustomerProfileCRM(userId, BigDecimal.ZERO, 0, RfmClassifier.LOST, null, null);
+        return new CustomerProfileCRM(userId, BigDecimal.ZERO, 0, RfmClassifier.NEW, null, null);
     }
 
     /** Số ngày từ lần giao hàng gần nhất; chưa mua thì {@code null}. */

@@ -58,6 +58,14 @@ public class ProductVariantLookup {
 
     /** Returns display data even when a product was disabled after it entered the cart. */
     public Optional<CartProductSnapshot> findCartProductById(UUID variantId) {
+        return Optional.ofNullable(findCartProductsByIds(List.of(variantId)).get(variantId));
+    }
+
+    /** Display data for many variants in one query (cart list, order lines) instead of one query per line. */
+    public java.util.Map<UUID, CartProductSnapshot> findCartProductsByIds(java.util.Collection<UUID> variantIds) {
+        if (variantIds == null || variantIds.isEmpty()) {
+            return java.util.Map.of();
+        }
         List<?> results = entityManager.createNativeQuery("""
                         SELECT pv.id,
                                p.name,
@@ -71,25 +79,25 @@ public class ProductVariantLookup {
                         FROM product_variants pv
                         JOIN products p ON p.id = pv.product_id
                         LEFT JOIN (%s) stock ON stock.variant_id = pv.id
-                        WHERE pv.id = :variantId
+                        WHERE pv.id IN (:variantIds)
                         """.formatted(AVAILABLE_STOCK))
-                .setParameter("variantId", variantId)
+                .setParameter("variantIds", java.util.Set.copyOf(variantIds))
                 .getResultList();
-        if (results.isEmpty()) {
-            return Optional.empty();
+        java.util.Map<UUID, CartProductSnapshot> byId = new java.util.HashMap<>();
+        for (Object result : results) {
+            Object[] row = (Object[]) result;
+            byId.put((UUID) row[0], new CartProductSnapshot(
+                    (UUID) row[0],
+                    (String) row[1],
+                    (String) row[2],
+                    (String) row[3],
+                    (BigDecimal) row[4],
+                    (String) row[5],
+                    (Boolean) row[6],
+                    ((Number) row[7]).intValue()
+            ));
         }
-
-        Object[] row = (Object[]) results.getFirst();
-        return Optional.of(new CartProductSnapshot(
-                (UUID) row[0],
-                (String) row[1],
-                (String) row[2],
-                (String) row[3],
-                (BigDecimal) row[4],
-                (String) row[5],
-                (Boolean) row[6],
-                ((Number) row[7]).intValue()
-        ));
+        return byId;
     }
 
     /** Returns only the Catalog fields P3 must snapshot while creating an order. */
