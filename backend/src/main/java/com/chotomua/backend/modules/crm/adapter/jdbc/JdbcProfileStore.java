@@ -15,7 +15,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Hồ sơ CRM nằm trên {@code users} (ltv, total_orders, last_purchase_at, rfm_segment).
+ * Hồ sơ CRM nằm trên {@code users} (ltv, total_spent, total_orders, last_purchase_at, rfm_segment).
  * Schema không có cột thời điểm tính lại.
  */
 @Component
@@ -35,10 +35,11 @@ public class JdbcProfileStore implements ProfileStore {
                 : profile.lastPurchaseAt().atZone(ZoneOffset.UTC).toLocalDate();
         jdbc.update("""
                 UPDATE users
-                SET ltv = ?, total_orders = ?, last_purchase_at = ?, rfm_segment = ?
+                SET ltv = ?, total_spent = ?, total_orders = ?, last_purchase_at = ?, rfm_segment = ?
                 WHERE id = ?
                 """,
                 profile.ltv(),
+                profile.totalSpent(),
                 profile.totalOrders(),
                 lastPurchase == null ? null : Date.valueOf(lastPurchase),
                 profile.rfmSegment(),
@@ -48,7 +49,7 @@ public class JdbcProfileStore implements ProfileStore {
     @Override
     public Optional<CustomerProfileCRM> find(UUID userId) {
         List<CustomerProfileCRM> rows = jdbc.query("""
-                SELECT id, ltv, total_orders, last_purchase_at, rfm_segment
+                SELECT id, ltv, total_spent, total_orders, last_purchase_at, rfm_segment
                 FROM users
                 WHERE id = ?
                 """, (rs, rowNum) -> {
@@ -63,7 +64,8 @@ public class JdbcProfileStore implements ProfileStore {
                     rs.getInt("total_orders"),
                     rfm,
                     lastPurchaseAt,
-                    null);
+                    null,
+                    rs.getBigDecimal("total_spent"));
         }, userId);
         if (rows.isEmpty() || rows.getFirst().rfmSegment() == null) {
             return Optional.empty();

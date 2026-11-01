@@ -104,9 +104,9 @@ class CampaignFunnelServiceTest {
         assertThat(funnel.windowFrom()).isEqualTo(sent.startAt());
         assertThat(funnel.windowTo()).isEqualTo(sent.startAt().plus(30, ChronoUnit.DAYS));
         assertThat(funnel.stages()).extracting(stage -> stage.bucket())
-                .containsExactly("targeted", "sent", "converted");
+                .containsExactly("targeted", "sent", "opened", "converted");
         assertThat(funnel.stages()).extracting(stage -> stage.count())
-                .containsExactly(2L, 2L, 1L);
+                .containsExactly(2L, 2L, 0L, 1L);
     }
 
     @Test
@@ -143,7 +143,7 @@ class CampaignFunnelServiceTest {
     }
 
     @Test
-    void segmentOnlyCampaignIsNotConvertible() {
+    void campaignWithoutTargetProductsCountsAnyPurchaseInTheWindow() {
         CampaignResponse sent = campaigns.send(
                 ADMIN, "Chăm sóc VIP", List.of(segmentId), "Xin chào",
                 null, null, null, null, null);
@@ -154,7 +154,7 @@ class CampaignFunnelServiceTest {
         assertThat(funnel.targeted()).isEqualTo(2);
         assertThat(funnel.sent()).isEqualTo(2);
         assertThat(funnel.convertible()).isFalse();
-        assertThat(funnel.converted()).isEqualTo(0);
+        assertThat(funnel.converted()).isEqualTo(1);
         assertThat(funnel.productIds()).isEmpty();
     }
 

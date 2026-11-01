@@ -16,6 +16,7 @@ public record CustomerProfileResponse(
         int totalOrders,
         String rfmSegment,
         Instant lastPurchaseAt,
-        Instant calculatedAt
+        Instant calculatedAt,
+        BigDecimal totalSpent
 ) {
 }

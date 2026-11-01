@@ -45,6 +45,19 @@ const FIELDS_BY_TYPE: Record<ProductType, { game: boolean; hardware: boolean }> 
   accessory: { game: false, hardware: true },
 }
 
+/** SKU convention, enforced by the backend too: PLATFORM-KIND-ITEM[-VERSION], e.g. PS5-GAME-SPIDERMAN2. */
+const SKU_KIND: Record<ProductType, string> = { game_disc: 'GAME', controller: 'CTL', accessory: 'ACC' }
+const SKU_PATTERN = '[A-Za-z0-9]+(-[A-Za-z0-9]+){2,}'
+const SKU_NOISE = new Set(['DIA', 'GAME', 'TAY', 'CAM', 'KHONG', 'DAY', 'CHO', 'PS5', 'PS4', 'PLAYSTATION', 'STANDARD', 'STD', 'EDITION', 'BAN'])
+
+/** Suggests a readable SKU from the platform, product type and name (accents dropped, filler words skipped). */
+function suggestSku(name: string, productType: ProductType, platforms: string): string {
+  const platform = (platforms.split(',')[0] ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '') || 'PS5'
+  const words = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'D').toUpperCase()
+    .split(/[^A-Z0-9]+/).filter((word) => word && !SKU_NOISE.has(word)).slice(0, 3)
+  return [platform, SKU_KIND[productType], ...(words.length ? words : ['ITEM'])].join('-')
+}
+
 const EMPTY_FORM = {
   name: '', categoryId: '', brandName: '', description: '', status: 'draft' as 'draft' | 'published',
   productType: 'accessory' as ProductType, platforms: '', publisher: '', genre: '', ageRating: '',
@@ -217,7 +230,16 @@ export default function AdminProductsPage() {
         <label>Bảo hành (tháng)<input type="number" min="0" value={form.warrantyMonths} onChange={(e) => setForm({ ...form, warrantyMonths: e.target.value })} /></label>
       </>}
       <label>Xuất xứ<input maxLength={100} placeholder="Ví dụ: Nhật Bản" value={form.originCountry} onChange={(e) => setForm({ ...form, originCountry: e.target.value })} /></label>
-      <label>Mã SKU biến thể<input required value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} /></label>
+      <label>Mã SKU biến thể
+        <span className="flex gap-2">
+          <input required maxLength={100} pattern={SKU_PATTERN} placeholder="PS5-GAME-SPIDERMAN2"
+            title="NỀN TẢNG-LOẠI-TÊN, chữ in hoa/số nối bằng dấu gạch ngang. LOẠI: GAME, CTL (tay cầm), ACC (phụ kiện)"
+            value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value.toUpperCase().replace(/\s+/g, '-') })} />
+          <button className={buttonClass('outline')} type="button" disabled={!form.name.trim()}
+            onClick={() => setForm({ ...form, sku: suggestSku(form.name, form.productType, form.platforms) })}>Gợi ý</button>
+        </span>
+        <small>NỀN TẢNG-LOẠI-TÊN · LOẠI: GAME / CTL (tay cầm) / ACC (phụ kiện)</small>
+      </label>
       <label>Giá bán<input required type="number" min="0" step="1000" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></label>
       <label>Giá so sánh<input type="number" min="0" step="1000" value={form.comparePrice} onChange={(e) => setForm({ ...form, comparePrice: e.target.value })} /></label>
       <label>Thuộc tính biến thể (JSON)<input placeholder='{"màu":"Đen"}' value={form.attributes} onChange={(e) => setForm({ ...form, attributes: e.target.value })} /></label>

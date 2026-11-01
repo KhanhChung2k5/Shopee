@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ApiError, apiFetch } from '../../lib/api'
-import { formatVnd, type GoodsReceipt } from '../../lib/catalog'
+import { formatVnd, type GoodsReceipt, type InventoryStock } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
 import { a, statusPillClass } from '../adminUi'
 import { buttonClass } from '../../components/ui'
 import { useDialog } from '../../state/DialogContext'
+import VariantPicker from '../components/VariantPicker'
+import type { VariantOption } from '../variants'
 
 interface Warehouse { id: string; name: string }
-interface Variant { id: string; productId: string; sku: string; status: string }
 interface ReceiptLine { variantId: string; quantity: string; unitCost: string }
 
 const EMPTY_LINE: ReceiptLine = { variantId: '', quantity: '1', unitCost: '' }
@@ -17,7 +18,8 @@ export default function AdminGoodsReceiptsPage() {
   const { confirm } = useDialog()
   const [receipts, setReceipts] = useState<GoodsReceipt[]>([])
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
-  const [variants, setVariants] = useState<Variant[]>([])
+  const [variants, setVariants] = useState<VariantOption[]>([])
+  const [stocks, setStocks] = useState<InventoryStock[]>([])
   const [warehouseId, setWarehouseId] = useState('')
   const [supplierName, setSupplierName] = useState('')
   const [lines, setLines] = useState<ReceiptLine[]>([{ ...EMPTY_LINE }])
@@ -30,12 +32,14 @@ export default function AdminGoodsReceiptsPage() {
     if (!token) return
     setLoading(true)
     try {
-      const [receiptData, warehouseData, variantData] = await Promise.all([
+      const [receiptData, warehouseData, variantData, stockData] = await Promise.all([
         apiFetch<GoodsReceipt[]>('/api/catalog/goods-receipts', {}, token),
         apiFetch<Warehouse[]>('/api/catalog/warehouses', {}, token),
-        apiFetch<Variant[]>('/api/catalog/product-variants', {}, token),
+        apiFetch<VariantOption[]>('/api/catalog/product-variants', {}, token),
+        apiFetch<InventoryStock[]>('/api/catalog/inventory/stocks', {}, token),
       ])
       setReceipts(receiptData)
+      setStocks(stockData)
       setWarehouses(warehouseData)
       setVariants(variantData.filter((variant) => variant.status === 'active'))
       setWarehouseId((current) => current || warehouseData[0]?.id || '')
@@ -48,6 +52,16 @@ export default function AdminGoodsReceiptsPage() {
   }, [token])
 
   useEffect(() => { void refresh() }, [refresh])
+
+  /** What staff check a line against: stock already in the receiving warehouse and the last approved unit cost. */
+  const lineHint = (variantId: string) => {
+    if (!variantId) return null
+    const stock = stocks.find((item) => item.variantId === variantId && item.warehouseId === warehouseId)
+    const lastCost = receipts.filter((receipt) => receipt.status === 'approved')
+      .flatMap((receipt) => receipt.items.filter((item) => item.variantId === variantId).map((item) => ({ at: receipt.receivedAt, cost: item.unitCost })))
+      .sort((x, y) => y.at.localeCompare(x.at))[0]
+    return `Tồn tại kho này: ${stock ? stock.quantity : 0}${lastCost ? ` · Giá nhập gần nhất: ${formatVnd(lastCost.cost)}` : ' · Chưa từng nhập'}`
+  }
 
   const updateLine = (index: number, change: Partial<ReceiptLine>) => {
     setLines((current) => current.map((line, itemIndex) => itemIndex === index ? { ...line, ...change } : line))
@@ -114,10 +128,11 @@ export default function AdminGoodsReceiptsPage() {
       <div className={a.formWide}>
         <h3>Sản phẩm nhập</h3>
         {lines.map((line, index) => <div className={a.receiptLine} key={index}>
-          <label>Biến thể / SKU<select required value={line.variantId} onChange={(event) => updateLine(index, { variantId: event.target.value })}><option value="">Chọn SKU</option>{variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.sku}</option>)}</select></label>
+          <label>Sản phẩm<VariantPicker variants={variants} value={line.variantId} onChange={(variantId) => updateLine(index, { variantId })} /></label>
           <label>Số lượng<input required type="number" min="1" step="1" value={line.quantity} onChange={(event) => updateLine(index, { quantity: event.target.value })} /></label>
           <label>Đơn giá nhập<input required type="number" min="0" step="1000" value={line.unitCost} onChange={(event) => updateLine(index, { unitCost: event.target.value })} /></label>
           <button className={buttonClass('outline')} type="button" disabled={lines.length === 1} onClick={() => setLines((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Xoá dòng</button>
+          {line.variantId && <small className="md:col-span-4 font-label-md text-label-md text-on-surface-variant">{lineHint(line.variantId)}</small>}
         </div>)}
         <button className={buttonClass('outline')} type="button" onClick={() => setLines((current) => [...current, { ...EMPTY_LINE }])}>+ Thêm dòng hàng</button>
       </div>
@@ -128,7 +143,7 @@ export default function AdminGoodsReceiptsPage() {
       <tbody>{receipts.map((receipt) => <tr key={receipt.id}>
         <td>{receipt.code}</td><td>{new Date(receipt.receivedAt).toLocaleString('vi-VN')}</td>
         <td>{receipt.warehouseName}<br />{receipt.supplierName ?? '—'}</td>
-        <td>{receipt.items.map((item) => `${item.sku} × ${item.quantity}`).join(', ')}</td><td>{formatVnd(receipt.totalCost)}</td>
+        <td>{receipt.items.length === 0 ? '—' : <ul className="max-h-32 overflow-y-auto">{receipt.items.map((item) => <li key={item.id}>{item.productName} × {item.quantity} <small className="block text-on-surface-variant">{item.sku}</small></li>)}</ul>}</td><td>{formatVnd(receipt.totalCost)}</td>
         <td>{receipt.createdByName ?? '—'}<br /><small>{receipt.decidedByName
           ? `${receipt.status === 'rejected' ? 'Từ chối' : 'Duyệt'}: ${receipt.decidedByName}${receipt.decidedAt ? ` (${new Date(receipt.decidedAt).toLocaleDateString('vi-VN')})` : ''}`
           : receipt.status === 'pending' ? 'Chờ người khác duyệt' : '—'}</small></td>

@@ -46,7 +46,9 @@ public class JdbcConversationStore implements ConversationStore {
                     channel = EXCLUDED.channel,
                     status = EXCLUDED.status,
                     priority = EXCLUDED.priority,
-                    last_message_at = EXCLUDED.last_message_at
+                    last_message_at = EXCLUDED.last_message_at,
+                    closed_at = CASE WHEN EXCLUDED.status = 'closed'
+                                     THEN COALESCE(conversations.closed_at, now()) END
                 """,
                 conversation.id(),
                 conversation.userId(),

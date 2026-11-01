@@ -70,7 +70,7 @@ class OrderDeliveredSurveyDispatcherTest {
                 "An", "male", LocalDate.of(1998, 5, 12), CustomerStatus.ACTIVE);
         surveyId = UUID.randomUUID();
         orderId = UUID.randomUUID();
-        surveys.save(new Survey(surveyId, ADMIN, "Sau giao hàng", "Góp ý", Survey.DRAFT, NOW), List.of());
+        surveys.save(new Survey(surveyId, ADMIN, "Sau giao hàng", "Góp ý", Survey.SENT, NOW), List.of());
         targetService.set(ADMIN, surveyId, List.of(PRODUCT), null);
         orders.seedDeliveredOrder(new DeliveredOrderView(
                 orderId,
@@ -78,6 +78,16 @@ class OrderDeliveredSurveyDispatcherTest {
                 new BigDecimal("1890000"),
                 NOW,
                 List.of(new DeliveredOrderLine(PRODUCT, CAT, "Tay cầm", new BigDecimal("1890000")))));
+    }
+
+    @Test
+    void aDraftSurveyIsNeverSentToCustomers() {
+        surveys.save(new Survey(surveyId, ADMIN, "Sau giao hàng", "Góp ý", Survey.DRAFT, NOW), List.of());
+
+        assertThat(dispatcher.dispatch(ADMIN, customer.id(), orderId).sentCount()).isZero();
+        assertThat(notifications.findByUser(customer.id())).isEmpty();
+        assertThat(surveys.find(surveyId)).hasValueSatisfying(survey ->
+                assertThat(survey.status()).isEqualTo(Survey.DRAFT));
     }
 
     @Test
@@ -91,8 +101,8 @@ class OrderDeliveredSurveyDispatcherTest {
         assertThat(inbox.getFirst().referenceType()).isEqualTo("survey");
         assertThat(inbox.getFirst().referenceId()).isEqualTo(surveyId);
         assertThat(inbox.getFirst().channel()).isEqualTo("in_app");
-        assertThat(surveys.find(surveyId)).hasValueSatisfying(survey ->
-                assertThat(survey.status()).isEqualTo(Survey.SENT));
+        assertThat(inbox.getFirst().orderId()).isEqualTo(orderId);
+        assertThat(inbox.getFirst().campaignId()).isNull();
 
         OrderDeliveredSurveyResponse second = dispatcher.dispatch(ADMIN, customer.id(), orderId);
         assertThat(second.sentCount()).isZero();

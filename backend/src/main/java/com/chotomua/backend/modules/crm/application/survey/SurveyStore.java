@@ -25,10 +25,11 @@ public interface SurveyStore {
 
     List<SurveyQuestion> questionsOf(UUID surveyId);
 
-    /** Lưu phiếu trả lời; mỗi khách mỗi khảo sát một lần. */
+    /** Lưu phiếu trả lời; mỗi khách trả lời một lần cho mỗi đơn (hoặc một lần nếu thư mời không gắn đơn). */
     void saveSubmission(SurveySubmission submission);
 
-    Optional<SurveySubmission> findSubmission(UUID surveyId, UUID userId);
+    /** Bài nộp của khách cho khảo sát, theo đơn ({@code orderId} null = thư mời không gắn đơn). */
+    Optional<SurveySubmission> findSubmission(UUID surveyId, UUID userId, UUID orderId);
 
     List<SurveySubmission> submissionsOf(UUID surveyId);
 

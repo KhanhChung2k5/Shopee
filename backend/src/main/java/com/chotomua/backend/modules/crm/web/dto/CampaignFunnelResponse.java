@@ -17,6 +17,7 @@ public record CampaignFunnelResponse(
         boolean convertible,
         int targeted,
         int sent,
+        int opened,
         int converted,
         BigDecimal conversionRate,
         List<UUID> productIds,

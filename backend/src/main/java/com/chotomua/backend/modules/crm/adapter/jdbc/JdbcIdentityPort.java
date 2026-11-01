@@ -66,8 +66,8 @@ public class JdbcIdentityPort implements IdentityPort {
                         toDate(command.dob()));
             } else {
                 jdbc.update("""
-                        INSERT INTO users (id, role, phone, email, password_hash, status, full_name, gender, dob)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO users (id, role, phone, email, password_hash, status, full_name, gender, dob, loyalty_tier)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'bronze')
                         """,
                         id,
                         customerRoleName(),

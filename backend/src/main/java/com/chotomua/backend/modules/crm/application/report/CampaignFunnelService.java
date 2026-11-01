@@ -1,7 +1,6 @@
 package com.chotomua.backend.modules.crm.application.report;
 
 import com.chotomua.backend.modules.crm.application.campaign.CampaignProductTargetStore;
-import com.chotomua.backend.modules.crm.application.campaign.CampaignService;
 import com.chotomua.backend.modules.crm.application.campaign.CampaignStore;
 import com.chotomua.backend.modules.crm.application.exception.CampaignNotFoundException;
 import com.chotomua.backend.modules.crm.application.notification.NotificationStore;
@@ -27,8 +26,9 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Funnel suy ra từ thông báo đã tạo và đơn {@code delivered} trong cửa sổ chiến dịch.
- * Không đọc click inbox, không ghi {@code campaign_id} lên đơn.
+ * Phễu: nhắm tới → đã vào hộp thư → đã đọc → mua trong cửa sổ chiến dịch.
+ * Có sản phẩm mục tiêu thì "mua" là đơn đã giao chứa sản phẩm đó; không có thì là bất kỳ đơn đã giao nào.
+ * Chỉ tính thư do chính chiến dịch gửi ({@code campaignId}); không ghi {@code campaign_id} lên đơn.
  */
 @Service
 public class CampaignFunnelService {
@@ -66,21 +66,23 @@ public class CampaignFunnelService {
                 .orElseThrow(() -> new CampaignNotFoundException(campaignId));
         Instant from = CampaignConversionWindow.from(campaign);
         Instant to = CampaignConversionWindow.to(campaign);
-        Reference reference = referenceOf(campaign);
-        Set<UUID> recipients = notifications.recipientIds(reference.type(), reference.id());
+        Set<UUID> recipients = notifications.recipientIds(NotificationStore.SCOPE_CAMPAIGN, campaign.id());
         Set<UUID> sentUsers = new LinkedHashSet<>();
+        int opened = 0;
         for (UUID userId : recipients) {
-            if (inboxDelivered(userId, reference)) {
+            String status = inboxStatus(userId, campaign.id());
+            if (status != null) {
                 sentUsers.add(userId);
+                if (STATUS_READ.equals(status)) {
+                    opened += 1;
+                }
             }
         }
         Set<UUID> targetProducts = resolveProductIds(productTargets.find(campaignId).orElse(null));
         int converted = 0;
-        if (!targetProducts.isEmpty()) {
-            for (UUID userId : sentUsers) {
-                if (boughtTargetInWindow(userId, targetProducts, from, to)) {
-                    converted += 1;
-                }
+        for (UUID userId : sentUsers) {
+            if (boughtInWindow(userId, targetProducts, from, to)) {
+                converted += 1;
             }
         }
         int targeted = recipients.size();
@@ -94,35 +96,44 @@ public class CampaignFunnelService {
                 !targetProducts.isEmpty(),
                 targeted,
                 sent,
+                opened,
                 converted,
                 rate,
                 List.copyOf(targetProducts),
-                stages(targeted, sent, converted));
+                stages(targeted, sent, opened, converted));
     }
 
     /** Tầng biểu đồ: mẫu số là số người được nhắm. */
-    private static List<ReportBucket> stages(int targeted, int sent, int converted) {
+    private static List<ReportBucket> stages(int targeted, int sent, int opened, int converted) {
         return List.of(
                 new ReportBucket("targeted", "Nhắm", targeted, CustomerReportService.percent(targeted, targeted)),
                 new ReportBucket("sent", "Đã gửi", sent, CustomerReportService.percent(sent, targeted)),
+                new ReportBucket("opened", "Đã đọc", opened, CustomerReportService.percent(opened, targeted)),
                 new ReportBucket("converted", "Mua sau chiến dịch", converted, CustomerReportService.percent(converted, targeted)));
     }
 
-    /** Thư đã vào hộp thư ({@code sent} hoặc {@code read}), không tính lịch. */
-    private boolean inboxDelivered(UUID userId, Reference reference) {
+    /**
+     * Trạng thái thư của chiến dịch trong hộp thư khách: {@code read} nếu đã mở, {@code sent} nếu mới vào hộp thư,
+     * {@code null} nếu chưa phát (còn lịch).
+     */
+    private String inboxStatus(UUID userId, UUID campaignId) {
+        String best = null;
         for (AppNotification note : notifications.findByUser(userId)) {
-            if (!reference.type().equals(note.referenceType()) || !reference.id().equals(note.referenceId())) {
+            if (!campaignId.equals(note.campaignId())) {
                 continue;
             }
-            if (STATUS_SENT.equals(note.status()) || STATUS_READ.equals(note.status())) {
-                return true;
+            if (STATUS_READ.equals(note.status())) {
+                return STATUS_READ;
+            }
+            if (STATUS_SENT.equals(note.status())) {
+                best = STATUS_SENT;
             }
         }
-        return false;
+        return best;
     }
 
-    /** Đơn đã giao trong cửa sổ và có ít nhất một sản phẩm mục tiêu. */
-    private boolean boughtTargetInWindow(UUID userId, Set<UUID> targetProducts, Instant from, Instant to) {
+    /** Đơn đã giao trong cửa sổ; có sản phẩm mục tiêu thì đơn phải chứa ít nhất một sản phẩm đó. */
+    private boolean boughtInWindow(UUID userId, Set<UUID> targetProducts, Instant from, Instant to) {
         List<DeliveredOrderView> delivered = orders.listDeliveredOrders(userId);
         if (delivered == null) {
             return false;
@@ -130,6 +141,9 @@ public class CampaignFunnelService {
         for (DeliveredOrderView order : delivered) {
             if (!CampaignConversionWindow.contains(order.deliveredAt(), from, to)) {
                 continue;
+            }
+            if (targetProducts.isEmpty()) {
+                return true;
             }
             if (order.lines() == null) {
                 continue;
@@ -161,14 +175,4 @@ public class CampaignFunnelService {
         return ids;
     }
 
-    /** Khảo sát thì thư neo {@code surveyId}; không thì neo chính chiến dịch. */
-    private static Reference referenceOf(Campaign campaign) {
-        if (campaign.surveyId() == null) {
-            return new Reference(CampaignService.REFERENCE_CAMPAIGN, campaign.id());
-        }
-        return new Reference(CampaignService.REFERENCE_SURVEY, campaign.surveyId());
-    }
-
-    private record Reference(String type, UUID id) {
-    }
 }

@@ -126,7 +126,9 @@ public class InMemoryNotificationStore implements NotificationStore {
                     row.channel(),
                     content,
                     row.status(),
-                    row.sentAt()));
+                    row.sentAt(),
+                    row.campaignId(),
+                    row.orderId()));
         }
     }
 
@@ -199,11 +201,20 @@ public class InMemoryNotificationStore implements NotificationStore {
                 row.channel(),
                 row.content(),
                 status,
-                sentAt);
+                sentAt,
+                row.campaignId(),
+                row.orderId());
     }
 
-    /** Cùng chiến dịch hoặc khảo sát. */
+    /** Thư thuộc phạm vi: một chiến dịch, mọi thư mời của khảo sát, hoặc thư mời khảo sát gửi thẳng. */
     private static boolean matches(AppNotification row, String referenceType, UUID referenceId) {
+        if (SCOPE_CAMPAIGN.equals(referenceType)) {
+            return referenceId.equals(row.campaignId());
+        }
+        if (SCOPE_SURVEY_DIRECT.equals(referenceType)) {
+            return "survey".equals(row.referenceType()) && referenceId.equals(row.referenceId())
+                    && row.campaignId() == null && row.orderId() == null;
+        }
         return referenceType.equals(row.referenceType()) && referenceId.equals(row.referenceId());
     }
 }

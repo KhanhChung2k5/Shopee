@@ -129,16 +129,17 @@ function ConversationPanel({ token, id, onChanged, onError }: { token: string; i
           </p>
         )}
         <div className="flex flex-wrap items-center gap-space-xs">
+          {detail.status === 'open' && <button type="button" className={buttonClass('primary', 'sm')} onClick={() => void apply(() => patchConversation(token, id, { status: 'in_progress' }), 'Không nhận xử lý được')}>Nhận xử lý</button>}
           {!closed
-            ? <button type="button" className={buttonClass('outline', 'sm')} onClick={() => void apply(() => patchConversation(token, id, { status: 'closed' }), 'Không đóng được')}>Đóng hội thoại</button>
-            : <button type="button" className={buttonClass('outline', 'sm')} onClick={() => void apply(() => patchConversation(token, id, { status: 'in_progress' }), 'Không mở lại được')}>Mở lại</button>}
+            ? <button type="button" className={buttonClass('outline', 'sm')} title="Cần có người phụ trách và đã trả lời khách" onClick={() => void apply(() => patchConversation(token, id, { status: 'closed' }), 'Không đóng được')}>Đóng hội thoại</button>
+            : <span className="font-label-md text-label-md text-on-surface-variant">Đã đóng – khách mở yêu cầu mới nếu vẫn cần hỗ trợ</span>}
           <button type="button" className={buttonClass('outline', 'sm')} onClick={() => void apply(() => patchConversation(token, id, { priority: detail.priority === 'high' ? 'normal' : 'high' }), 'Không đổi được ưu tiên')}>
             {detail.priority === 'high' ? 'Bỏ ưu tiên' : 'Đánh dấu ưu tiên'}
           </button>
-          <select className={cx(a.input, '!w-auto !py-1')} value="" onChange={(e) => e.target.value && void apply(() => escalateConversation(token, id, e.target.value), 'Không chuyển được')}>
+          {!closed && <select className={cx(a.input, '!w-auto !py-1')} value="" onChange={(e) => e.target.value && void apply(() => escalateConversation(token, id, e.target.value), 'Không chuyển được')}>
             <option value="">Chuyển cho nhân viên…</option>
             {agents.filter((ag) => ag.userId !== detail.assigneeId).map((ag) => <option key={ag.userId} value={ag.userId}>{ag.fullName} ({ag.roleLabel})</option>)}
-          </select>
+          </select>}
           {detail.assigneeName && <span className="font-label-md text-label-md text-on-surface-variant">Phụ trách: {detail.assigneeName}</span>}
         </div>
       </header>

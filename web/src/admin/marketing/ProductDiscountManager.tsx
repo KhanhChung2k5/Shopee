@@ -1,10 +1,12 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { apiFetch } from '../../lib/api'
 import type { ProductDiscount, PromotionProgram } from './types'
 import { errorMessage, money } from './types'
 import { a } from '../adminUi'
 import { buttonClass } from '../../components/ui'
 import { useDialog } from '../../state/DialogContext'
+import VariantPicker from '../components/VariantPicker'
+import { variantLabel, type VariantOption } from '../variants'
 
 interface ProductForm {
   promotionProgramId: string
@@ -31,6 +33,13 @@ export default function ProductDiscountManager({ token, programs, discounts, onC
   const [form, setForm] = useState<ProductForm>(EMPTY_FORM)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [variants, setVariants] = useState<VariantOption[]>([])
+
+  useEffect(() => {
+    apiFetch<VariantOption[]>('/api/catalog/product-variants', {}, token)
+      .then(setVariants)
+      .catch(() => setVariants([]))
+  }, [token])
 
   const edit = (discount: ProductDiscount) => {
     setEditingId(discount.id)
@@ -53,6 +62,7 @@ export default function ProductDiscountManager({ token, programs, discounts, onC
   const save = async (event: FormEvent) => {
     event.preventDefault()
     if (busy) return
+    if (!form.variantId) { setError('Chọn sản phẩm được ưu đãi.'); return }
     setBusy(true)
     setError(null)
     const isFlash = form.kind === 'flash'
@@ -95,9 +105,6 @@ export default function ProductDiscountManager({ token, programs, discounts, onC
   return (
     <section className={`${a.card} mt-space-lg`}>
       <h2 className="font-headline-md text-headline-md text-on-surface mb-space-md">Ưu đãi SKU / Flash Sale ({discounts.length})</h2>
-      <p className="font-body-md text-body-md text-on-surface-variant mb-space-md">
-        Nhập ID biến thể sản phẩm từ P2. Khi API catalog có sẵn, trường này sẽ đổi thành bộ chọn SKU.
-      </p>
       <form onSubmit={save} className={a.formGrid}>
         <label>
           Chương trình
@@ -108,9 +115,9 @@ export default function ProductDiscountManager({ token, programs, discounts, onC
           </select>
         </label>
         <label>
-          ID biến thể (SKU)
-          <input className={a.input} required placeholder="UUID của product_variants"
-            value={form.variantId} onChange={(event) => setForm({ ...form, variantId: event.target.value })} />
+          Sản phẩm
+          <VariantPicker variants={variants.filter((variant) => variant.status === 'active' || variant.id === form.variantId)}
+            value={form.variantId} onChange={(variantId) => setForm({ ...form, variantId })} />
         </label>
         <label>
           Kiểu ưu đãi
@@ -144,12 +151,12 @@ export default function ProductDiscountManager({ token, programs, discounts, onC
 
       <div className={a.tableWrap}>
         <table className={a.table}>
-          <thead><tr><th>Chương trình</th><th>SKU</th><th>Mức giảm</th><th>Đã bán / Giới hạn</th><th>Thao tác</th></tr></thead>
+          <thead><tr><th>Chương trình</th><th>Sản phẩm</th><th>Mức giảm</th><th>Đã bán / Giới hạn</th><th>Thao tác</th></tr></thead>
           <tbody>
             {discounts.map((discount) => (
               <tr key={discount.id}>
                 <td>{programs.find((program) => program.id === discount.promotionProgramId)?.code ?? '—'}</td>
-                <td><code>{discount.variantId}</code></td>
+                <td>{(() => { const variant = variants.find((item) => item.id === discount.variantId); return variant ? variantLabel(variant) : <code>{discount.variantId}</code> })()}</td>
                 <td>{discount.flashPrice === null ? `${discount.discountPercent}%` : money.format(discount.flashPrice)}</td>
                 <td>{discount.limitQty === null ? '—' : `${discount.soldQty}/${discount.limitQty}`}</td>
                 <td>

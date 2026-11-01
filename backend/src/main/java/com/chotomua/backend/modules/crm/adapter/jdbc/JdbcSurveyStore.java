@@ -197,12 +197,12 @@ public class JdbcSurveyStore implements SurveyStore {
     }
 
     @Override
-    public Optional<SurveySubmission> findSubmission(UUID surveyId, UUID userId) {
+    public Optional<SurveySubmission> findSubmission(UUID surveyId, UUID userId, UUID orderId) {
         List<SurveySubmission> rows = loadHeaders("""
                 SELECT id, survey_id, user_id, order_id, submitted_at
                 FROM survey_responses
-                WHERE survey_id = ? AND user_id = ?
-                """, surveyId, userId);
+                WHERE survey_id = ? AND user_id = ? AND order_id IS NOT DISTINCT FROM CAST(? AS uuid)
+                """, surveyId, userId, orderId);
         return rows.stream().findFirst().map(this::withAnswers);
     }
 

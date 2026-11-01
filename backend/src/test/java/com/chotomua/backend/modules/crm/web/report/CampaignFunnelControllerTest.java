@@ -117,8 +117,9 @@ class CampaignFunnelControllerTest {
                 .andExpect(jsonPath("$.converted").value(1))
                 .andExpect(jsonPath("$.conversionRate").value(100.00))
                 .andExpect(jsonPath("$.productIds", hasSize(1)))
-                .andExpect(jsonPath("$.stages[2].bucket").value("converted"))
-                .andExpect(jsonPath("$.stages[2].count").value(1));
+                .andExpect(jsonPath("$.stages[2].bucket").value("opened"))
+                .andExpect(jsonPath("$.stages[3].bucket").value("converted"))
+                .andExpect(jsonPath("$.stages[3].count").value(1));
     }
 
     @Test

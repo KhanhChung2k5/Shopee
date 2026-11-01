@@ -36,7 +36,10 @@ export interface ReportCustomer {
   ageLabel: string
   gender: string
   genderLabel: string
+  /** Forecast lifetime value (see CustomerProfile.ltv). */
   ltv: number
+  /** Money actually spent on delivered orders, net of refunds. */
+  totalSpent: number
   totalOrders: number
   rfmSegment: string | null
 }
@@ -53,7 +56,10 @@ export interface CustomerProfile {
   userId: string
   fullName: string | null
   status: string
+  /** Forecast lifetime value: average order × orders per year × expected lifespan (3 years or longer). */
   ltv: number
+  /** Money actually spent on delivered orders, net of refunds. */
+  totalSpent: number
   totalOrders: number
   rfmSegment: string | null
   lastPurchaseAt: string | null
@@ -122,6 +128,7 @@ export interface CampaignFunnel {
   convertible: boolean
   targeted: number
   sent: number
+  opened: number
   converted: number
   conversionRate: number
   stages: ReportBucket[]
@@ -170,6 +177,7 @@ export const fetchSurveys = (token: string) => apiFetch<{ surveys: Survey[] }>('
 export const createSurvey = (token: string, title: string, description: string) =>
   apiFetch<Survey>('/api/surveys', { method: 'POST', body: JSON.stringify({ title, description, segmentIds: [] }) }, token)
 export const deleteSurvey = (token: string, id: string) => apiFetch<void>(`/api/surveys/${id}`, { method: 'DELETE' }, token)
+export const publishSurvey = (token: string, id: string) => apiFetch<Survey>(`/api/surveys/${id}/publish`, { method: 'POST' }, token)
 export const archiveSurvey = (token: string, id: string) => apiFetch<Survey>(`/api/surveys/${id}/archive`, { method: 'POST' }, token)
 export const addSurveyQuestion = (token: string, id: string, q: { questionText: string; answerType: AnswerType; options: string[] }) =>
   apiFetch<Survey>(`/api/surveys/${id}/questions`, { method: 'POST', body: JSON.stringify(q) }, token)
@@ -185,7 +193,8 @@ export const fetchSurveyProductTarget = (token: string, id: string) =>
 export const setSurveyProductTarget = (token: string, id: string, filter: SurveyProductFilter | null) =>
   apiFetch<SurveyProductTarget>(`/api/surveys/${id}/product-target`, { method: 'PUT', body: JSON.stringify({ productIds: [], filter }) }, token)
 export const fetchSurveyStats = (token: string, id: string) => apiFetch<SurveyStats>(`/api/surveys/${id}/stats`, {}, token)
-export const fetchSurveySheet = (token: string, id: string) => apiFetch<SurveySheet>(`/api/surveys/${id}/sheet`, {}, token)
+export const fetchSurveySheet = (token: string, id: string, orderId?: string | null) =>
+  apiFetch<SurveySheet>(`/api/surveys/${id}/sheet${orderId ? `?orderId=${encodeURIComponent(orderId)}` : ''}`, {}, token)
 export const submitSurvey = (token: string, id: string, answers: { questionId: string; answerText: string }[], orderId?: string | null) =>
   apiFetch<unknown>(`/api/surveys/${id}/responses`, { method: 'POST', body: JSON.stringify({ orderId: orderId ?? null, answers }) }, token)
 
@@ -199,6 +208,8 @@ export interface AppNotification {
   content: string
   status: string
   sentAt: string
+  /** Post-purchase survey invitations name the order they ask about. */
+  orderId: string | null
 }
 export const fetchNotifications = (token: string) => apiFetch<{ notifications: AppNotification[] }>('/api/notifications', {}, token)
 export const markNotificationRead = (token: string, id: string) =>

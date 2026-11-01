@@ -100,7 +100,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-space-md mb-space-lg">
         <div className={`${a.card} lg:col-span-2 flex flex-col`}>
           <div className="flex flex-wrap items-center justify-between gap-space-md">
-            <div className={a.statLabel}>Tổng giá trị vòng đời khách hàng (LTV)</div>
+            <div className={a.statLabel}>Tổng LTV dự báo của khách hàng</div>
             {revenue && trend.deltaPct != null && (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-md text-label-md whitespace-nowrap">
                 <span className="material-symbols-outlined text-sm">{trend.deltaPct >= 0 ? 'trending_up' : 'trending_down'}</span>
@@ -155,7 +155,7 @@ export default function AdminDashboardPage() {
       {canSeeCustomers && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-space-md items-start">
         <div className={`${a.card} lg:col-span-2`}>
-          <div className={`${a.statLabel} !mb-space-md`}>Top 5 khách hàng theo LTV</div>
+          <div className={`${a.statLabel} !mb-space-md`}>Top 5 khách hàng theo LTV dự báo</div>
           <table className={a.tableCompact}>
             <tbody>
               {topCustomers.length === 0 ? (

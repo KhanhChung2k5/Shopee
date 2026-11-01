@@ -16,18 +16,20 @@ export default function SurveyPage() {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
 
+  const orderId = params.get('order')
+
   useEffect(() => {
     if (!token || !id) return
-    fetchSurveySheet(token, id)
+    fetchSurveySheet(token, id, orderId)
       .then((s) => {
         setSheet(s)
         setAnswers(Object.fromEntries(s.answers.map((x) => [x.questionId, x.answerText])))
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : 'Không mở được khảo sát'))
-  }, [token, id])
+  }, [token, id, orderId])
 
   if (!isReady) return <Page><Loading /></Page>
-  if (!isAuthenticated) return <Navigate to="/dang-nhap" replace state={{ from: `/khao-sat/${id}` }} />
+  if (!isAuthenticated) return <Navigate to="/dang-nhap" replace state={{ from: `/khao-sat/${id}${orderId ? `?order=${orderId}` : ''}` }} />
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -37,7 +39,7 @@ export default function SurveyPage() {
     setSubmitting(true)
     setError('')
     try {
-      await submitSurvey(token, sheet.id, sheet.questions.map((q) => ({ questionId: q.id, answerText: answers[q.id].trim() })), params.get('order'))
+      await submitSurvey(token, sheet.id, sheet.questions.map((q) => ({ questionId: q.id, answerText: answers[q.id].trim() })), orderId)
       setDone(true)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Không gửi được câu trả lời')

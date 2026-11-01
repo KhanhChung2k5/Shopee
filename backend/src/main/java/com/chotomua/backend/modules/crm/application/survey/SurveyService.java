@@ -131,7 +131,7 @@ public class SurveyService {
             surveys.saveAudience(surveyId, cleanAudience(segmentIds));
         }
         if (Survey.SENT.equals(updated.status())) {
-            notifications.collapseRecipients("survey", surveyId);
+            notifications.collapseRecipients(NotificationStore.SCOPE_SURVEY_DIRECT, surveyId);
             notifications.updateContent("survey", surveyId, inboxContent(updated));
         }
         return toResponse(updated);
@@ -167,6 +167,35 @@ public class SurveyService {
     }
 
     /**
+     * Phát hành phiếu nháp mà không gửi hòm thư: từ lúc này khảo sát sau mua hàng mới tự gửi
+     * cho đơn đã giao khớp sản phẩm mục tiêu. Phiếu phải có ít nhất một câu hỏi.
+     */
+    public SurveyResponse publish(UUID actorId, UUID surveyId) {
+        identity.requireCrmStaff(actorId);
+        Survey current = require(surveyId);
+        if (!Survey.DRAFT.equals(current.status())) {
+            throw new InvalidSurveyException("Chỉ phát hành được phiếu đang là bản nháp.");
+        }
+        requireQuestions(surveyId);
+        Survey published = new Survey(
+                current.id(),
+                current.createdByEmployeeId(),
+                current.title(),
+                current.description(),
+                Survey.SENT,
+                current.createdAt());
+        surveys.save(published, surveys.questionsOf(surveyId));
+        return toResponse(published);
+    }
+
+    /** Phiếu chưa có câu hỏi thì không được đến tay khách. */
+    private void requireQuestions(UUID surveyId) {
+        if (surveys.questionsOf(surveyId).isEmpty()) {
+            throw new InvalidSurveyException("Khảo sát chưa có câu hỏi nào.");
+        }
+    }
+
+    /**
      * Đưa khảo sát vào hòm thư in-app của khách đang hoạt động trong phân khúc.
      * Không tạo chiến dịch.
      */
@@ -179,6 +208,7 @@ public class SurveyService {
         if (segmentIds == null || segmentIds.isEmpty()) {
             throw new InvalidSurveyException("Chọn ít nhất một đối tượng.");
         }
+        requireQuestions(surveyId);
         Set<UUID> unique = new LinkedHashSet<>(segmentIds);
         for (UUID segmentId : unique) {
             if (segments.find(segmentId).isEmpty()) {
@@ -200,8 +230,8 @@ public class SurveyService {
         }
         Instant now = Instant.now(clock);
         String content = inboxContent(current);
-        notifications.collapseRecipients("survey", surveyId);
-        Set<UUID> already = notifications.recipientIds("survey", surveyId);
+        notifications.collapseRecipients(NotificationStore.SCOPE_SURVEY_DIRECT, surveyId);
+        Set<UUID> already = notifications.recipientIds(NotificationStore.SCOPE_SURVEY_DIRECT, surveyId);
         List<AppNotification> created = new ArrayList<>();
         List<SkippedRecipientResponse> skipped = new ArrayList<>();
         int overwritten = 0;
@@ -228,7 +258,7 @@ public class SurveyService {
             throw new InvalidSurveyException("Không có khách đang hoạt động trong đối tượng đã chọn.");
         }
         if (overwritten > 0) {
-            notifications.updateContent("survey", surveyId, content);
+            notifications.updateContent(NotificationStore.SCOPE_SURVEY_DIRECT, surveyId, content);
         }
         if (!created.isEmpty()) {
             notifications.append(created);
@@ -247,8 +277,9 @@ public class SurveyService {
 
     /**
      * Phiếu để khách đọc và trả lời. Chỉ khách đã nhận thư, tài khoản còn hoạt động.
+     * {@code orderId}: đơn mà thư mời khảo sát sau mua hàng hỏi tới (null = thư mời không gắn đơn).
      */
-    public CustomerSurveySheetResponse sheet(UUID userId, UUID surveyId) {
+    public CustomerSurveySheetResponse sheet(UUID userId, UUID surveyId, UUID orderId) {
         CustomerView customer = identity.getCustomer(userId);
         if (!CustomerStatus.ACTIVE.equals(customer.status())) {
             throw new InvalidSurveyException("Tài khoản đang khóa hoặc đã xóa, không trả lời khảo sát được.");
@@ -257,8 +288,8 @@ public class SurveyService {
         if (Survey.DRAFT.equals(survey.status())) {
             throw new InvalidSurveyException("Khảo sát chưa gửi hoặc đã lưu trữ.");
         }
-        SurveySubmission existing = surveys.findSubmission(surveyId, userId).orElse(null);
-        if (existing == null && !invited(userId, surveyId)) {
+        SurveySubmission existing = surveys.findSubmission(surveyId, userId, orderId).orElse(null);
+        if (existing == null && !invited(userId, surveyId, orderId)) {
             throw new InvalidSurveyException("Bạn không nằm trong danh sách nhận khảo sát này.");
         }
         List<CustomerSurveyAnswerResponse> answers = existing == null
@@ -286,7 +317,7 @@ public class SurveyService {
 
     /**
      * Khách nộp phiếu đã nhận qua thông báo in-app.
-     * Mỗi khách một lần. {@code orderId} chỉ nhận khi đơn thuộc đúng khách.
+     * Mỗi đơn một lần (thư mời không gắn đơn: mỗi khách một lần). {@code orderId} phải là đơn khách được mời.
      */
     public SurveySubmissionResponse submit(
             UUID userId,
@@ -302,11 +333,11 @@ public class SurveyService {
         if (!Survey.SENT.equals(survey.status())) {
             throw new InvalidSurveyException("Khảo sát chưa gửi hoặc đã lưu trữ.");
         }
-        if (!invited(userId, surveyId)) {
+        if (!invited(userId, surveyId, orderId)) {
             throw new InvalidSurveyException("Bạn không nằm trong danh sách nhận khảo sát này.");
         }
-        if (surveys.findSubmission(surveyId, userId).isPresent()) {
-            throw new InvalidSurveyException("Bạn đã gửi khảo sát này.");
+        if (surveys.findSubmission(surveyId, userId, orderId).isPresent()) {
+            throw new InvalidSurveyException(orderId == null ? "Bạn đã gửi khảo sát này." : "Bạn đã gửi khảo sát cho đơn hàng này.");
         }
         if (orderId != null && !orders.existsOrder(userId, orderId)) {
             throw new InvalidSurveyException("Không tìm thấy đơn hàng để gắn khảo sát.");
@@ -346,11 +377,15 @@ public class SurveyService {
         return new SurveyStatsResponse(surveyId, invited, submitted, percent, rows);
     }
 
-    /** Khách đã nhận thư mời khảo sát này và thư còn sent/read. */
-    private boolean invited(UUID userId, UUID surveyId) {
+    /**
+     * Khách đã nhận thư mời khảo sát này (còn sent/read): theo đúng đơn nếu có {@code orderId},
+     * không thì thư mời không gắn đơn (gửi thẳng hoặc qua chiến dịch).
+     */
+    private boolean invited(UUID userId, UUID surveyId, UUID orderId) {
         return notifications.findByUser(userId).stream().anyMatch(note ->
                 "survey".equals(note.referenceType())
                         && surveyId.equals(note.referenceId())
+                        && java.util.Objects.equals(orderId, note.orderId())
                         && ("sent".equals(note.status()) || "read".equals(note.status())));
     }
 

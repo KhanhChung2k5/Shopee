@@ -113,6 +113,41 @@ public class SegmentService {
         }
     }
 
+    /**
+     * Một khách vừa được tính lại nhãn RFM: đưa khách vào đúng phân khúc RFM mặc định và gỡ khỏi các phân khúc
+     * RFM khác. Khách không còn {@code active} bị gỡ khỏi tất cả. Ngày vào phân khúc cũ được giữ.
+     */
+    public void syncRfmMember(UUID userId, String rfmLabel, boolean active) {
+        Instant now = Instant.now(clock);
+        for (RfmPreset preset : RFM_DEFAULTS) {
+            CustomerSegment segment = store.find(preset.id()).orElse(null);
+            if (segment == null) {
+                continue;
+            }
+            List<SegmentMember> members = store.membersOf(segment.id());
+            boolean present = members.stream().anyMatch(member -> member.userId().equals(userId));
+            boolean belongs = active && preset.label().equals(rfmLabel);
+            if (present == belongs) {
+                continue;
+            }
+            List<SegmentMember> next = new ArrayList<>(members);
+            if (belongs) {
+                next.add(new SegmentMember(segment.id(), userId, now));
+            } else {
+                next.removeIf(member -> member.userId().equals(userId));
+            }
+            store.save(segment, List.copyOf(next));
+        }
+    }
+
+    /** Tính lại thành viên mọi phân khúc (chạy hằng đêm sau khi tính lại hồ sơ). */
+    public void refreshAll() {
+        Instant now = Instant.now(clock);
+        for (CustomerSegment segment : store.findAll()) {
+            store.save(segment, match(segment.id(), segment.rule(), now, addedAtByUser(segment.id())));
+        }
+    }
+
     /** Câu chuyện 4–7: quản trị, quản lý CRM hoặc CSKH. */
     public SegmentListResponse list(UUID actorId) {
         identity.requireAudienceReader(actorId);

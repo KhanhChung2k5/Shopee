@@ -5,7 +5,9 @@ import com.chotomua.backend.modules.crm.domain.profile.LifetimeValue;
 import com.chotomua.backend.modules.crm.domain.profile.RfmClassifier;
 import com.chotomua.backend.modules.crm.port.IdentityPort;
 import com.chotomua.backend.modules.crm.port.OrderPort;
+import com.chotomua.backend.modules.crm.application.segment.SegmentService;
 import com.chotomua.backend.modules.crm.port.dto.CustomerFilter;
+import com.chotomua.backend.modules.crm.port.dto.CustomerStatus;
 import com.chotomua.backend.modules.crm.port.dto.CustomerView;
 import com.chotomua.backend.modules.crm.port.dto.DeliveredOrderView;
 import com.chotomua.backend.modules.crm.web.dto.CustomerProfileResponse;
@@ -34,6 +36,7 @@ public class CustomerProfileService {
     private final OrderPort orders;
     private final ProfileStore store;
     private final Clock clock;
+    private SegmentService segments;
 
     @Autowired
     public CustomerProfileService(IdentityPort identity, OrderPort orders, ProfileStore store) {
@@ -46,6 +49,12 @@ public class CustomerProfileService {
         this.orders = orders;
         this.store = store;
         this.clock = clock;
+    }
+
+    /** Phân khúc RFM theo kịp nhãn mới sau mỗi lần tính lại (tùy chọn, để kiểm thử dựng service gọn). */
+    @Autowired(required = false)
+    public void setSegmentService(SegmentService segments) {
+        this.segments = segments;
     }
 
     /** Xem hồ sơ. Chưa tính lại thì trả số 0, nhãn {@code new}, chưa có mốc tính. */
@@ -76,8 +85,12 @@ public class CustomerProfileService {
                         delivered.size(),
                         value.historicalSpend()),
                 value.lastPurchaseAt(),
-                Instant.now(clock));
+                Instant.now(clock),
+                value.historicalSpend());
         store.save(profile);
+        if (segments != null) {
+            segments.syncRfmMember(customer.id(), profile.rfmSegment(), CustomerStatus.ACTIVE.equals(customer.status()));
+        }
         return profile;
     }
 
@@ -130,6 +143,7 @@ public class CustomerProfileService {
                 profile.totalOrders(),
                 profile.rfmSegment(),
                 profile.lastPurchaseAt(),
-                profile.calculatedAt());
+                profile.calculatedAt(),
+                profile.totalSpent());
     }
 }

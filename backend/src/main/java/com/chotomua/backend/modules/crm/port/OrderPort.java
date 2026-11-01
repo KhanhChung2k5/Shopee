@@ -47,4 +47,25 @@ public interface OrderPort {
      * Loại sản phẩm đã sở hữu, xếp theo tần suất giảm dần, cắt {@code limit}.
      */
     List<UUID> coPurchasedProducts(Collection<UUID> ownedProductIds, int limit);
+
+    /**
+     * Việc còn dang dở với khách: đơn chưa giao xong/chưa hủy và yêu cầu hoàn tiền chưa kết thúc.
+     * Khóa hay xóa khách khi còn những việc này sẽ bỏ lửng giao hàng hoặc tiền hoàn.
+     */
+    default OpenWork openWork(UUID userId) {
+        return new OpenWork(0, 0);
+    }
+
+    record OpenWork(int openOrders, int openRefunds) {
+        public boolean any() {
+            return openOrders > 0 || openRefunds > 0;
+        }
+
+        /** "2 đơn chưa hoàn tất và 1 yêu cầu hoàn tiền chưa xử lý xong" (chỉ phần khác 0). */
+        public String describe() {
+            String ordersText = openOrders > 0 ? openOrders + " đơn chưa hoàn tất" : "";
+            String refundsText = openRefunds > 0 ? openRefunds + " yêu cầu hoàn tiền chưa xử lý xong" : "";
+            return ordersText.isEmpty() ? refundsText : refundsText.isEmpty() ? ordersText : ordersText + " và " + refundsText;
+        }
+    }
 }

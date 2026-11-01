@@ -8,8 +8,17 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-/** Kho thông báo in-app. Khách chỉ đọc hộp thư của chính mình. */
+/**
+ * Kho thông báo in-app. Khách chỉ đọc hộp thư của chính mình.
+ * Các hàm theo {@code (referenceType, referenceId)} hiểu ba phạm vi:
+ * {@link #SCOPE_CAMPAIGN} = thư do một chiến dịch gửi (theo {@code campaignId}, kể cả thư khảo sát chiến dịch mang theo);
+ * {@code survey} = mọi thư mời của một khảo sát; {@link #SCOPE_SURVEY_DIRECT} = thư mời khảo sát gửi thẳng vào
+ * hộp thư (không qua chiến dịch, không gắn đơn).
+ */
 public interface NotificationStore {
+
+    String SCOPE_CAMPAIGN = "campaign";
+    String SCOPE_SURVEY_DIRECT = "survey_direct";
 
     /** Thêm hàng loạt thư vào hộp thư. */
     void append(List<AppNotification> notifications);

@@ -34,6 +34,7 @@ export default function AdminCrmProfilesPage() {
     return counts
   }, [customers])
   const totalLtv = customers.reduce((sum, c) => sum + Number(c.ltv ?? 0), 0)
+  const totalSpent = customers.reduce((sum, c) => sum + Number(c.totalSpent ?? 0), 0)
 
   const filtered = customers
     .filter((c) => rfm === 'all' || (c.rfmSegment ?? 'other') === rfm)
@@ -64,8 +65,12 @@ export default function AdminCrmProfilesPage() {
           <div className={a.statValue}>{report?.totalCustomers ?? '…'}</div>
         </div>
         <div className={a.card}>
-          <div className={a.statLabel}>Tổng giá trị vòng đời (LTV)</div>
-          <div className={`${a.statValue} !text-primary`}>{formatVnd(totalLtv)}</div>
+          <div className={a.statLabel}>Khách đã chi (sau hoàn tiền)</div>
+          <div className="font-headline-md text-headline-md text-on-surface">{formatVnd(totalSpent)}</div>
+        </div>
+        <div className={a.card}>
+          <div className={a.statLabel}>Tổng LTV dự báo</div>
+          <div className="font-headline-md text-headline-md text-primary">{formatVnd(totalLtv)}</div>
         </div>
         <div className={a.card}>
           <div className={a.statLabel}>Champions + Trung thành</div>
@@ -91,17 +96,18 @@ export default function AdminCrmProfilesPage() {
       <div className={a.tableWrap}>
         <table className={a.table}>
           <thead>
-            <tr><th>Khách hàng</th><th>Nhóm tuổi</th><th>Giới tính</th><th>Số đơn</th><th>LTV</th><th>RFM</th><th /></tr>
+            <tr><th>Khách hàng</th><th>Nhóm tuổi</th><th>Giới tính</th><th>Số đơn</th><th>Đã chi</th><th>LTV dự báo</th><th>RFM</th><th /></tr>
           </thead>
           <tbody>
-            {!report && <tr><td colSpan={7} className="text-center !py-space-xl text-on-surface-variant">Đang tải…</td></tr>}
-            {report && filtered.length === 0 && <tr><td colSpan={7} className="text-center !py-space-xl text-on-surface-variant">Không có khách hàng phù hợp.</td></tr>}
+            {!report && <tr><td colSpan={8} className="text-center !py-space-xl text-on-surface-variant">Đang tải…</td></tr>}
+            {report && filtered.length === 0 && <tr><td colSpan={8} className="text-center !py-space-xl text-on-surface-variant">Không có khách hàng phù hợp.</td></tr>}
             {filtered.map((c) => (
               <tr key={c.customerId}>
                 <td className="font-semibold">{c.fullName ?? '—'}</td>
                 <td>{c.ageLabel}</td>
                 <td>{c.genderLabel}</td>
                 <td>{c.totalOrders}</td>
+                <td>{formatVnd(Number(c.totalSpent ?? 0))}</td>
                 <td className="font-bold">{formatVnd(Number(c.ltv))}</td>
                 <td><Badge tone={RFM_TONE[c.rfmSegment ?? 'other'] ?? 'neutral'}>{RFM_LABEL[c.rfmSegment ?? 'other'] ?? c.rfmSegment}</Badge></td>
                 <td className="text-right">
@@ -115,7 +121,8 @@ export default function AdminCrmProfilesPage() {
         </table>
       </div>
       <p className="mt-space-md font-body-md text-body-md text-on-surface-variant">
-        LTV và RFM được tính lại tự động khi đơn hàng chuyển sang "Đã giao". Nút "Tính lại" dùng khi cần cập nhật ngay.
+        "Đã chi" là tiền khách thực trả cho các đơn đã giao, sau khi trừ tiền hoàn. "LTV dự báo" = giá trị đơn trung bình × số đơn mỗi năm × vòng đời kỳ vọng (3 năm, hoặc lâu hơn nếu khách đã gắn bó lâu hơn), nên không bao giờ thấp hơn số đã chi.
+        LTV và RFM được tính lại tự động khi đơn chuyển sang "Đã giao" hoặc được hoàn tiền, và mỗi tối lúc 20:00; khách tự chuyển sang phân khúc RFM mới. Nút "Tính lại" dùng khi cần cập nhật ngay.
       </p>
     </div>
   )

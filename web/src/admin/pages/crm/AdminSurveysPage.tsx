@@ -3,7 +3,7 @@ import { a } from '../../adminUi'
 import { Badge, buttonClass, cx } from '../../../components/ui'
 import { ApiError } from '../../../lib/api'
 import {
-  ANSWER_TYPE_LABEL, SURVEY_STATUS_LABEL, addSurveyQuestion, archiveSurvey, createSurvey, deleteSurvey, deleteSurveyQuestion,
+  ANSWER_TYPE_LABEL, SURVEY_STATUS_LABEL, addSurveyQuestion, archiveSurvey, publishSurvey, createSurvey, deleteSurvey, deleteSurveyQuestion,
   fetchSegments, fetchSurveyProductTarget, fetchSurveyStats, fetchSurveys, sendSurvey, setSurveyProductTarget, timeVi,
   type AnswerType, type Segment, type Survey, type SurveyStats,
 } from '../../../lib/crm'
@@ -159,6 +159,9 @@ function SurveyEditor({ token, survey, segments, onChanged, onDeleted, onNotice,
             {survey.description && <p className="font-body-md text-body-md text-on-surface-variant">{survey.description}</p>}
           </div>
           <div className={a.rowActions}>
+            {isDraft && <button type="button" className={buttonClass('primary', 'sm')} disabled={survey.questions.length === 0}
+              title={survey.questions.length === 0 ? 'Thêm ít nhất một câu hỏi trước khi phát hành' : 'Khảo sát sau mua hàng chỉ tự gửi cho khách khi đã phát hành'}
+              onClick={() => void run(() => publishSurvey(token, survey.id), 'Không phát hành được', 'Đã phát hành: khảo sát sẽ tự gửi cho các đơn giao xong khớp sản phẩm mục tiêu.')}>Phát hành</button>}
             {survey.status === 'sent' && <button type="button" className={buttonClass('outline', 'sm')} onClick={() => void run(() => archiveSurvey(token, survey.id), 'Không lưu trữ được', 'Đã lưu trữ khảo sát.')}>Lưu trữ</button>}
             {isDraft && <button type="button" className={buttonClass('outline', 'sm')} onClick={async () => { if (await confirm({ title: 'Xoá khảo sát nháp', message: <>Xoá khảo sát <strong>{survey.title}</strong>? Các câu hỏi của nó cũng bị xoá.</>, confirmLabel: 'Xoá', tone: 'danger' })) void deleteSurvey(token, survey.id).then(onDeleted).catch((e) => onError(e instanceof ApiError ? e.message : 'Không xoá được')) }}>Xoá</button>}
           </div>

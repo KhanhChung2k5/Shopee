@@ -129,7 +129,7 @@ public class CampaignService {
         dispatchDue();
         identity.requireMarketingStaff(actorId);
         Campaign campaign = require(campaignId);
-        Reference reference = referenceOf(campaign);
+        Reference reference = scopeOf(campaign);
         boolean scheduled = notifications.countStatus(reference.type(), reference.id(), STATUS_SCHEDULED) > 0;
         String status = scheduled ? STATUS_SCHEDULED : STATUS_SENT;
         int pageSize = Math.min(Math.max(limit, 1), 10);
@@ -215,7 +215,9 @@ public class CampaignService {
                     CHANNEL_IN_APP,
                     content.trim(),
                     later ? STATUS_SCHEDULED : STATUS_SENT,
-                    later ? start : now));
+                    later ? start : now,
+                    campaignId,
+                    null));
         }
         campaigns.save(campaign, targets);
         if (hasProductTarget) {
@@ -256,7 +258,7 @@ public class CampaignService {
         if (current.endAt() != null && current.endAt().isBefore(nextStart)) {
             throw new InvalidCampaignException("Thời điểm kết thúc phải sau thời điểm bắt đầu.");
         }
-        Reference reference = referenceOf(current);
+        Reference reference = scopeOf(current);
         boolean scheduled = notifications.countStatus(reference.type(), reference.id(), STATUS_SCHEDULED) > 0;
         if (startAt != null && !startAt.equals(current.startAt()) && !scheduled) {
             throw new InvalidCampaignException("Chiến dịch đã gửi, không đổi được lịch.");
@@ -281,7 +283,7 @@ public class CampaignService {
     public void delete(UUID actorId, UUID campaignId) {
         identity.requireMarketingStaff(actorId);
         Campaign current = require(campaignId);
-        Reference reference = referenceOf(current);
+        Reference reference = scopeOf(current);
         notifications.deleteByReference(reference.type(), reference.id());
         productTargets.delete(campaignId);
         campaigns.delete(campaignId);
@@ -415,7 +417,7 @@ public class CampaignService {
 
     /** Đóng gói chiến dịch kèm số thư đã sinh và nội dung hộp thư. */
     private CampaignResponse toResponse(Campaign campaign) {
-        Reference reference = referenceOf(campaign);
+        Reference reference = scopeOf(campaign);
         int sentCount = notifications.countByReference(reference.type(), reference.id());
         return toResponse(campaign, sentCount, List.of());
     }
@@ -437,10 +439,10 @@ public class CampaignService {
                 reference.type(),
                 reference.id(),
                 sentCount,
-                notifications.countStatus(reference.type(), reference.id(), STATUS_READ),
+                notifications.countStatus(NotificationStore.SCOPE_CAMPAIGN, campaign.id(), STATUS_READ),
                 List.copyOf(skipped),
-                notifications.contentOf(reference.type(), reference.id()),
-                notifications.countStatus(reference.type(), reference.id(), STATUS_SCHEDULED) > 0
+                notifications.contentOf(NotificationStore.SCOPE_CAMPAIGN, campaign.id()),
+                notifications.countStatus(NotificationStore.SCOPE_CAMPAIGN, campaign.id(), STATUS_SCHEDULED) > 0
                         ? DELIVERY_SCHEDULED
                         : DELIVERY_SENT,
                 productTarget == null ? List.of() : productTarget.productIds(),
@@ -473,6 +475,14 @@ public class CampaignService {
         return new Reference(REFERENCE_SURVEY, campaign.surveyId());
     }
 
+    /**
+     * Thư do chính chiến dịch này gửi (theo {@code campaignId}): đếm, sửa, xóa không chạm thư khảo sát
+     * gửi tự động sau giao hàng hay của chiến dịch khác dùng chung khảo sát.
+     */
+    private static Reference scopeOf(Campaign campaign) {
+        return new Reference(NotificationStore.SCOPE_CAMPAIGN, campaign.id());
+    }
+
     /** Loại và mã đối tượng mà thông báo trỏ tới (chiến dịch hoặc khảo sát). */
     private record Reference(String type, UUID id) {
     }
@@ -487,6 +497,7 @@ public class CampaignService {
                 notification.channel(),
                 notification.content(),
                 notification.status(),
-                notification.sentAt());
+                notification.sentAt(),
+                notification.orderId());
     }
 }

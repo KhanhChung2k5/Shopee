@@ -108,6 +108,7 @@ export interface GoodsReceiptItem {
   id: string
   variantId: string
   sku: string
+  productName: string
   quantity: number
   unitCost: number
   lineTotal: number
