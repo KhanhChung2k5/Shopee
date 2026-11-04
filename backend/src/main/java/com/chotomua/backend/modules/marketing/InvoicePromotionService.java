@@ -16,7 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Tier 2 of checkout pricing — invoice-level promotions (promotion_invoice_details): of the programs running
- * now and open to the buyer's tier, the single one giving the biggest discount on the goods subtotal.
+ * now, open to the buyer's tier and whose minimum order the goods subtotal reaches, the single one giving the
+ * biggest discount (a percentage one capped at its maximum).
  * Applied after SKU prices and before the voucher.
  */
 @Service
@@ -47,6 +48,7 @@ public class InvoicePromotionService {
                 .collect(Collectors.toMap(PromotionProgram::getId, Function.identity()));
         return details.findAllByOrderByPromotionProgramIdAsc().stream()
                 .filter(detail -> running.containsKey(detail.getPromotionProgramId()))
+                .filter(detail -> detail.getMinOrderAmount() == null || subtotal.compareTo(detail.getMinOrderAmount()) >= 0)
                 .map(detail -> new InvoiceDiscount(detail.getId(), amountOf(detail, subtotal),
                         running.get(detail.getPromotionProgramId()).getName()))
                 .filter(discount -> discount.amount().signum() > 0)
@@ -58,6 +60,9 @@ public class InvoicePromotionService {
                 ? detail.getDiscountAmount()
                 : detail.getDiscountPercent() == null ? BigDecimal.ZERO
                 : subtotal.multiply(detail.getDiscountPercent()).divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
+        if (detail.getMaxDiscountAmount() != null) {
+            amount = amount.min(detail.getMaxDiscountAmount());
+        }
         return amount.min(subtotal).setScale(2, RoundingMode.HALF_UP);
     }
 }

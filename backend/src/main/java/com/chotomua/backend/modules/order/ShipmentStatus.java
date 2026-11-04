@@ -7,7 +7,9 @@ public enum ShipmentStatus {
     PENDING("pending"),
     PACKED("packed"),
     SHIPPING("shipping"),
-    DELIVERED("delivered");
+    DELIVERED("delivered"),
+    /** The courier could not hand the parcel over (refused, unreachable): it came back and the order was cancelled. */
+    FAILED("failed");
 
     private final String value;
 

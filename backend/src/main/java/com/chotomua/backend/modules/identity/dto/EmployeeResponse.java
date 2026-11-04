@@ -12,7 +12,8 @@ public record EmployeeResponse(
         String department,
         String position,
         BigDecimal baseSalary,
-        OffsetDateTime hiredAt
+        OffsetDateTime hiredAt,
+        String status
 ) {
     public static EmployeeResponse from(com.chotomua.backend.modules.identity.Employee employee) {
         var user = employee.getUser();
@@ -24,7 +25,8 @@ public record EmployeeResponse(
                 employee.getDepartment(),
                 employee.getPosition(),
                 employee.getBaseSalary(),
-                employee.getHiredAt()
+                employee.getHiredAt(),
+                user.getStatus()
         );
     }
 }

@@ -50,6 +50,9 @@ public class JdbcNotificationStore implements NotificationStore {
         if (SCOPE_SURVEY_DIRECT.equals(referenceType)) {
             return "(? = 'survey_direct' AND reference_type = 'survey' AND reference_id = ? AND campaign_id IS NULL AND order_id IS NULL)";
         }
+        if (SCOPE_SURVEY_OWN.equals(referenceType)) {
+            return "(? = 'survey_own' AND reference_type = 'survey' AND reference_id = ? AND campaign_id IS NULL)";
+        }
         return "(reference_type = ? AND reference_id = ?)";
     }
 
@@ -96,10 +99,48 @@ public class JdbcNotificationStore implements NotificationStore {
     }
 
     @Override
+    public int countUnread(UUID userId) {
+        // A survey invitation already answered, or for a closed survey, needs no attention even if it was never opened.
+        Integer count = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM notifications n
+                WHERE n.user_id = ? AND n.status = 'sent'
+                  AND (n.reference_type IS DISTINCT FROM 'survey' OR NOT (
+                      EXISTS (SELECT 1 FROM survey_responses r
+                              WHERE r.survey_id = n.reference_id AND r.user_id = n.user_id
+                                AND r.order_id IS NOT DISTINCT FROM n.order_id)
+                      OR EXISTS (SELECT 1 FROM surveys s WHERE s.id = n.reference_id AND s.status = 'closed')))
+                """, Integer.class, userId);
+        return count == null ? 0 : count;
+    }
+
+    @Override
+    public java.util.Map<UUID, CampaignMailStats> campaignStats(java.util.Collection<UUID> campaignIds) {
+        java.util.Map<UUID, CampaignMailStats> stats = new java.util.HashMap<>();
+        if (campaignIds.isEmpty()) {
+            return stats;
+        }
+        String in = String.join(",", java.util.Collections.nCopies(campaignIds.size(), "?"));
+        jdbc.query("""
+                SELECT campaign_id,
+                       COUNT(*) FILTER (WHERE status IN ('sent', 'read')) AS sent,
+                       COUNT(*) FILTER (WHERE status = 'read') AS read,
+                       COUNT(*) FILTER (WHERE status = 'scheduled') AS scheduled,
+                       (ARRAY_AGG(content ORDER BY sent_at DESC))[1] AS content
+                FROM notifications
+                WHERE campaign_id IN (%s)
+                GROUP BY campaign_id
+                """.formatted(in), rs -> {
+            stats.put(rs.getObject("campaign_id", UUID.class), new CampaignMailStats(
+                    rs.getInt("sent"), rs.getInt("read"), rs.getInt("scheduled"), rs.getString("content")));
+        }, campaignIds.toArray());
+        return stats;
+    }
+
+    @Override
     public int countByReference(String referenceType, UUID referenceId) {
         Integer count = jdbc.queryForObject("""
                 SELECT COUNT(*) FROM notifications
-                WHERE %s AND status = 'sent'
+                WHERE %s AND status IN ('sent', 'read')
                 """.formatted(scope(referenceType)), Integer.class, referenceType, referenceId);
         return count == null ? 0 : count;
     }
@@ -129,6 +170,18 @@ public class JdbcNotificationStore implements NotificationStore {
                 LIMIT ? OFFSET ?
                 """.formatted(scope(referenceType)), ROW,
                 referenceType, referenceId, status, limit, offset);
+    }
+
+    @Override
+    public List<AppNotification> pageDelivered(String referenceType, UUID referenceId, int offset, int limit) {
+        return jdbc.query("""
+                SELECT id, user_id, reference_type, reference_id, channel, content, status, sent_at, campaign_id, order_id
+                FROM notifications
+                WHERE %s AND status IN ('sent', 'read')
+                ORDER BY sent_at, id
+                LIMIT ? OFFSET ?
+                """.formatted(scope(referenceType)), ROW,
+                referenceType, referenceId, limit, offset);
     }
 
     @Override

@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
-/** Hộp thư in-app. Khách đọc của mình; nhân viên CRM được xem hộp thư một khách. */
+/** Hộp thư in-app. Khách đọc của mình; chỉ CSKH và quản trị viên được xem hộp thư của người khác. */
 @RestController
 @RequestMapping("/api/notifications")
 @PreAuthorize("isAuthenticated()")
@@ -34,6 +34,11 @@ public class NotificationController {
     }
 
     /** Khách mở thư của mình thì đánh dấu đã đọc. */
+    @GetMapping("/unread-count")
+    public java.util.Map<String, Integer> unreadCount() {
+        return java.util.Map.of("unread", campaigns.unreadCount(currentActor.requireUserId()));
+    }
+
     @PostMapping("/{id}/read")
     public NotificationResponse markRead(@PathVariable UUID id) {
         return campaigns.markRead(currentActor.requireUserId(), id);

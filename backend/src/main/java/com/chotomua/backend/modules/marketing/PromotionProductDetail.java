@@ -58,6 +58,11 @@ public class PromotionProductDetail {
     public BigDecimal getFlashPrice() { return flashPrice; }
     public Integer getLimitQty() { return limitQty; }
     public Integer getSoldQty() { return soldQty; }
+    /** Whether the flash price still has {@code quantity} units on offer (no limit = always). */
+    public boolean hasFlashUnitsFor(int quantity) {
+        return flashPrice != null && (limitQty == null || soldQty + quantity <= limitQty);
+    }
+
     public void reserveFlashQuantity(int quantity) {
         if (flashPrice == null) return;
         if (limitQty != null && soldQty + quantity > limitQty) throw new IllegalStateException("Flash Sale đã hết số lượng ưu đãi");

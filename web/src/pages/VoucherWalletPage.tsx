@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { Alert, Badge, Card, EmptyState, Loading, Page, PageHeader } from '../components/ui'
 import { formatVnd } from '../lib/catalog'
 import { apiFetch } from '../lib/api'
-import { voucherScopeLabel, type AvailableVoucher } from '../lib/vouchers'
+import { voucherConditionLabel, voucherScopeLabel, type AvailableVoucher } from '../lib/vouchers'
 import { useAuth } from '../state/AuthContext'
 
 export default function VoucherWalletPage() {
@@ -57,6 +57,9 @@ export default function VoucherWalletPage() {
               <p className="font-title-md text-title-md text-on-surface line-clamp-2">{voucher.programName}</p>
               <p className="font-label-md text-label-md text-on-surface-variant">Hết hạn: {new Date(voucher.endsAt).toLocaleString('vi-VN')}</p>
               <p className="font-label-md text-label-md text-on-surface-variant">{voucherScopeLabel(voucher)}</p>
+              {voucherConditionLabel(voucher) && (
+                <p className="font-label-md text-label-md text-on-surface-variant">{voucherConditionLabel(voucher)}</p>
+              )}
               <Badge tone="success">Sẵn sàng sử dụng</Badge>
             </div>
           </li>

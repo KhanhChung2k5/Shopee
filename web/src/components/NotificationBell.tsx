@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchNotifications } from '../lib/crm'
+import { fetchUnreadCount } from '../lib/crm'
 import { useAuth } from '../state/AuthContext'
 
 /** Header bell with the buyer's unread CRM notification count (campaigns, survey invitations). */
@@ -12,8 +12,8 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!isBuyer || !token) return
     let active = true
-    const refresh = () => fetchNotifications(token)
-      .then((d) => { if (active) setUnread(d.notifications.filter((n) => n.status !== 'read').length) })
+    const refresh = () => fetchUnreadCount(token)
+      .then((d) => { if (active) setUnread(d.unread) })
       .catch(() => { /* bell is best-effort */ })
     refresh()
     const timer = window.setInterval(refresh, 60000)

@@ -14,6 +14,12 @@ public record DeliveredOrderView(
         UUID userId,
         BigDecimal totalAmount,
         Instant deliveredAt,
-        List<DeliveredOrderLine> lines
+        List<DeliveredOrderLine> lines,
+        Instant placedAt
 ) {
+    /** Đơn không ghi riêng lúc đặt: coi như đặt lúc giao. */
+    public DeliveredOrderView(UUID orderId, UUID userId, BigDecimal totalAmount, Instant deliveredAt,
+                              List<DeliveredOrderLine> lines) {
+        this(orderId, userId, totalAmount, deliveredAt, lines, deliveredAt);
+    }
 }

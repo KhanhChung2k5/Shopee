@@ -47,7 +47,7 @@ public class PromotionDetailService {
     @Transactional
     public ProductDiscountResponse updateProductDiscount(UUID id, ProductDiscountRequest request) {
         PromotionProductDetail detail = requireProductDiscount(id);
-        if (detail.getSoldQty() > 0) {
+        if (detail.getSoldQty() > 0 || used("promotion_product_applications", "promotion_product_detail_id", id)) {
             throw new IllegalArgumentException("Ưu đãi đã có lượt bán; không thể sửa");
         }
         validateProductDiscount(request);
@@ -60,7 +60,7 @@ public class PromotionDetailService {
     @Transactional
     public void deleteProductDiscount(UUID id) {
         PromotionProductDetail detail = requireProductDiscount(id);
-        if (detail.getSoldQty() > 0) {
+        if (detail.getSoldQty() > 0 || used("promotion_product_applications", "promotion_product_detail_id", id)) {
             throw new IllegalArgumentException("Ưu đãi đã có lượt bán; không thể xóa");
         }
         productDetails.delete(detail);
@@ -84,13 +84,28 @@ public class PromotionDetailService {
         PromotionInvoiceDetail detail = requireInvoiceDiscount(id);
         validateInvoiceDiscount(request);
         ensureProgramExists(request.promotionProgramId());
+        // Orders were priced (and refunds are priced) with these terms: once used they stay as they were.
+        if (used("promotion_invoice_applications", "promotion_invoice_detail_id", id)) {
+            throw new IllegalArgumentException("Ưu đãi hoá đơn đã được áp cho đơn hàng; không thể sửa — hãy tạo ưu đãi mới");
+        }
         detail.update(request);
         return InvoiceDiscountResponse.from(detail);
     }
 
     @Transactional
     public void deleteInvoiceDiscount(UUID id) {
-        invoiceDetails.delete(requireInvoiceDiscount(id));
+        PromotionInvoiceDetail detail = requireInvoiceDiscount(id);
+        if (used("promotion_invoice_applications", "promotion_invoice_detail_id", id)) {
+            throw new IllegalArgumentException("Ưu đãi hoá đơn đã được áp cho đơn hàng; không thể xóa");
+        }
+        invoiceDetails.delete(detail);
+    }
+
+    /** Whether an order already records this promotion (the "% off" kind never counts sold_qty). */
+    private boolean used(String table, String column, UUID id) {
+        return !entityManager.createNativeQuery("select 1 from " + table + " where " + column + " = :id limit 1")
+                .setParameter("id", id)
+                .getResultList().isEmpty();
     }
 
     private void ensureProgramAndVariantExist(ProductDiscountRequest request) {
@@ -156,6 +171,19 @@ public class PromotionDetailService {
             validateMoney(request.discountAmount());
         } else {
             validatePercent(request.discountPercent());
+        }
+        if (request.minOrderAmount() != null) {
+            validateMoney(request.minOrderAmount());
+            // A fixed discount bigger than the minimum order would make cheap orders free.
+            if (request.discountAmount() != null && request.discountAmount().compareTo(request.minOrderAmount()) > 0) {
+                throw new IllegalArgumentException("Số tiền giảm không thể lớn hơn đơn tối thiểu");
+            }
+        }
+        if (request.maxDiscountAmount() != null) {
+            if (request.discountPercent() == null) {
+                throw new IllegalArgumentException("Giảm tối đa chỉ dùng cho ưu đãi giảm phần trăm");
+            }
+            validateMoney(request.maxDiscountAmount());
         }
     }
 

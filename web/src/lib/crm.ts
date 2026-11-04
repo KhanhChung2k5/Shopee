@@ -171,7 +171,7 @@ export interface SurveySheet {
   answers: { questionId: string; answerText: string }[]
 }
 
-export const SURVEY_STATUS_LABEL: Record<string, string> = { draft: 'Nháp', sent: 'Đã gửi', archived: 'Lưu trữ' }
+export const SURVEY_STATUS_LABEL: Record<string, string> = { draft: 'Nháp', sent: 'Đã gửi', closed: 'Đã lưu trữ' }
 
 export const fetchSurveys = (token: string) => apiFetch<{ surveys: Survey[] }>('/api/surveys', {}, token)
 export const createSurvey = (token: string, title: string, description: string) =>
@@ -181,6 +181,8 @@ export const publishSurvey = (token: string, id: string) => apiFetch<Survey>(`/a
 export const archiveSurvey = (token: string, id: string) => apiFetch<Survey>(`/api/surveys/${id}/archive`, { method: 'POST' }, token)
 export const addSurveyQuestion = (token: string, id: string, q: { questionText: string; answerType: AnswerType; options: string[] }) =>
   apiFetch<Survey>(`/api/surveys/${id}/questions`, { method: 'POST', body: JSON.stringify(q) }, token)
+export const updateSurveyQuestion = (token: string, id: string, questionId: string, q: { questionText: string; answerType: AnswerType; options: string[]; sortOrder?: number }) =>
+  apiFetch<Survey>(`/api/surveys/${id}/questions/${questionId}`, { method: 'PUT', body: JSON.stringify(q) }, token)
 export const deleteSurveyQuestion = (token: string, id: string, questionId: string) =>
   apiFetch<Survey>(`/api/surveys/${id}/questions/${questionId}`, { method: 'DELETE' }, token)
 export const sendSurvey = (token: string, id: string, segmentIds: string[]) =>
@@ -210,8 +212,14 @@ export interface AppNotification {
   sentAt: string
   /** Post-purchase survey invitations name the order they ask about. */
   orderId: string | null
+  /** A survey invitation the customer has already answered. */
+  surveyAnswered: boolean
+  /** The survey was archived: it no longer takes answers. */
+  surveyClosed: boolean
 }
 export const fetchNotifications = (token: string) => apiFetch<{ notifications: AppNotification[] }>('/api/notifications', {}, token)
+/** Count-only read for the bell (no letter bodies), polled every minute. */
+export const fetchUnreadCount = (token: string) => apiFetch<{ unread: number }>('/api/notifications/unread-count', {}, token)
 export const markNotificationRead = (token: string, id: string) =>
   apiFetch<AppNotification>(`/api/notifications/${id}/read`, { method: 'POST' }, token)
 

@@ -107,6 +107,21 @@ class PromotionPricingTest {
         verify(users, never()).save(any());
     }
 
+    @Test
+    void invoiceDiscountNeedsItsMinimumOrderAndAPercentStopsAtItsCap() {
+        buyerTier(null);
+        PromotionProgram sale = program(null, 1);
+        when(programs.findAll()).thenReturn(List.of(sale));
+        when(invoiceDetails.findAllByOrderByPromotionProgramIdAsc()).thenReturn(List.of(
+                invoice(sale, null, new BigDecimal("10"), new BigDecimal("1000000"), new BigDecimal("150000"))));
+
+        assertThat(invoicePricing.best(buyerId, new BigDecimal("999999"))).isEmpty();          // under the minimum
+        assertThat(invoicePricing.best(buyerId, new BigDecimal("1000000")).orElseThrow().amount())
+                .isEqualByComparingTo("100000");                                                 // 10%, under the cap
+        assertThat(invoicePricing.best(buyerId, new BigDecimal("5000000")).orElseThrow().amount())
+                .isEqualByComparingTo("150000");                                                 // 500.000 capped
+    }
+
     private PromotionProgram program(String tier, int daysLeft) {
         OffsetDateTime now = OffsetDateTime.now();
         PromotionProgram program = new PromotionProgram(new PromotionProgramRequest("P" + UUID.randomUUID().toString().substring(0, 6),
@@ -123,7 +138,13 @@ class PromotionPricingTest {
     }
 
     private PromotionInvoiceDetail invoice(PromotionProgram program, BigDecimal amount, BigDecimal percent) {
-        PromotionInvoiceDetail detail = new PromotionInvoiceDetail(new InvoiceDiscountRequest(program.getId(), amount, percent));
+        return invoice(program, amount, percent, null, null);
+    }
+
+    private PromotionInvoiceDetail invoice(PromotionProgram program, BigDecimal amount, BigDecimal percent,
+                                           BigDecimal minOrder, BigDecimal maxDiscount) {
+        PromotionInvoiceDetail detail = new PromotionInvoiceDetail(
+                new InvoiceDiscountRequest(program.getId(), amount, percent, minOrder, maxDiscount));
         ReflectionTestUtils.setField(detail, "id", UUID.randomUUID());
         return detail;
     }

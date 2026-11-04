@@ -83,7 +83,7 @@ public class EmployeeService {
         // Check if the employee is leaving the admin department
         boolean leavingAdminDepartment = "admin".equals(employee.getDepartment()) && !"admin".equals(request.department());
         // Check if the employee is the last admin
-        if (leavingAdminDepartment && employeeRepository.countByDepartment("admin") <= 1) {
+        if (leavingAdminDepartment && "active".equals(employee.getUser().getStatus()) && activeAdminCount() <= 1) {
             throw new IllegalArgumentException(
                     "Không thể chuyển nhân viên admin cuối cùng sang bộ phận khác — hệ thống sẽ không còn ai quản lý được nhân viên. "
                             + "Hãy tạo/chuyển thêm 1 admin khác trước.");
@@ -96,6 +96,35 @@ public class EmployeeService {
         employee.setBaseSalary(request.baseSalary());
         // Return the employee response
         return EmployeeResponse.from(employee);
+    }
+
+    // Lock or unlock a staff account: a locked account can't log in and its current token stops working
+    @Transactional
+    public EmployeeResponse updateStatus(UUID actorUserId, UUID employeeId, String status) {
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy nhân viên"));
+        User user = employee.getUser();
+        if (status.equals(user.getStatus())) {
+            return EmployeeResponse.from(employee);
+        }
+        if ("deleted".equals(user.getStatus())) {
+            throw new IllegalArgumentException("Tài khoản nhân viên này đã bị xoá.");
+        }
+        if ("locked".equals(status)) {
+            if (user.getId().equals(actorUserId)) {
+                throw new IllegalArgumentException("Không thể tự khoá tài khoản đang đăng nhập.");
+            }
+            if ("admin".equals(employee.getDepartment()) && activeAdminCount() <= 1) {
+                throw new IllegalArgumentException(
+                        "Không thể khoá quản trị viên cuối cùng còn hoạt động — hệ thống sẽ không còn ai quản lý được nhân viên.");
+            }
+        }
+        user.setStatus(status);
+        return EmployeeResponse.from(employee);
+    }
+
+    private long activeAdminCount() {
+        return employeeRepository.countByDepartmentAndUser_Status("admin", "active");
     }
 
     // Require a valid department

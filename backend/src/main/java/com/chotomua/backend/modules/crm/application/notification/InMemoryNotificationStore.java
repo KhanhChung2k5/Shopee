@@ -48,7 +48,7 @@ public class InMemoryNotificationStore implements NotificationStore {
     @Override
     public synchronized int countByReference(String referenceType, UUID referenceId) {
         return (int) rows.stream()
-                .filter(row -> matches(row, referenceType, referenceId) && "sent".equals(row.status()))
+                .filter(row -> matches(row, referenceType, referenceId) && delivered(row))
                 .count();
     }
 
@@ -73,6 +73,20 @@ public class InMemoryNotificationStore implements NotificationStore {
                 .skip(Math.max(offset, 0))
                 .limit(Math.max(limit, 0))
                 .toList();
+    }
+
+    @Override
+    public synchronized List<AppNotification> pageDelivered(String referenceType, UUID referenceId, int offset, int limit) {
+        return rows.stream()
+                .filter(row -> matches(row, referenceType, referenceId) && delivered(row))
+                .sorted(Comparator.comparing(AppNotification::sentAt).thenComparing(AppNotification::id))
+                .skip(Math.max(offset, 0))
+                .limit(Math.max(limit, 0))
+                .toList();
+    }
+
+    private static boolean delivered(AppNotification row) {
+        return "sent".equals(row.status()) || "read".equals(row.status());
     }
 
     @Override
@@ -214,6 +228,10 @@ public class InMemoryNotificationStore implements NotificationStore {
         if (SCOPE_SURVEY_DIRECT.equals(referenceType)) {
             return "survey".equals(row.referenceType()) && referenceId.equals(row.referenceId())
                     && row.campaignId() == null && row.orderId() == null;
+        }
+        if (SCOPE_SURVEY_OWN.equals(referenceType)) {
+            return "survey".equals(row.referenceType()) && referenceId.equals(row.referenceId())
+                    && row.campaignId() == null;
         }
         return referenceType.equals(row.referenceType()) && referenceId.equals(row.referenceId());
     }

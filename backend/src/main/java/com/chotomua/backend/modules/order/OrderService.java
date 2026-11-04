@@ -191,7 +191,7 @@ public class OrderService {
         BigDecimal discount = pricing.invoiceAmount().add(voucherQuote == null ? BigDecimal.ZERO : voucherQuote.discountAmount());
         BigDecimal total = pricing.total();
 
-        Order order = orderRepository.save(new Order(
+        Order newOrder = new Order(
                 userId,
                 address.getId(),
                 address.getFullAddress(),
@@ -199,7 +199,9 @@ public class OrderService {
                 discount,
                 FREE_SHIPPING,
                 total
-        ));
+        );
+        newOrder.setRecipientSnapshot(address.getRecipientName(), address.getPhone());
+        Order order = orderRepository.save(newOrder);
 
         List<OrderItem> orderItems = new ArrayList<>(lines.size());
         for (CheckoutLine line : lines) {
@@ -351,6 +353,34 @@ public class OrderService {
         return OrderShippingResponse.from(saved);
     }
 
+    /**
+     * The courier could not deliver (buyer refused or unreachable) and the parcel came back: the order is cancelled,
+     * its goods go back into the warehouse they left, an uncollected COD payment is voided and a transfer already
+     * received becomes a refund — the same undo as any cancellation.
+     */
+    @Transactional
+    public OrderShippingResponse markDeliveryFailed(UUID employeeUserId, UUID orderId, String rawReason) {
+        Employee employee = requireShippingEmployee(employeeUserId);
+        Order order = orderRepository.findById(orderId).orElseThrow(this::orderNotFound);
+        requireShippingOwnership(order, employee);
+        if (!OrderStatus.SHIPPING.value().equals(order.getStatus())
+                || !ShipmentStatus.SHIPPING.value().equals(order.getShipmentStatus())) {
+            throw new IllegalStateException("Chỉ đơn đang giao mới được báo giao thất bại");
+        }
+        String reason = normalizeReason(rawReason);
+        if (reason == null) throw new IllegalArgumentException("Phải nhập lý do giao thất bại");
+        reason = "Giao thất bại: " + reason;
+
+        order.setShipmentStatus(ShipmentStatus.FAILED.value());
+        order.setStatus(OrderStatus.CANCELLED.value());
+        Order saved = orderRepository.save(order);
+        if (inventoryStockService != null) inventoryStockService.returnForOrder(order.getId());
+        undoCheckout(order, reason);
+        orderStatusHistoryRepository.save(new OrderStatusHistory(order.getId(), OrderStatus.CANCELLED.value(),
+                employeeUserId, "employee", reason));
+        return OrderShippingResponse.from(saved);
+    }
+
     @Transactional(readOnly = true)
     public List<OrderSummaryResponse> listForBuyer(UUID userId, String requestedStatus) {
         String status = OrderStatus.normalize(requestedStatus);
@@ -387,7 +417,7 @@ public class OrderService {
         Order order = orderRepository.findById(orderId).orElseThrow(this::orderNotFound);
         return OrderDetailResponse.from(order, itemsWithImages(order),
                 orderStatusHistoryRepository.findByOrderIdOrderByChangedAtAsc(order.getId()),
-                customersByAddress(List.of(order)).get(order.getAddressId()), paymentOf(order), refundsOf(order, true));
+                customerOf(order, customersByAddress(List.of(order))), paymentOf(order), refundsOf(order, true));
     }
 
     private List<OrderSummaryResponse> toSummaries(List<Order> orders) {
@@ -408,7 +438,7 @@ public class OrderService {
                 .map(order -> {
                     Payment payment = payments.get(order.getId());
                     return OrderSummaryResponse.from(order, lineCounts.getOrDefault(order.getId(), 0L),
-                            order.getAddressId() == null ? null : customers.get(order.getAddressId()),
+                            customerOf(order, customers),
                             payment == null ? null : payment.getMethod(), payment == null ? null : payment.getStatus(),
                             refunded.getOrDefault(order.getId(), BigDecimal.ZERO));
                 })
@@ -446,6 +476,14 @@ public class OrderService {
                     user.getPhone(), address.getRecipientName(), address.getPhone()));
         }
         return result;
+    }
+
+    /** The account behind an order, with the recipient frozen on the order itself (older orders: the address book). */
+    private static OrderCustomerResponse customerOf(Order order, Map<UUID, OrderCustomerResponse> byAddress) {
+        OrderCustomerResponse account = order.getAddressId() == null ? null : byAddress.get(order.getAddressId());
+        if (account == null || order.getRecipientNameSnapshot() == null) return account;
+        return new OrderCustomerResponse(account.userId(), account.fullName(), account.email(), account.phone(),
+                order.getRecipientNameSnapshot(), order.getRecipientPhoneSnapshot());
     }
 
     private Employee requireEmployee(UUID employeeUserId) {
@@ -618,8 +656,9 @@ public class OrderService {
                     .map(line -> new VoucherQuoteRequest.Item(line.variant().productType(), line.lineTotal()))
                     .toList();
             try {
-                voucherQuote = voucherQuoteService.quote(userId,
-                        new VoucherQuoteRequest(voucherCode, subtotal.subtract(invoiceAmount), quoteItems));
+                VoucherQuoteRequest quoteRequest = new VoucherQuoteRequest(voucherCode, subtotal.subtract(invoiceAmount), quoteItems);
+                voucherQuote = placing ? voucherQuoteService.quoteForCheckout(userId, quoteRequest)
+                        : voucherQuoteService.quote(userId, quoteRequest);
             } catch (IllegalArgumentException | NoSuchElementException e) {
                 if (placing) throw e;
                 voucherError = e.getMessage();
@@ -732,9 +771,9 @@ public class OrderService {
 
     private CheckoutLine toCheckoutLine(UUID userId, CartItem item, boolean placing) {
         ProductVariantSnapshot variant = productVariantLookup.findActiveById(item.getVariantId())
-                .orElseThrow(() -> new NoSuchElementException(
-                        "Không tìm thấy biến thể sản phẩm đang hoạt động: " + item.getVariantId()
-                ));
+                .orElseThrow(() -> new NoSuchElementException(productVariantLookup.findCartProductById(item.getVariantId())
+                        .map(product -> "Sản phẩm \"" + product.productName() + "\" đã ngừng bán — vui lòng bỏ khỏi giỏ hàng")
+                        .orElse("Một sản phẩm trong giỏ không còn tồn tại — vui lòng bỏ khỏi giỏ hàng")));
         if (item.getQuantity() > variant.availableQuantity()) {
             throw new IllegalStateException(
                     "Số lượng sản phẩm trong giỏ vượt tồn kho. Hiện chỉ còn "

@@ -87,7 +87,7 @@ public class GoodsReceiptController {
         return GoodsReceiptResponse.from(receipts.save(receipt));
     }
 
-    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS}, allEntries = true)
+    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS, CacheConfig.MANAGEMENT_REPORTS}, allEntries = true)
     @PostMapping("/{id}/approve")
     @Transactional
     public GoodsReceiptResponse approve(@PathVariable UUID id, Authentication authentication) {

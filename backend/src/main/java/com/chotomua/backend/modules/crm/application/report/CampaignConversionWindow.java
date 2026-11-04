@@ -31,11 +31,11 @@ public final class CampaignConversionWindow {
         return from(campaign).plus(DEFAULT_DAYS, ChronoUnit.DAYS);
     }
 
-    /** Inclusive hai đầu. Thiếu mốc hoặc thiếu ngày giao thì không khớp. */
-    public static boolean contains(Instant deliveredAt, Instant from, Instant to) {
-        if (deliveredAt == null || from == null || to == null) {
+    /** Inclusive hai đầu. Thiếu mốc hoặc thiếu ngày đặt thì không khớp. */
+    public static boolean contains(Instant placedAt, Instant from, Instant to) {
+        if (placedAt == null || from == null || to == null) {
             return false;
         }
-        return !deliveredAt.isBefore(from) && !deliveredAt.isAfter(to);
+        return !placedAt.isBefore(from) && !placedAt.isAfter(to);
     }
 }

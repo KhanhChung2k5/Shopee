@@ -51,6 +51,7 @@ public class SegmentService {
     private final SegmentStore store;
     private final RfmSegmentSource rfm;
     private final Clock clock;
+    private com.chotomua.backend.modules.crm.application.campaign.CampaignStore campaigns;
 
     @Autowired
     public SegmentService(
@@ -75,6 +76,12 @@ public class SegmentService {
         this.store = store;
         this.rfm = rfm;
         this.clock = clock;
+    }
+
+    /** Chiến dịch dùng phân khúc (tùy chọn, để kiểm thử dựng service gọn). */
+    @Autowired(required = false)
+    public void setCampaignStore(com.chotomua.backend.modules.crm.application.campaign.CampaignStore campaigns) {
+        this.campaigns = campaigns;
     }
 
     /**
@@ -151,8 +158,10 @@ public class SegmentService {
     /** Câu chuyện 4–7: quản trị, quản lý CRM hoặc CSKH. */
     public SegmentListResponse list(UUID actorId) {
         identity.requireAudienceReader(actorId);
+        // One read of every customer for all segments, instead of one query per member.
+        Map<UUID, CustomerView> customers = customersById();
         List<SegmentResponse> rows = store.findAll().stream()
-                .map(segment -> toResponse(segment, store.membersOf(segment.id())))
+                .map(segment -> toResponse(segment, store.membersOf(segment.id()), customers))
                 .toList();
         return new SegmentListResponse(rows);
     }
@@ -192,6 +201,9 @@ public class SegmentService {
         identity.requireMarketingStaff(actorId);
         require(segmentId);
         requireMutable(segmentId);
+        if (campaigns != null && campaigns.usesSegment(segmentId)) {
+            throw new SegmentLockedException("Phân khúc đã được chiến dịch sử dụng, không xóa được để giữ lịch sử chăm sóc.");
+        }
         store.delete(segmentId);
     }
 
@@ -326,9 +338,25 @@ public class SegmentService {
 
     /** DTO phân khúc: rule JSON, thành viên, cờ khóa preset. */
     private SegmentResponse toResponse(CustomerSegment segment, List<SegmentMember> members) {
+        return toResponse(segment, members, customersById());
+    }
+
+    /** Every customer (deleted included) by id, read once. */
+    private Map<UUID, CustomerView> customersById() {
+        Map<UUID, CustomerView> byId = new java.util.HashMap<>();
+        for (CustomerView customer : identity.findCustomers(new CustomerFilter(null, null), true)) {
+            byId.put(customer.id(), customer);
+        }
+        return byId;
+    }
+
+    private SegmentResponse toResponse(CustomerSegment segment, List<SegmentMember> members, Map<UUID, CustomerView> customers) {
         List<SegmentMemberResponse> rows = new ArrayList<>();
         for (SegmentMember member : members) {
-            CustomerView customer = identity.getCustomer(member.userId());
+            CustomerView customer = customers.get(member.userId());
+            if (customer == null) {
+                customer = identity.getCustomer(member.userId());
+            }
             rows.add(new SegmentMemberResponse(
                     member.userId(),
                     customer.fullName(),

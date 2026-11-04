@@ -22,6 +22,12 @@ public interface CampaignStore {
     /** Phân khúc được gắn với chiến dịch. */
     List<CampaignTarget> targetsOf(UUID campaignId);
 
+    /** Có chiến dịch nào nhắm tới phân khúc này không (để không xóa mất lịch sử nhắm đối tượng). */
+    default boolean usesSegment(UUID segmentId) {
+        return findAll().stream().anyMatch(campaign ->
+                targetsOf(campaign.id()).stream().anyMatch(target -> target.segmentId().equals(segmentId)));
+    }
+
     /** Xóa chiến dịch và đích; không đụng hộp thư (lớp dịch vụ xóa thông báo riêng). */
     void delete(UUID id);
 }

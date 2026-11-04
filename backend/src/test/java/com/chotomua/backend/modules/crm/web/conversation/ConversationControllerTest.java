@@ -62,6 +62,9 @@ class ConversationControllerTest {
     @Autowired
     private AgentPresence presence;
 
+    @Autowired
+    private com.chotomua.backend.modules.crm.application.profile.CustomerProfileService profiles;
+
     @BeforeEach
     void setUp() {
         identity.reset();
@@ -169,6 +172,20 @@ class ConversationControllerTest {
         String id = create("ticket", "Việc của An");
         mockMvc.perform(get("/api/conversations/" + id).with(user(BINH_ID, "customer")))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = CS_ID, authorities = "DEPT_CS")
+    void customerPanelShowsMoneyReallySpentNotTheLtvForecast() throws Exception {
+        orders.seedDeliveredOrder(new com.chotomua.backend.modules.crm.port.dto.DeliveredOrderView(
+                UUID.randomUUID(), UUID.fromString(AN_ID), new java.math.BigDecimal("1890000"),
+                java.time.Instant.now().minus(java.time.Duration.ofDays(2)), java.util.List.of()));
+        profiles.recalculate(UUID.fromString(AN_ID));
+        String id = openAsAn("ticket", "Cần hỗ trợ");
+
+        mockMvc.perform(get("/api/conversations/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.customer.totalSpend").value(1890000));
     }
 
     @Test

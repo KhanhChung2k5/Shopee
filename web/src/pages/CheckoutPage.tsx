@@ -20,7 +20,7 @@ import {
 } from '../components/ui'
 import { formatVnd } from '../lib/catalog'
 import { apiFetch, ApiError } from '../lib/api'
-import { type AvailableVoucher, voucherScopeLabel } from '../lib/vouchers'
+import { type AvailableVoucher, voucherConditionLabel, voucherScopeLabel } from '../lib/vouchers'
 import { useAuth } from '../state/AuthContext'
 import { useCart } from '../state/CartContext'
 
@@ -598,6 +598,9 @@ function CheckoutContent({ token }: { token: string }) {
                 Mã: {voucher.code} · Hết hạn: {new Date(voucher.endsAt).toLocaleString('vi-VN')}
               </span>
               <span className="block font-label-md text-label-md text-on-surface-variant mt-0.5">{voucherScopeLabel(voucher)}</span>
+              {voucherConditionLabel(voucher) && (
+                <span className="block font-label-md text-label-md text-on-surface-variant mt-0.5">{voucherConditionLabel(voucher)}</span>
+              )}
             </RadioCard>
           ))}
         </Modal>

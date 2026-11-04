@@ -27,6 +27,14 @@ public class PromotionInvoiceDetail {
     @Column(name = "discount_percent", precision = 5, scale = 2)
     private BigDecimal discountPercent;
 
+    /** Goods subtotal the order must reach to qualify; null = every order. */
+    @Column(name = "min_order_amount", precision = 12, scale = 2)
+    private BigDecimal minOrderAmount;
+
+    /** Most a percentage promotion takes off; null = no cap. */
+    @Column(name = "max_discount_amount", precision = 12, scale = 2)
+    private BigDecimal maxDiscountAmount;
+
     protected PromotionInvoiceDetail() {
     }
 
@@ -38,10 +46,14 @@ public class PromotionInvoiceDetail {
         promotionProgramId = request.promotionProgramId();
         discountAmount = request.discountAmount();
         discountPercent = request.discountPercent();
+        minOrderAmount = request.minOrderAmount();
+        maxDiscountAmount = request.maxDiscountAmount();
     }
 
     public UUID getId() { return id; }
     public UUID getPromotionProgramId() { return promotionProgramId; }
     public BigDecimal getDiscountAmount() { return discountAmount; }
     public BigDecimal getDiscountPercent() { return discountPercent; }
+    public BigDecimal getMinOrderAmount() { return minOrderAmount; }
+    public BigDecimal getMaxDiscountAmount() { return maxDiscountAmount; }
 }

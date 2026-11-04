@@ -88,6 +88,9 @@ class CampaignControllerTest {
     @Autowired
     private InMemoryCampaignProductTargetStore productTargets;
 
+    @Autowired
+    private com.chotomua.backend.modules.crm.application.survey.InMemorySurveyStore surveys;
+
     private UUID segmentId;
 
     @BeforeEach
@@ -242,7 +245,14 @@ class CampaignControllerTest {
         identity.seedCustomer(
                 UUID.fromString(ACTIVE_ID), "An", "an@seed.local", "0901111111", "male", young, CustomerStatus.ACTIVE);
         segmentId = createAgeSegment();
+        // A campaign only carries a real survey with at least one question.
         String surveyId = "99999999-9999-9999-9999-999999999999";
+        UUID surveyUuid = UUID.fromString(surveyId);
+        surveys.save(new com.chotomua.backend.modules.crm.domain.survey.Survey(
+                        surveyUuid, UUID.fromString(SALES_ID), "Khảo sát", null,
+                        com.chotomua.backend.modules.crm.domain.survey.Survey.DRAFT, Instant.now()),
+                List.of(new com.chotomua.backend.modules.crm.domain.survey.SurveyQuestion(
+                        UUID.randomUUID(), surveyUuid, "Bạn hài lòng không?", "rating", List.of(), 1)));
 
         MvcResult created = mockMvc.perform(post("/api/campaigns")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -261,7 +271,12 @@ class CampaignControllerTest {
                 .andExpect(jsonPath("$.referenceType").value("survey"))
                 .andExpect(jsonPath("$.sentCount").value(1));
 
+        // Reading a customer's inbox belongs to CS and admin, not to the sales user who sent the survey.
         mockMvc.perform(get("/api/notifications").param("userId", ACTIVE_ID))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/notifications").param("userId", ACTIVE_ID)
+                        .with(user(CS_ID).authorities(new SimpleGrantedAuthority("DEPT_CS"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications[0].referenceType").value("survey"))
                 .andExpect(jsonPath("$.notifications[0].referenceId").value(surveyId));
@@ -296,13 +311,14 @@ class CampaignControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications[0].content").value("Nội dung đã sửa"));
 
+        // Mail already in the customer's inbox is care history: a delivered campaign is not deleted.
         mockMvc.perform(delete("/api/campaigns/" + campaignId))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isUnprocessableEntity());
         mockMvc.perform(get("/api/campaigns/" + campaignId))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk());
         mockMvc.perform(get("/api/notifications").param("userId", ACTIVE_ID))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.notifications", hasSize(0)));
+                .andExpect(jsonPath("$.notifications", hasSize(1)));
     }
 
     @Test
@@ -454,6 +470,65 @@ class CampaignControllerTest {
         members.add(new SegmentMember(currentSegmentId, lockedId, now));
         members.add(new SegmentMember(currentSegmentId, deletedId, now));
         segments.save(segment, members);
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    void aCustomerReadingTheMailStaysCountedAsSentAndListedAsARecipient() throws Exception {
+        CustomerView an = identity.seedCustomer(
+                UUID.fromString(ACTIVE_ID), "An", "an@seed.local", "0901111111", "male", LocalDate.now().minusYears(20), CustomerStatus.ACTIVE);
+        segmentId = createAgeSegment();
+        String campaignId = mockMvc.perform(post("/api/campaigns")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(campaignBody(segmentId, null, "Ưu đãi trong app")))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString()
+                .replaceAll("(?s).*\"id\"\\s*:\\s*\"([^\"]+)\".*", "$1");
+
+        notifications.markRead(notifications.findByUser(an.id()).getFirst().id());
+
+        mockMvc.perform(get("/api/campaigns/" + campaignId))
+                .andExpect(jsonPath("$.sentCount").value(1))
+                .andExpect(jsonPath("$.readCount").value(1));
+        mockMvc.perform(get("/api/campaigns"))
+                .andExpect(jsonPath("$.campaigns[0].sentCount").value(1))
+                .andExpect(jsonPath("$.campaigns[0].readCount").value(1));
+        mockMvc.perform(get("/api/campaigns/" + campaignId + "/recipients"))
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.recipients", hasSize(1)));
+    }
+
+    @Test
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    void editingASurveyKeepsTheWordingOfACampaignLetter() throws Exception {
+        CustomerView an = identity.seedCustomer(
+                UUID.fromString(ACTIVE_ID), "An", "an@seed.local", "0901111111", "male", LocalDate.now().minusYears(20), CustomerStatus.ACTIVE);
+        CustomerView binh = identity.seedCustomer("Bình", "male", LocalDate.now().minusYears(30), CustomerStatus.ACTIVE);
+        segmentId = createAgeSegment();
+        UUID surveyId = UUID.fromString("88888888-8888-8888-8888-888888888888");
+        surveys.save(new com.chotomua.backend.modules.crm.domain.survey.Survey(
+                        surveyId, UUID.fromString(ADMIN_ID), "Khảo sát cũ", null,
+                        com.chotomua.backend.modules.crm.domain.survey.Survey.DRAFT, Instant.now()),
+                List.of(new com.chotomua.backend.modules.crm.domain.survey.SurveyQuestion(
+                        UUID.randomUUID(), surveyId, "Bạn hài lòng không?", "rating", List.of(), 1)));
+        mockMvc.perform(post("/api/campaigns")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(campaignBody(segmentId, surveyId.toString(), "Lời mời riêng của chiến dịch")))
+                .andExpect(status().isCreated());
+        notifications.append(List.of(new com.chotomua.backend.modules.crm.domain.notification.AppNotification(
+                UUID.randomUUID(), binh.id(), "survey", surveyId, "in_app", "Khảo sát cũ", "sent", Instant.now())));
+
+        mockMvc.perform(put("/api/surveys/" + surveyId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Khảo sát mới"}
+                                """))
+                .andExpect(status().isOk());
+
+        org.assertj.core.api.Assertions.assertThat(notifications.findByUser(an.id()).getFirst().content())
+                .isEqualTo("Lời mời riêng của chiến dịch");
+        org.assertj.core.api.Assertions.assertThat(notifications.findByUser(binh.id()).getFirst().content())
+                .isEqualTo("Khảo sát mới");
     }
 
     private static String campaignBody(UUID currentSegmentId, String surveyId, String content) {

@@ -25,7 +25,7 @@ public class JdbcSupportDirectory implements SupportDirectory {
                 SELECT u.id, u.full_name, e.department
                 FROM employees e
                 JOIN users u ON u.id = e.user_id
-                WHERE e.department IN ('admin', 'cs')
+                WHERE e.department IN ('admin', 'cs') AND u.status = 'active'
                 ORDER BY CASE e.department WHEN 'cs' THEN 0 ELSE 1 END, u.full_name
                 """, (rs, rowNum) -> new SupportAgent(
                 rs.getObject("id", UUID.class),

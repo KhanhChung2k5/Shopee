@@ -7,6 +7,8 @@ import tools.jackson.databind.ObjectMapper;
  * Cột {@code conversation_messages.content} không có chỗ cho loại tin.
  * Tin thường lưu nguyên văn (tương thích dữ liệu đã gieo).
  * Tin nội bộ, bot, hệ thống và CSAT lưu JSON {@code {"kind","text","score"}}.
+ * Tin thường có nội dung trông giống JSON đó cũng được đóng gói với {@code kind = public},
+ * để chữ người dùng gõ không bao giờ được đọc lại thành tin bot, hệ thống, nội bộ hay điểm CSAT.
  */
 public final class ConversationMessageText {
 
@@ -18,11 +20,12 @@ public final class ConversationMessageText {
 
     /** Tin công khai lưu nguyên văn; loại khác đóng JSON {@code kind}/{@code text}/{@code score}. */
     public static String encode(String kind, String text, Integer score) {
-        if (kind == null || kind.isBlank() || ConversationText.KIND_PUBLIC.equals(kind)) {
+        boolean isPublic = kind == null || kind.isBlank() || ConversationText.KIND_PUBLIC.equals(kind);
+        if (isPublic && !looksEncoded(text)) {
             return text == null ? "" : text;
         }
         try {
-            return JSON.writeValueAsString(new Payload(kind, text, score));
+            return JSON.writeValueAsString(new Payload(isPublic ? ConversationText.KIND_PUBLIC : kind, text, score));
         } catch (Exception exception) {
             throw new IllegalStateException("Không mã hóa được nội dung hội thoại.", exception);
         }
@@ -30,7 +33,7 @@ public final class ConversationMessageText {
 
     /** Đọc JSON hoặc coi toàn bộ là tin công khai nếu không phải payload. */
     public static Decoded decode(String stored) {
-        if (stored == null || !stored.startsWith("{") || !stored.contains("\"kind\"")) {
+        if (!looksEncoded(stored)) {
             return new Decoded(ConversationText.KIND_PUBLIC, stored == null ? "" : stored, null);
         }
         try {
@@ -41,6 +44,10 @@ public final class ConversationMessageText {
         } catch (Exception exception) {
             return new Decoded(ConversationText.KIND_PUBLIC, stored, null);
         }
+    }
+
+    private static boolean looksEncoded(String content) {
+        return content != null && content.startsWith("{") && content.contains("\"kind\"");
     }
 
     /** Loại tin, nội dung hiển thị, điểm CSAT (nếu có). */

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useAuth } from '../../state/AuthContext'
 import { apiFetch, ApiError } from '../../lib/api'
-import { a, chipClass } from '../adminUi'
+import { a, chipClass, statusPillClass } from '../adminUi'
 import { buttonClass } from '../../components/ui'
+import { useDialog } from '../../state/DialogContext'
 
 type Department = 'sales' | 'warehouse' | 'admin' | 'cs'
 
@@ -15,6 +16,7 @@ interface Employee {
   position: string | null
   baseSalary: number | null
   hiredAt: string | null
+  status: 'active' | 'locked' | 'deleted'
 }
 
 const DEPARTMENT_LABEL: Record<Department, string> = {
@@ -22,6 +24,12 @@ const DEPARTMENT_LABEL: Record<Department, string> = {
   warehouse: 'Kho vận',
   admin: 'Quản trị',
   cs: 'CSKH',
+}
+
+const STATUS_LABEL: Record<Employee['status'], string> = {
+  active: 'Đang hoạt động',
+  locked: 'Đã khoá',
+  deleted: 'Đã xoá',
 }
 
 const DEPT_FILTERS: { value: Department | 'all'; label: string }[] = [
@@ -36,6 +44,7 @@ const EMPTY_CREATE_FORM = { email: '', phone: '', password: '', fullName: '', de
 
 export default function AdminEmployeesPage() {
   const { token, user } = useAuth()
+  const { confirm } = useDialog()
   const [deptFilter, setDeptFilter] = useState<Department | 'all'>('all')
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -103,6 +112,33 @@ export default function AdminEmployeesPage() {
       refresh()
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Cập nhật nhân viên thất bại')
+    }
+  }
+
+  const toggleLock = async (employee: Employee) => {
+    const locking = employee.status === 'active'
+    const name = employee.fullName ?? employee.email
+    const ok = await confirm(
+      locking
+        ? {
+            title: 'Khoá tài khoản nhân viên',
+            message: <>Khoá tài khoản <strong>{name}</strong>? Người này sẽ không đăng nhập được và phiên đang mở sẽ ngừng hoạt động trong khoảng 30 giây.</>,
+            confirmLabel: 'Khoá',
+            tone: 'danger',
+          }
+        : {
+            title: 'Mở khoá tài khoản nhân viên',
+            message: <>Mở khoá tài khoản <strong>{name}</strong>? Người này sẽ đăng nhập lại được.</>,
+            confirmLabel: 'Mở khoá',
+          },
+    )
+    if (!ok) return
+    try {
+      await apiFetch(`/employees/${employee.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: locking ? 'locked' : 'active' }) }, token)
+      setLoadError(null)
+      refresh()
+    } catch (err) {
+      setLoadError(err instanceof ApiError ? err.message : 'Không cập nhật được trạng thái nhân viên')
     }
   }
 
@@ -207,6 +243,7 @@ export default function AdminEmployeesPage() {
               <th>Email</th>
               <th>Bộ phận</th>
               <th>Chức danh</th>
+              <th>Trạng thái</th>
               <th></th>
             </tr>
           </thead>
@@ -214,7 +251,7 @@ export default function AdminEmployeesPage() {
             {filtered.map((emp) =>
               editingId === emp.id ? (
                 <tr key={emp.id}>
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     <form onSubmit={submitEdit} className="flex flex-wrap items-center gap-space-sm">
                       <strong>{emp.fullName ?? emp.email}</strong>
                       <select
@@ -250,9 +287,19 @@ export default function AdminEmployeesPage() {
                   <td>{DEPARTMENT_LABEL[emp.department]}</td>
                   <td>{emp.position ?? '—'}</td>
                   <td>
-                    <button type="button" className={buttonClass('outline')} onClick={() => startEdit(emp)}>
-                      Sửa
-                    </button>
+                    <span className={statusPillClass(emp.status)}>{STATUS_LABEL[emp.status]}</span>
+                  </td>
+                  <td>
+                    <div className="flex flex-wrap gap-space-sm">
+                      <button type="button" className={buttonClass('outline')} onClick={() => startEdit(emp)}>
+                        Sửa
+                      </button>
+                      {emp.userId !== user?.id && emp.status !== 'deleted' && (
+                        <button type="button" className={buttonClass('outline')} onClick={() => void toggleLock(emp)}>
+                          {emp.status === 'locked' ? 'Mở khoá' : 'Khoá'}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ),
@@ -262,8 +309,7 @@ export default function AdminEmployeesPage() {
       </div>
 
       <p className="mt-space-md font-body-md text-body-md text-on-surface-variant">
-        Đang đăng nhập với quyền: <code>{user?.role}</code>. Chỉ tài khoản thuộc bộ phận <code>admin</code> mới tạo/sửa được nhân viên
-        (backend trả 403 nếu không đúng quyền).
+        Chỉ tài khoản thuộc bộ phận Quản trị mới thêm, sửa hoặc khoá được nhân viên.
       </p>
     </div>
   )

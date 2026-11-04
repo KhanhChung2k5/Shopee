@@ -63,6 +63,30 @@ public class CrmOrderEvents {
         }
     }
 
+    /**
+     * A customer was locked, unlocked, deleted or restored: re-file them in the RFM segments now (a locked or deleted
+     * customer leaves them, a reactivated one comes back) instead of waiting for the 20:00 run. After commit, never fails the caller.
+     */
+    public void onCustomerStatusChanged(UUID userId) {
+        Runnable recalc = () -> {
+            try {
+                profiles.recalculate(userId);
+            } catch (RuntimeException e) {
+                log.warn("CRM profile recalculation failed after status change (user {})", userId, e);
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    recalc.run();
+                }
+            });
+        } else {
+            recalc.run();
+        }
+    }
+
     private void handleDelivered(UUID userId, UUID orderId) {
         try {
             profiles.recalculate(userId);

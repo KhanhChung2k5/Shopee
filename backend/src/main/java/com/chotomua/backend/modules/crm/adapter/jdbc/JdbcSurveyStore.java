@@ -207,6 +207,15 @@ public class JdbcSurveyStore implements SurveyStore {
     }
 
     @Override
+    public List<SurveySubmission> submissionsBy(UUID userId) {
+        return loadHeaders("""
+                SELECT id, survey_id, user_id, order_id, submitted_at
+                FROM survey_responses
+                WHERE user_id = ?
+                """, userId);
+    }
+
+    @Override
     public List<SurveySubmission> submissionsOf(UUID surveyId) {
         return loadHeaders("""
                 SELECT id, survey_id, user_id, order_id, submitted_at

@@ -2,7 +2,7 @@ import type { Refund } from '../lib/refunds'
 
 /** Staff order board — shapes returned by GET /orders and GET /orders/{id} for sales / warehouse / admin. */
 export type OrderStatus = 'pending' | 'confirmed' | 'cancel_requested' | 'shipping' | 'delivered' | 'cancelled'
-export type ShipmentStatus = 'pending' | 'packed' | 'shipping' | 'delivered'
+export type ShipmentStatus = 'pending' | 'packed' | 'shipping' | 'delivered' | 'failed'
 
 export interface OrderCustomer {
   userId: string
@@ -103,11 +103,49 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   cancelled: 'Đã huỷ',
 }
 
+/**
+ * An order still in this status this many days after it was placed needs a person to look at it: a pending order
+ * holds stock, a cancel request keeps the buyer waiting, a parcel on the road for days may be lost.
+ */
+export const STALE_AFTER_DAYS: Partial<Record<OrderStatus, number>> = {
+  pending: 2,
+  cancel_requested: 2,
+  confirmed: 3,
+  shipping: 5,
+}
+
+const DAY_MS = 86_400_000
+
+/** Whole days since the order was placed. */
+export const orderAgeDays = (o: { createdAt: string }, now = Date.now()) =>
+  Math.floor((now - new Date(o.createdAt).getTime()) / DAY_MS)
+
+export const isStaleOrder = (o: { status: OrderStatus; createdAt: string }, now = Date.now()) => {
+  const limit = STALE_AFTER_DAYS[o.status]
+  return limit != null && orderAgeDays(o, now) >= limit
+}
+
+/** Stale orders per status, oldest first within the dashboard warning. */
+export function staleOrderGroups(orders: StaffOrderSummary[], now = Date.now()) {
+  return (Object.keys(STALE_AFTER_DAYS) as OrderStatus[])
+    .map((status) => {
+      const stale = orders.filter((o) => o.status === status && isStaleOrder(o, now))
+      return {
+        status,
+        limitDays: STALE_AFTER_DAYS[status]!,
+        count: stale.length,
+        oldestDays: stale.reduce((max, o) => Math.max(max, orderAgeDays(o, now)), 0),
+      }
+    })
+    .filter((group) => group.count > 0)
+}
+
 export const SHIPMENT_STATUS_LABEL: Record<ShipmentStatus, string> = {
   pending: 'Chưa đóng gói',
   packed: 'Đã đóng gói',
   shipping: 'Đang giao',
   delivered: 'Đã giao',
+  failed: 'Giao thất bại',
 }
 
 export const ORDER_STATUS_TONE: Record<OrderStatus, 'active' | 'locked' | 'deleted' | 'info'> = {

@@ -33,9 +33,12 @@ import java.util.UUID;
 public class JdbcOrderPort implements OrderPort {
 
     /** What the buyer actually kept paying for: the order total minus money already refunded (returns). */
-    private static final String NET_TOTAL = """
+    private static final String NET_AMOUNT = """
             (total_amount - COALESCE((SELECT SUM(r.refund_amount) FROM refund_returns r
-                                      WHERE r.order_id = orders.id AND r.status = 'refunded'), 0)) AS total_amount""";
+                                      WHERE r.order_id = orders.id AND r.status = 'refunded'), 0))""";
+    private static final String NET_TOTAL = NET_AMOUNT + " AS total_amount";
+    /** An order whose goods all came back and were refunded is not a purchase: it does not count for RFM or LTV. */
+    private static final String KEPT = NET_AMOUNT + " > 0";
 
 
     /** When the order was handed over: its last move to delivered, or the order date if no history row exists. */
@@ -62,11 +65,11 @@ public class JdbcOrderPort implements OrderPort {
     @Override
     public List<DeliveredOrderView> listDeliveredOrders(UUID userId) {
         List<OrderHeader> headers = jdbc.query("""
-                SELECT id, user_id, %s, %s
+                SELECT id, user_id, created_at, %s, %s
                 FROM orders
-                WHERE user_id = ? AND status = 'delivered'
+                WHERE user_id = ? AND status = 'delivered' AND %s
                 ORDER BY created_at
-                """.formatted(NET_TOTAL, DELIVERED_AT), (rs, rowNum) -> header(rs), userId);
+                """.formatted(NET_TOTAL, DELIVERED_AT, KEPT), (rs, rowNum) -> header(rs), userId);
         return attachLines(headers);
     }
 
@@ -79,11 +82,11 @@ public class JdbcOrderPort implements OrderPort {
         for (int from = 0; from < ids.size(); from += 500) {
             List<UUID> chunk = ids.subList(from, Math.min(ids.size(), from + 500));
             List<OrderHeader> headers = jdbc.query("""
-                    SELECT id, user_id, %s, %s
+                    SELECT id, user_id, created_at, %s, %s
                     FROM orders
-                    WHERE user_id IN (%s) AND status = 'delivered'
+                    WHERE user_id IN (%s) AND status = 'delivered' AND %s
                     ORDER BY created_at
-                    """.formatted(NET_TOTAL, DELIVERED_AT, placeholders(chunk.size())), (rs, rowNum) -> header(rs), chunk.toArray());
+                    """.formatted(NET_TOTAL, DELIVERED_AT, placeholders(chunk.size()), KEPT), (rs, rowNum) -> header(rs), chunk.toArray());
             for (DeliveredOrderView order : attachLines(headers)) {
                 result.computeIfAbsent(order.userId(), key -> new ArrayList<>()).add(order);
             }
@@ -94,7 +97,7 @@ public class JdbcOrderPort implements OrderPort {
     @Override
     public Optional<DeliveredOrderView> getDeliveredOrder(UUID orderId) {
         List<OrderHeader> found = jdbc.query("""
-                SELECT id, user_id, %s, %s
+                SELECT id, user_id, created_at, %s, %s
                 FROM orders
                 WHERE id = ? AND status = 'delivered'
                 """.formatted(NET_TOTAL, DELIVERED_AT), (rs, rowNum) -> header(rs), orderId);
@@ -184,7 +187,8 @@ public class JdbcOrderPort implements OrderPort {
                     header.userId(),
                     header.totalAmount(),
                     header.deliveredAt(),
-                    List.copyOf(lines.getOrDefault(header.id(), List.of()))));
+                    List.copyOf(lines.getOrDefault(header.id(), List.of())),
+                    header.placedAt()));
         }
         return result;
     }
@@ -222,12 +226,18 @@ public class JdbcOrderPort implements OrderPort {
                 rs.getObject("id", UUID.class),
                 rs.getObject("user_id", UUID.class),
                 rs.getBigDecimal("total_amount"),
-                rs.getTimestamp("delivered_at"));
+                rs.getTimestamp("delivered_at"),
+                rs.getTimestamp("created_at"));
     }
 
-    private record OrderHeader(UUID id, UUID userId, BigDecimal totalAmount, Timestamp deliveredAtTimestamp) {
+    private record OrderHeader(UUID id, UUID userId, BigDecimal totalAmount, Timestamp deliveredAtTimestamp,
+                               Timestamp placedAtTimestamp) {
         Instant deliveredAt() {
             return deliveredAtTimestamp == null ? null : deliveredAtTimestamp.toInstant();
+        }
+
+        Instant placedAt() {
+            return placedAtTimestamp == null ? null : placedAtTimestamp.toInstant();
         }
     }
 

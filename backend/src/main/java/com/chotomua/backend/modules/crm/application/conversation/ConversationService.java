@@ -110,7 +110,7 @@ public class ConversationService {
             return new ConversationListResponse(sortedByUrgency(items), presence.isLive());
         }
         requireCustomer(actorId);
-        List<Conversation> own = store.listAll().stream().filter(c -> c.userId().equals(actorId)).toList();
+        List<Conversation> own = store.listByUser(actorId);
         return new ConversationListResponse(sortedByUrgency(new ArrayList<>(presenter.summaries(own, actorId))), presence.isLive());
     }
 
@@ -221,6 +221,9 @@ public class ConversationService {
             throw new InvalidConversationException("Chọn nhân viên nhận chuyển tiếp.");
         }
         identity.requireCrmStaff(targetUserId);
+        if (directory.listAgents().stream().noneMatch(agent -> agent.userId().equals(targetUserId))) {
+            throw new InvalidConversationException("Nhân viên này không còn nhận được hội thoại.");
+        }
         Conversation conversation = require(conversationId);
         if (ConversationText.STATUS_CLOSED.equals(conversation.status())) {
             throw new InvalidConversationException("Hội thoại đã đóng, không chuyển tiếp được.");

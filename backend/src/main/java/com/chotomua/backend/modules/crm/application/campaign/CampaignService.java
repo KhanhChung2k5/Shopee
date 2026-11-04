@@ -6,6 +6,7 @@ import com.chotomua.backend.modules.crm.application.exception.CustomerNotFoundEx
 import com.chotomua.backend.modules.crm.application.exception.InvalidCampaignException;
 import com.chotomua.backend.modules.crm.application.exception.NotificationNotFoundException;
 import com.chotomua.backend.modules.crm.application.exception.SegmentNotFoundException;
+import com.chotomua.backend.modules.crm.application.exception.SurveyNotFoundException;
 import com.chotomua.backend.modules.crm.application.notification.NotificationStore;
 import com.chotomua.backend.modules.crm.application.segment.SegmentStore;
 import com.chotomua.backend.modules.crm.application.survey.SurveyStore;
@@ -68,6 +69,8 @@ public class CampaignService {
     private final NotificationStore notifications;
     private final SurveyStore surveys;
     private final Clock clock;
+    private static final long DISPATCH_THROTTLE_MS = 5_000;
+    private final java.util.concurrent.atomic.AtomicLong lastDispatch = new java.util.concurrent.atomic.AtomicLong(Long.MIN_VALUE / 2);
 
     /** Spring tiêm cổng danh tính / đơn / sản phẩm và các kho in-app. */
     @Autowired
@@ -109,34 +112,42 @@ public class CampaignService {
 
     /** Danh sách chiến dịch cho nhân viên CRM; phát thư đến hạn trước khi đọc. */
     public CampaignListResponse list(UUID actorId) {
-        dispatchDue();
+        dispatchDueIfStale();
         identity.requireMarketingStaff(actorId);
-        List<CampaignResponse> rows = campaigns.findAll().stream()
-                .map(this::toResponse)
+        List<Campaign> all = campaigns.findAll();
+        // Mail counts of every campaign in one read instead of four queries per campaign.
+        java.util.Map<UUID, NotificationStore.CampaignMailStats> stats =
+                notifications.campaignStats(all.stream().map(Campaign::id).toList());
+        List<CampaignResponse> rows = all.stream()
+                .map(campaign -> toResponse(campaign, stats.getOrDefault(campaign.id(), NotificationStore.CampaignMailStats.NONE)))
                 .toList();
         return new CampaignListResponse(rows);
     }
 
     /** Chi tiết một chiến dịch; 404 nếu không còn trong kho. */
     public CampaignResponse get(UUID actorId, UUID campaignId) {
-        dispatchDue();
+        dispatchDueIfStale();
         identity.requireMarketingStaff(actorId);
         return toResponse(require(campaignId));
     }
 
     /** Trang người đã nhận thư. Mỗi lần tối đa 10 người. */
     public CampaignRecipientListResponse recipients(UUID actorId, UUID campaignId, int offset, int limit) {
-        dispatchDue();
+        dispatchDueIfStale();
         identity.requireMarketingStaff(actorId);
         Campaign campaign = require(campaignId);
         Reference reference = scopeOf(campaign);
         boolean scheduled = notifications.countStatus(reference.type(), reference.id(), STATUS_SCHEDULED) > 0;
-        String status = scheduled ? STATUS_SCHEDULED : STATUS_SENT;
         int pageSize = Math.min(Math.max(limit, 1), 10);
         int start = Math.max(offset, 0);
-        int total = notifications.countStatus(reference.type(), reference.id(), status);
+        int total = scheduled
+                ? notifications.countStatus(reference.type(), reference.id(), STATUS_SCHEDULED)
+                : notifications.countByReference(reference.type(), reference.id());
+        List<AppNotification> page = scheduled
+                ? notifications.pageByStatus(reference.type(), reference.id(), STATUS_SCHEDULED, start, pageSize)
+                : notifications.pageDelivered(reference.type(), reference.id(), start, pageSize);
         List<CampaignRecipientResponse> rows = new ArrayList<>();
-        for (AppNotification note : notifications.pageByStatus(reference.type(), reference.id(), status, start, pageSize)) {
+        for (AppNotification note : page) {
             rows.add(new CampaignRecipientResponse(note.userId(), recipientName(note.userId()), note.status()));
         }
         return new CampaignRecipientListResponse(total, rows);
@@ -176,11 +187,14 @@ public class CampaignService {
             throw new InvalidCampaignException("Chiến dịch cần ít nhất một phân khúc hoặc một sản phẩm mục tiêu.");
         }
         if (surveyId != null) {
-            surveys.find(surveyId).ifPresent(survey -> {
-                if (Survey.CLOSED.equals(survey.status())) {
-                    throw new InvalidCampaignException("Phiếu đã lưu trữ, không gửi được.");
-                }
-            });
+            // Same bar as publishing a survey: it must exist, not be archived and have at least one question.
+            Survey survey = surveys.find(surveyId).orElseThrow(() -> new SurveyNotFoundException(surveyId));
+            if (Survey.CLOSED.equals(survey.status())) {
+                throw new InvalidCampaignException("Phiếu đã lưu trữ, không gửi được.");
+            }
+            if (surveys.questionsOf(surveyId).isEmpty()) {
+                throw new InvalidCampaignException("Khảo sát chưa có câu hỏi nào, không gửi kèm chiến dịch được.");
+            }
         }
 
         UUID campaignId = UUID.randomUUID();
@@ -284,6 +298,12 @@ public class CampaignService {
         identity.requireMarketingStaff(actorId);
         Campaign current = require(campaignId);
         Reference reference = scopeOf(current);
+        int delivered = notifications.countStatus(reference.type(), reference.id(), STATUS_SENT)
+                + notifications.countStatus(reference.type(), reference.id(), STATUS_READ);
+        if (delivered > 0) {
+            throw new InvalidCampaignException("Chiến dịch đã gửi tới " + delivered
+                    + " khách, không xóa được (thư đã nằm trong hộp thư và là lịch sử chăm sóc). Chỉ xóa được chiến dịch còn lên lịch.");
+        }
         notifications.deleteByReference(reference.type(), reference.id());
         productTargets.delete(campaignId);
         campaigns.delete(campaignId);
@@ -294,16 +314,38 @@ public class CampaignService {
      * Nhân viên CRM được xem hộp thư một khách khi truyền {@code userId}.
      */
     public NotificationListResponse inbox(UUID actorId, UUID requestedUserId) {
-        dispatchDue();
+        dispatchDueIfStale();
         UUID target = requestedUserId == null ? actorId : requestedUserId;
         if (!target.equals(actorId)) {
-            identity.requireMarketingStaff(actorId);
+            identity.requireCrmStaff(actorId);
         }
-        List<NotificationResponse> rows = notifications.findByUser(target).stream()
+        java.util.Set<String> answered = surveys.submissionsBy(target).stream()
+                .map(submission -> invitationKey(submission.surveyId(), submission.orderId()))
+                .collect(java.util.stream.Collectors.toSet());
+        List<AppNotification> mail = notifications.findByUser(target).stream()
                 .filter(row -> STATUS_SENT.equals(row.status()) || STATUS_READ.equals(row.status()))
-                .map(CampaignService::toNotification)
+                .toList();
+        java.util.Set<UUID> closed = mail.stream()
+                .filter(row -> REFERENCE_SURVEY.equals(row.referenceType()))
+                .map(AppNotification::referenceId)
+                .distinct()
+                .filter(id -> surveys.find(id).map(survey -> Survey.CLOSED.equals(survey.status())).orElse(false))
+                .collect(java.util.stream.Collectors.toSet());
+        List<NotificationResponse> rows = mail.stream()
+                .map(row -> {
+                    boolean invitation = REFERENCE_SURVEY.equals(row.referenceType());
+                    return toNotification(row,
+                            invitation && answered.contains(invitationKey(row.referenceId(), row.orderId())),
+                            invitation && closed.contains(row.referenceId()));
+                })
                 .toList();
         return new NotificationListResponse(rows);
+    }
+
+    /** Số thư chưa đọc của chính người đang đăng nhập (chuông thông báo hỏi mỗi phút). */
+    public int unreadCount(UUID actorId) {
+        dispatchDueIfStale();
+        return notifications.countUnread(actorId);
     }
 
     /**
@@ -323,14 +365,33 @@ public class CampaignService {
             notifications.markRead(note.id());
             note = notifications.find(note.id()).orElseThrow(() -> new NotificationNotFoundException(notificationId));
         }
-        return toNotification(note);
+        return toNotification(note, false, false);
     }
 
-    /** Phát các thư đã đến giờ. Khách vừa khóa hoặc xóa thì bỏ, không đưa vào hộp thư. */
+    /**
+     * Read paths (campaign list and detail, every customer's inbox poll) deliver due mail too, but the scheduler
+     * already does it every 15 s: they rescan the table at most once per 5 seconds.
+     */
+    private void dispatchDueIfStale() {
+        long last = lastDispatch.get();
+        long now = Instant.now(clock).toEpochMilli();
+        if (now >= last && now - last < DISPATCH_THROTTLE_MS) {
+            return;
+        }
+        dispatchDue();
+    }
+
+    /**
+     * Phát các thư đã đến giờ. Khách vừa khóa hoặc xóa thì bỏ, không đưa vào hộp thư; thư mời một khảo sát
+     * đã lưu trữ trong lúc chờ cũng bỏ (khách không còn trả lời được).
+     */
     public void dispatchDue() {
         Instant now = Instant.now(clock);
+        lastDispatch.set(now.toEpochMilli());
         for (AppNotification row : notifications.findScheduledDue(now)) {
-            if (!stillActive(row.userId())) {
+            boolean archivedSurvey = REFERENCE_SURVEY.equals(row.referenceType())
+                    && surveys.find(row.referenceId()).map(survey -> Survey.CLOSED.equals(survey.status())).orElse(true);
+            if (archivedSurvey || !stillActive(row.userId())) {
                 notifications.deleteById(row.id());
                 continue;
             }
@@ -423,7 +484,21 @@ public class CampaignService {
     }
 
     /** Bản DTO đầy đủ: phân khúc đích, số gửi, người bị bỏ, trạng thái giao. */
+    private CampaignResponse toResponse(Campaign campaign, NotificationStore.CampaignMailStats stats) {
+        return toResponse(campaign, stats.sent(), List.of(), stats);
+    }
+
     private CampaignResponse toResponse(Campaign campaign, int sentCount, List<SkippedRecipientResponse> skipped) {
+        NotificationStore.CampaignMailStats stats = new NotificationStore.CampaignMailStats(
+                sentCount,
+                notifications.countStatus(NotificationStore.SCOPE_CAMPAIGN, campaign.id(), STATUS_READ),
+                notifications.countStatus(NotificationStore.SCOPE_CAMPAIGN, campaign.id(), STATUS_SCHEDULED),
+                notifications.contentOf(NotificationStore.SCOPE_CAMPAIGN, campaign.id()));
+        return toResponse(campaign, sentCount, skipped, stats);
+    }
+
+    private CampaignResponse toResponse(Campaign campaign, int sentCount, List<SkippedRecipientResponse> skipped,
+                                        NotificationStore.CampaignMailStats stats) {
         List<UUID> segmentIds = campaigns.targetsOf(campaign.id()).stream()
                 .map(CampaignTarget::segmentId)
                 .toList();
@@ -439,10 +514,10 @@ public class CampaignService {
                 reference.type(),
                 reference.id(),
                 sentCount,
-                notifications.countStatus(NotificationStore.SCOPE_CAMPAIGN, campaign.id(), STATUS_READ),
+                stats.read(),
                 List.copyOf(skipped),
-                notifications.contentOf(NotificationStore.SCOPE_CAMPAIGN, campaign.id()),
-                notifications.countStatus(NotificationStore.SCOPE_CAMPAIGN, campaign.id(), STATUS_SCHEDULED) > 0
+                stats.content(),
+                stats.scheduled() > 0
                         ? DELIVERY_SCHEDULED
                         : DELIVERY_SENT,
                 productTarget == null ? List.of() : productTarget.productIds(),
@@ -488,7 +563,12 @@ public class CampaignService {
     }
 
     /** Ánh xạ bản ghi hộp thư sang DTO REST. */
-    private static NotificationResponse toNotification(AppNotification notification) {
+    /** One survey invitation: a survey, for one order or for none. */
+    private static String invitationKey(UUID surveyId, UUID orderId) {
+        return surveyId + "/" + orderId;
+    }
+
+    private static NotificationResponse toNotification(AppNotification notification, boolean surveyAnswered, boolean surveyClosed) {
         return new NotificationResponse(
                 notification.id(),
                 notification.userId(),
@@ -498,6 +578,8 @@ public class CampaignService {
                 notification.content(),
                 notification.status(),
                 notification.sentAt(),
-                notification.orderId());
+                notification.orderId(),
+                surveyAnswered,
+                surveyClosed);
     }
 }

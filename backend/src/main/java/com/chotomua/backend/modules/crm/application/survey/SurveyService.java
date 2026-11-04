@@ -132,7 +132,8 @@ public class SurveyService {
         }
         if (Survey.SENT.equals(updated.status())) {
             notifications.collapseRecipients(NotificationStore.SCOPE_SURVEY_DIRECT, surveyId);
-            notifications.updateContent("survey", surveyId, inboxContent(updated));
+            // A campaign's letter keeps its own wording: only the invitations the survey itself wrote follow the edit.
+            notifications.updateContent(NotificationStore.SCOPE_SURVEY_OWN, surveyId, inboxContent(updated));
         }
         return toResponse(updated);
     }
@@ -141,8 +142,9 @@ public class SurveyService {
     public void delete(UUID actorId, UUID surveyId) {
         identity.requireCrmStaff(actorId);
         Survey current = require(surveyId);
-        if (Survey.CLOSED.equals(current.status())) {
-            throw new InvalidSurveyException("Phiếu đã lưu trữ không xóa được.");
+        // A survey that reached customers holds their answers: it is archived, never deleted.
+        if (!Survey.DRAFT.equals(current.status())) {
+            throw new InvalidSurveyException("Chỉ xóa được khảo sát nháp. Khảo sát đã gửi hãy lưu trữ để giữ câu trả lời của khách.");
         }
         notifications.deleteByReference("survey", surveyId);
         surveys.delete(surveyId);

@@ -59,16 +59,15 @@ public class FlashSaleCheckoutService {
                 .flatMap(Optional::stream)
                 .toList();
 
+        // A flash sale whose remaining units cannot cover the whole line is skipped: the line falls back to the
+        // "% off" discount or the list price instead of blocking the purchase until the program ends.
         Optional<Candidate> flash = active.stream()
                 .filter(c -> c.detail().getFlashPrice() != null && c.detail().getFlashPrice().compareTo(base.unitPrice()) < 0)
+                .filter(c -> c.detail().hasFlashUnitsFor(quantity))
                 .min(Comparator.comparing(c -> c.detail().getFlashPrice()));
         if (flash.isPresent()) {
             PromotionProductDetail detail = flash.get().detail();
-            if (reserve) {
-                detail.reserveFlashQuantity(quantity); // throws "hết số lượng" past limit_qty
-            } else if (detail.getLimitQty() != null && detail.getSoldQty() + quantity > detail.getLimitQty()) {
-                throw new IllegalStateException("Flash Sale đã hết số lượng ưu đãi");
-            }
+            if (reserve) detail.reserveFlashQuantity(quantity); // rows are locked, so the check above still holds
             return base.withPromotion(detail.getFlashPrice(),
                     new ProductVariantSnapshot.Promotion(detail.getId(), true, base.unitPrice(), flash.get().program().getName()));
         }

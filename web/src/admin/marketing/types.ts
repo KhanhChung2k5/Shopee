@@ -19,6 +19,15 @@ export interface Voucher {
   expiresAt: string | null
   /** product_type values the voucher discounts; empty = every product. */
   targetProductTypes: string[]
+  /** The order (lines the voucher covers) must reach this; null = no minimum. */
+  minOrderAmount: number | null
+  /** Cap for a percentage voucher; null = no cap. */
+  maxDiscountAmount: number | null
+  /** Orders that may use the code in total; null = unlimited. */
+  usageLimit: number | null
+  newCustomersOnly: boolean
+  /** Orders (not cancelled) that used it. */
+  usedCount: number
 }
 
 export interface ProductDiscount {
@@ -36,6 +45,8 @@ export interface InvoiceDiscount {
   promotionProgramId: string
   discountAmount: number | null
   discountPercent: number | null
+  minOrderAmount: number | null
+  maxDiscountAmount: number | null
 }
 
 export const money = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 2 })

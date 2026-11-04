@@ -70,8 +70,16 @@ public class ConversationPresenter {
         java.util.Map<UUID, List<ConversationMessage>> messages = store.messagesOfAll(ids);
         java.util.Map<UUID, List<AgentAssignment>> assignments = store.assignmentsOfAll(ids);
         java.util.Map<UUID, String> customerNames = new java.util.HashMap<>();
-        for (CustomerView customer : identity.findCustomers(new com.chotomua.backend.modules.crm.port.dto.CustomerFilter(null, null), true)) {
-            customerNames.put(customer.id(), customer.fullName() == null || customer.fullName().isBlank() ? "Khách hàng" : customer.fullName());
+        java.util.Set<UUID> owners = conversations.stream().map(Conversation::userId).collect(java.util.stream.Collectors.toSet());
+        if (owners.size() == 1) {
+            // A customer's own list: one name, not the whole customer table.
+            UUID owner = owners.iterator().next();
+            CustomerView customer = identity.getCustomer(owner);
+            customerNames.put(owner, customer.fullName() == null || customer.fullName().isBlank() ? "Khách hàng" : customer.fullName());
+        } else {
+            for (CustomerView customer : identity.findCustomers(new com.chotomua.backend.modules.crm.port.dto.CustomerFilter(null, null), true)) {
+                customerNames.put(customer.id(), customer.fullName() == null || customer.fullName().isBlank() ? "Khách hàng" : customer.fullName());
+            }
         }
         java.util.Map<UUID, String> staffNames = new java.util.HashMap<>();
         java.util.function.Function<UUID, String> staffName = id -> staffNames.computeIfAbsent(id, this::staffName);
@@ -159,7 +167,11 @@ public class ConversationPresenter {
         DeliveredOrderView last = delivered.stream()
                 .max(Comparator.comparing(order -> order.deliveredAt() == null ? Instant.EPOCH : order.deliveredAt()))
                 .orElse(null);
-        BigDecimal spend = profile == null || profile.ltv() == null ? BigDecimal.ZERO : profile.ltv();
+        // Money really paid (refunds already taken off), not the LTV forecast.
+        BigDecimal spend = delivered.stream()
+                .map(DeliveredOrderView::totalAmount)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         int totalOrders = profile == null ? delivered.size() : profile.totalOrders();
         String tier = profile == null ? null : profile.rfmSegment();
         List<ConversationHistoryItem> history = new ArrayList<>();

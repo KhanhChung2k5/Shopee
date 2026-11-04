@@ -44,6 +44,22 @@ public class Voucher {
     @Column(name = "target_product_types", columnDefinition = "jsonb", nullable = false)
     private List<String> targetProductTypes = new ArrayList<>();
 
+    /** The order (its lines the voucher covers) must reach this to qualify; null = no minimum. */
+    @Column(name = "min_order_amount", precision = 12, scale = 2)
+    private BigDecimal minOrderAmount;
+
+    /** Most a percentage voucher takes off; null = no cap. */
+    @Column(name = "max_discount_amount", precision = 12, scale = 2)
+    private BigDecimal maxDiscountAmount;
+
+    /** Orders (not cancelled) that may use the code in total; null = unlimited. */
+    @Column(name = "usage_limit")
+    private Integer usageLimit;
+
+    /** Only buyers with no order yet (cancelled ones aside). */
+    @Column(name = "new_customers_only", nullable = false)
+    private boolean newCustomersOnly;
+
     protected Voucher() {
     }
 
@@ -59,6 +75,10 @@ public class Voucher {
         expiresAt = request.expiresAt();
         targetProductTypes = request.targetProductTypes() == null
                 ? new ArrayList<>() : new ArrayList<>(new LinkedHashSet<>(request.targetProductTypes()));
+        minOrderAmount = request.minOrderAmount();
+        maxDiscountAmount = request.maxDiscountAmount();
+        usageLimit = request.usageLimit();
+        newCustomersOnly = Boolean.TRUE.equals(request.newCustomersOnly());
     }
 
     public UUID getId() { return id; }
@@ -67,5 +87,9 @@ public class Voucher {
     public String getType() { return type; }
     public BigDecimal getValue() { return value; }
     public OffsetDateTime getExpiresAt() { return expiresAt; }
+    public BigDecimal getMinOrderAmount() { return minOrderAmount; }
+    public BigDecimal getMaxDiscountAmount() { return maxDiscountAmount; }
+    public Integer getUsageLimit() { return usageLimit; }
+    public boolean isNewCustomersOnly() { return newCustomersOnly; }
     public List<String> getTargetProductTypes() { return targetProductTypes == null ? List.of() : List.copyOf(targetProductTypes); }
 }

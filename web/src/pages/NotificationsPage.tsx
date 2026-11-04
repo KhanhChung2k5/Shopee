@@ -30,7 +30,8 @@ export default function NotificationsPage() {
     } catch { /* keep it unread; the user can retry */ }
   }
 
-  const unread = items?.filter((n) => n.status !== 'read').length ?? 0
+  const needsAttention = (n: AppNotification) => n.status !== 'read' && !n.surveyAnswered && !n.surveyClosed
+  const unread = items?.filter(needsAttention).length ?? 0
 
   return (
     <Page narrow>
@@ -44,7 +45,7 @@ export default function NotificationsPage() {
       {items?.length === 0 && <Card><EmptyState icon="notifications" title="Chưa có thông báo" description="Ưu đãi và lời mời khảo sát dành cho bạn sẽ xuất hiện tại đây." /></Card>}
       <div className="space-y-space-sm">
         {items?.map((n) => {
-          const unreadItem = n.status !== 'read'
+          const unreadItem = needsAttention(n)
           const isSurvey = n.referenceType === 'survey' && n.referenceId
           return (
             <Card key={n.id} className={cx('!p-space-md flex items-start gap-space-md', unreadItem && 'ring-1 ring-primary/40')}>
@@ -55,11 +56,18 @@ export default function NotificationsPage() {
                 <div className="flex flex-wrap items-center gap-space-xs">
                   <Badge tone={isSurvey ? 'info' : 'primary'}>{isSurvey ? 'Khảo sát' : 'Ưu đãi'}</Badge>
                   {unreadItem && <Badge tone="danger">Mới</Badge>}
+                  {n.surveyAnswered && <Badge tone="success">Đã trả lời</Badge>}
+                  {n.surveyClosed && !n.surveyAnswered && <Badge>Đã kết thúc</Badge>}
                   <span className="font-label-md text-label-md text-on-surface-variant">{timeVi(n.sentAt)}</span>
                 </div>
                 <p className="font-body-lg text-body-lg text-on-surface whitespace-pre-line">{n.content}</p>
+                {isSurvey && n.orderId && (
+                  <p className="font-body-md text-body-md text-on-surface-variant">
+                    Dành cho đơn <Link className="text-primary underline" to={`/don-hang/${n.orderId}`}>#{n.orderId.slice(0, 8).toUpperCase()}</Link>
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-space-xs">
-                  {isSurvey && <Link className={buttonClass('primary', 'sm')} to={`/khao-sat/${n.referenceId}${n.orderId ? `?order=${n.orderId}` : ''}`} onClick={() => void markRead(n)}>Làm khảo sát</Link>}
+                  {isSurvey && !n.surveyAnswered && !n.surveyClosed && <Link className={buttonClass('primary', 'sm')} to={`/khao-sat/${n.referenceId}${n.orderId ? `?order=${n.orderId}` : ''}`} onClick={() => void markRead(n)}>Làm khảo sát</Link>}
                   {unreadItem && <button type="button" className={buttonClass('ghost', 'sm')} onClick={() => void markRead(n)}>Đánh dấu đã đọc</button>}
                 </div>
               </div>

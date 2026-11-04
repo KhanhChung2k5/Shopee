@@ -17,11 +17,18 @@ interface VoucherForm {
   value: string
   expiresAt: string
   targetProductTypes: string[]
+  minOrderAmount: string
+  maxDiscountAmount: string
+  usageLimit: string
+  newCustomersOnly: boolean
 }
 
 const EMPTY_FORM: VoucherForm = {
   promotionProgramId: '', code: '', type: 'percentage', value: '', expiresAt: '', targetProductTypes: [],
+  minOrderAmount: '', maxDiscountAmount: '', usageLimit: '', newCustomersOnly: false,
 }
+
+const optionalNumber = (value: string) => (value.trim() === '' ? null : Number(value))
 
 interface Props {
   token: string
@@ -37,6 +44,9 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const selectedProgram = programs.find((program) => program.id === form.promotionProgramId)
+  // Orders were priced with a used voucher's terms: only its expiry and total uses may still change.
+  const termsLocked = !!editingId && (vouchers.find((v) => v.id === editingId)?.usedCount ?? 0) > 0
+  const programOf = (voucher: Voucher) => programs.find((program) => program.id === voucher.promotionProgramId)
 
   const edit = (voucher: Voucher) => {
     setEditingId(voucher.id)
@@ -47,6 +57,10 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
       value: String(voucher.value),
       expiresAt: toLocalInput(voucher.expiresAt),
       targetProductTypes: voucher.targetProductTypes ?? [],
+      minOrderAmount: voucher.minOrderAmount == null ? '' : String(voucher.minOrderAmount),
+      maxDiscountAmount: voucher.maxDiscountAmount == null ? '' : String(voucher.maxDiscountAmount),
+      usageLimit: voucher.usageLimit == null ? '' : String(voucher.usageLimit),
+      newCustomersOnly: voucher.newCustomersOnly,
     })
     setError(null)
   }
@@ -67,7 +81,14 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
         editingId ? `/marketing/vouchers/${editingId}` : '/marketing/vouchers',
         {
           method: editingId ? 'PUT' : 'POST',
-          body: JSON.stringify({ ...form, value: Number(form.value), expiresAt: toIso(form.expiresAt) }),
+          body: JSON.stringify({
+            ...form,
+            value: Number(form.value),
+            expiresAt: toIso(form.expiresAt),
+            minOrderAmount: optionalNumber(form.minOrderAmount),
+            maxDiscountAmount: form.type === 'percentage' ? optionalNumber(form.maxDiscountAmount) : null,
+            usageLimit: optionalNumber(form.usageLimit),
+          }),
         },
         token,
       )
@@ -99,7 +120,7 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
       <form onSubmit={save} className={a.formGrid}>
         <label>
           Chương trình
-          <select className={a.input} required value={form.promotionProgramId}
+          <select className={a.input} required value={form.promotionProgramId} disabled={termsLocked}
             onChange={(event) => setForm({ ...form, promotionProgramId: event.target.value })}>
             <option value="">Chọn chương trình</option>
             {programs.map((program) => <option key={program.id} value={program.id}>{program.code} · {program.name}</option>)}
@@ -107,13 +128,13 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
         </label>
         <label>
           Mã voucher
-          <input className={a.input} required maxLength={50} pattern="[A-Za-z0-9_-]+"
+          <input className={a.input} required maxLength={50} pattern="[A-Za-z0-9_-]+" disabled={termsLocked}
             value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} />
         </label>
         <label>
           Kiểu giảm
-          <select className={a.input} value={form.type}
-            onChange={(event) => setForm({ ...form, type: event.target.value as Voucher['type'] })}>
+          <select className={a.input} value={form.type} disabled={termsLocked}
+            onChange={(event) => setForm({ ...form, type: event.target.value as Voucher['type'], maxDiscountAmount: '' })}>
             <option value="percentage">Phần trăm</option>
             <option value="fixed_amount">Số tiền</option>
           </select>
@@ -121,8 +142,30 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
         <label>
           Giá trị
           <input className={a.input} type="number" required min="0.01" step="0.01"
-            max={form.type === 'percentage' ? '100' : '9999999999.99'}
+            max={form.type === 'percentage' ? '100' : '9999999999.99'} disabled={termsLocked}
             value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} />
+        </label>
+        <label>
+          Đơn tối thiểu (tùy chọn)
+          <input className={a.input} type="number" min="0.01" step="0.01" max="9999999999.99" placeholder="Không giới hạn" disabled={termsLocked}
+            value={form.minOrderAmount} onChange={(event) => setForm({ ...form, minOrderAmount: event.target.value })} />
+        </label>
+        {form.type === 'percentage' && (
+          <label>
+            Giảm tối đa (tùy chọn)
+            <input className={a.input} type="number" min="0.01" step="0.01" max="9999999999.99" placeholder="Không giới hạn" disabled={termsLocked}
+              value={form.maxDiscountAmount} onChange={(event) => setForm({ ...form, maxDiscountAmount: event.target.value })} />
+          </label>
+        )}
+        <label>
+          Tổng lượt dùng (tùy chọn)
+          <input className={a.input} type="number" min="1" step="1" placeholder="Không giới hạn"
+            value={form.usageLimit} onChange={(event) => setForm({ ...form, usageLimit: event.target.value })} />
+        </label>
+        <label className="flex items-center gap-space-xs self-end">
+          <input type="checkbox" checked={form.newCustomersOnly} disabled={termsLocked}
+            onChange={(event) => setForm({ ...form, newCustomersOnly: event.target.checked })} />
+          Chỉ khách hàng mới (đơn đầu tiên)
         </label>
         <label>
           Hết hạn (tùy chọn)
@@ -131,7 +174,7 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
         </label>
         {selectedProgram && (
           <p className="md:col-span-2 font-body-md text-body-md text-on-surface-variant">
-            Chương trình <strong>{selectedProgram.name}</strong>: {dateTime.format(new Date(selectedProgram.startAt))} → {dateTime.format(new Date(selectedProgram.endAt))}
+            Chương trình <strong>{selectedProgram.name}</strong> ({selectedProgram.programType}): {dateTime.format(new Date(selectedProgram.startAt))} → {dateTime.format(new Date(selectedProgram.endAt))}
             {' · '}{audienceLabel(selectedProgram.targetLoyaltyTier)}. Hạn voucher phải nằm trong thời gian này.
           </p>
         )}
@@ -141,7 +184,7 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
             {PRODUCT_TYPES.map((type) => {
               const on = form.targetProductTypes.includes(type)
               return (
-                <button key={type} type="button" className={buttonClass(on ? 'primary' : 'outline', 'sm')} aria-pressed={on}
+                <button key={type} type="button" className={buttonClass(on ? 'primary' : 'outline', 'sm')} aria-pressed={on} disabled={termsLocked}
                   onClick={() => setForm({ ...form, targetProductTypes: on
                     ? form.targetProductTypes.filter((t) => t !== type)
                     : [...form.targetProductTypes, type] })}>
@@ -151,6 +194,11 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
             })}
           </div>
         </fieldset>
+        {termsLocked && (
+          <p className="md:col-span-2 font-body-md text-body-md text-on-surface-variant">
+            Voucher đã có đơn sử dụng nên chỉ đổi được hạn dùng và tổng lượt dùng. Muốn đổi mức giảm hay điều kiện, hãy tạo voucher mới.
+          </p>
+        )}
         {error && <p role="alert" className={a.formMessage}>{error}</p>}
         <div className={a.formActions}>
           <button className={buttonClass('primary')} type="submit" disabled={busy || programs.length === 0}>
@@ -162,17 +210,21 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
 
       <div className={a.tableWrap}>
         <table className={a.table}>
-          <thead><tr><th>Mã</th><th>Chương trình</th><th>Khách hàng</th><th>Sản phẩm</th><th>Mức giảm</th><th>Hết hạn</th><th>Thao tác</th></tr></thead>
+          <thead><tr><th>Mã</th><th>Chương trình</th><th>Khách hàng</th><th>Sản phẩm</th><th>Mức giảm</th><th>Điều kiện</th><th>Đã dùng</th><th>Hết hạn</th><th>Thao tác</th></tr></thead>
           <tbody>
             {vouchers.map((voucher) => (
               <tr key={voucher.id}>
                 <td>{voucher.code}</td>
-                <td>{programs.find((program) => program.id === voucher.promotionProgramId)?.name ?? '—'}</td>
-                <td>{audienceLabel(programs.find((program) => program.id === voucher.promotionProgramId)?.targetLoyaltyTier)}</td>
+                <td>{programOf(voucher)?.name ?? '—'}
+                  {programOf(voucher) && <span className="block text-on-surface-variant">{programOf(voucher)!.programType}</span>}</td>
+                <td>{audienceLabel(programOf(voucher)?.targetLoyaltyTier)}{voucher.newCustomersOnly && ' · Khách hàng mới'}</td>
                 <td>{voucher.targetProductTypes?.length
                   ? voucher.targetProductTypes.map((t) => typeLabel[t as ProductType] ?? t).join(', ')
                   : 'Mọi sản phẩm'}</td>
-                <td>{voucher.type === 'percentage' ? `${voucher.value}%` : money.format(voucher.value)}</td>
+                <td>{voucher.type === 'percentage' ? `${voucher.value}%` : money.format(voucher.value)}
+                  {voucher.maxDiscountAmount != null && <span className="block text-on-surface-variant">tối đa {money.format(voucher.maxDiscountAmount)}</span>}</td>
+                <td>{voucher.minOrderAmount != null ? `Đơn từ ${money.format(voucher.minOrderAmount)}` : 'Mọi đơn'}</td>
+                <td>{voucher.usageLimit != null ? `${voucher.usedCount}/${voucher.usageLimit}` : voucher.usedCount}</td>
                 <td>{voucher.expiresAt ? dateTime.format(new Date(voucher.expiresAt)) : 'Theo chương trình'}</td>
                 <td>
                   <div className={a.rowActions}>
@@ -182,7 +234,7 @@ export default function VoucherManager({ token, programs, vouchers, onChanged }:
                 </td>
               </tr>
             ))}
-            {vouchers.length === 0 && <tr><td colSpan={7}>Chưa có voucher nào.</td></tr>}
+            {vouchers.length === 0 && <tr><td colSpan={9}>Chưa có voucher nào.</td></tr>}
           </tbody>
         </table>
       </div>

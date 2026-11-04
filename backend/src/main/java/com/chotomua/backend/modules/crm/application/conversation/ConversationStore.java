@@ -19,6 +19,11 @@ public interface ConversationStore {
     /** Mọi hội thoại — lớp dịch vụ tự lọc theo quyền. */
     List<Conversation> listAll();
 
+    /** Hội thoại của một khách (trang hỗ trợ của khách hỏi lại mỗi 10 giây — không đọc cả hàng đợi). */
+    default List<Conversation> listByUser(UUID userId) {
+        return listAll().stream().filter(conversation -> conversation.userId().equals(userId)).toList();
+    }
+
     /** Thêm một tin vào luồng. */
     void appendMessage(ConversationMessage message);
 

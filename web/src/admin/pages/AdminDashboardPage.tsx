@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Customer } from '../types/customer'
-import { ORDER_STATUS_LABEL, type OrderStatus, type StaffOrderSummary } from '../orders'
+import { ORDER_STATUS_LABEL, staleOrderGroups, type OrderStatus, type StaffOrderSummary } from '../orders'
 import { formatVnd } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
 import { apiFetch } from '../../lib/api'
@@ -87,6 +87,9 @@ export default function AdminDashboardPage() {
 
   const trend = revenueTrend(revenue)
 
+  const staleGroups = staleOrderGroups(orders)
+  const staleTotal = staleGroups.reduce((sum, g) => sum + g.count, 0)
+
   const orderStatusCounts = (Object.keys(ORDER_STATUS_LABEL) as OrderStatus[]).map((status) => ({
     status,
     count: orders.filter((o) => o.status === status).length,
@@ -134,6 +137,30 @@ export default function AdminDashboardPage() {
               {locked} <span className="font-title-lg text-title-lg text-error">/ {deleted}</span>
             </div>
           </div>
+        </div>
+      </div>
+      )}
+
+      {canSeeOrders && staleTotal > 0 && (
+      <div role="alert" className={`${a.card} mb-space-md border-l-4 !border-l-[#EA580C]`}>
+        <div className="flex flex-wrap items-start justify-between gap-space-md">
+          <div className="min-w-0">
+            <div className="flex items-center gap-space-xs font-title-md text-title-md text-on-surface">
+              <span className="material-symbols-outlined text-[#EA580C]" aria-hidden="true">warning</span>
+              {staleTotal} đơn hàng đang bị treo, cần xử lý
+            </div>
+            <ul className="mt-space-xs space-y-0.5 font-body-md text-body-md text-on-surface-variant">
+              {staleGroups.map((g) => (
+                <li key={g.status}>
+                  <Link className="hover:underline" to={`/admin/don-hang?treo=1&trangthai=${g.status}`}>
+                    <strong className="text-on-surface">{g.count}</strong> đơn "{ORDER_STATUS_LABEL[g.status]}" quá {g.limitDays} ngày
+                    {' '}(lâu nhất {g.oldestDays} ngày)
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <Link className={a.linkButton} to="/admin/don-hang?treo=1">Xem các đơn treo →</Link>
         </div>
       </div>
       )}

@@ -36,15 +36,21 @@ public class VoucherDiscoveryService {
         Map<UUID, PromotionProgram> programsById = programs.findAll().stream()
                 .collect(Collectors.toMap(PromotionProgram::getId, Function.identity()));
         OffsetDateTime now = OffsetDateTime.now();
+        Map<UUID, Long> used = usages.activeUsesByVoucher();
+        boolean returning = usages.hasPlacedOrder(userId);
 
         return vouchers.findAllByOrderByCodeAsc().stream()
                 .filter(voucher -> {
                     PromotionProgram program = programsById.get(voucher.getPromotionProgramId());
                     return program != null && VoucherEligibility.isActive(voucher, program, now)
                             && VoucherEligibility.allowsTier(program, user.getLoyaltyTier())
+                            && !(voucher.isNewCustomersOnly() && returning)
+                            && (voucher.getUsageLimit() == null
+                                || used.getOrDefault(voucher.getId(), 0L) < voucher.getUsageLimit())
                             && !usages.hasActiveUse(voucher.getId(), userId);
                 })
-                .map(voucher -> AvailableVoucherResponse.from(voucher, programsById.get(voucher.getPromotionProgramId())))
+                .map(voucher -> AvailableVoucherResponse.from(voucher, programsById.get(voucher.getPromotionProgramId()),
+                        used.getOrDefault(voucher.getId(), 0L)))
                 .toList();
     }
 }

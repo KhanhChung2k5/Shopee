@@ -99,6 +99,18 @@ export default function OrderDetailPanel({ orderId, onClose, onChanged, position
     void run(`/orders/${orderId}/status`, { status, reason })
   }
 
+  /** The parcel came back undelivered: the order is cancelled and its goods go back into stock. */
+  const deliveryFailed = async () => {
+    const reason = await prompt({
+      title: 'Giao hàng thất bại',
+      message: <>Đơn <strong>{orderCode(orderId)}</strong> sẽ bị huỷ, hàng được nhập lại kho đã xuất.{order?.payment?.status === 'paid' ? ' Khách đã thanh toán — hệ thống sẽ tạo yêu cầu hoàn tiền cho CSKH.' : ' Thanh toán COD chưa thu sẽ được huỷ.'}</>,
+      label: 'Lý do', type: 'textarea', placeholder: 'VD: Khách từ chối nhận hàng, không liên lạc được…',
+      confirmLabel: 'Xác nhận thất bại', cancelLabel: 'Quay lại', tone: 'danger',
+    })
+    if (reason == null) return
+    void run(`/orders/${orderId}/delivery-failed`, { reason })
+  }
+
   const confirmTransfer = async () => {
     const ok = await confirm({
       title: 'Xác nhận đã nhận tiền',
@@ -118,7 +130,7 @@ export default function OrderDetailPanel({ orderId, onClose, onChanged, position
         </div>
         <p className="font-label-md text-label-md text-on-surface-variant mt-0.5">
           {order ? `Đặt lúc ${dateTime.format(new Date(order.createdAt))}` : 'Đang tải…'}
-          {position && <span className="ml-space-xs">· {position} · dùng ↑ ↓ để chuyển đơn, Esc để đóng</span>}
+          {position && <span className="ml-space-xs">· {position}<span className="hidden md:inline"> · dùng ↑ ↓ để chuyển đơn, Esc để đóng</span></span>}
         </p>
       </div>
       <button type="button" aria-label="Đóng chi tiết đơn" title="Đóng (Esc)" onClick={onClose}
@@ -210,6 +222,12 @@ export default function OrderDetailPanel({ orderId, onClose, onChanged, position
               <button type="button" className={`${buttonClass('primary', 'sm')} mt-space-xs`} disabled={busy}
                 onClick={() => void run(`/orders/${orderId}/tracking`, { trackingNo: order.trackingNo ?? trackingNo, shipmentStatus: 'delivered' })}>
                 Xác nhận đã giao
+              </button>
+            )}
+            {deliver && (
+              <button type="button" className={`${buttonClass('outline', 'sm')} mt-space-xs ml-space-xs`} disabled={busy}
+                onClick={() => void deliveryFailed()}>
+                Giao thất bại
               </button>
             )}
             {order.shipmentStatus === 'packed' && decisions && <p className="font-label-md text-label-md text-on-surface-variant mt-space-xs">Huỷ đơn đã đóng gói sẽ trả hàng về kho.</p>}

@@ -51,6 +51,13 @@ public class Order {
     @Column(name = "shipping_address_snapshot", nullable = false, length = 500)
     private String shippingAddressSnapshot;
 
+    /** Recipient name and phone at checkout (null only on rows created before they were recorded). */
+    @Column(name = "recipient_name_snapshot")
+    private String recipientNameSnapshot;
+
+    @Column(name = "recipient_phone_snapshot", length = 20)
+    private String recipientPhoneSnapshot;
+
     @Column(name = "subtotal_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal subtotalAmount;
 
@@ -136,6 +143,20 @@ public class Order {
 
     public String getShippingAddressSnapshot() {
         return shippingAddressSnapshot;
+    }
+
+    public String getRecipientNameSnapshot() {
+        return recipientNameSnapshot;
+    }
+
+    public String getRecipientPhoneSnapshot() {
+        return recipientPhoneSnapshot;
+    }
+
+    /** Freezes who receives the parcel, like the shipping address. */
+    public void setRecipientSnapshot(String name, String phone) {
+        this.recipientNameSnapshot = name;
+        this.recipientPhoneSnapshot = phone;
     }
 
     public BigDecimal getSubtotalAmount() {

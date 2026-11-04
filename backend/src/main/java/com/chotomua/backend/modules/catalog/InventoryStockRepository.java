@@ -1,5 +1,6 @@
 package com.chotomua.backend.modules.catalog;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -20,8 +21,15 @@ public interface InventoryStockRepository extends JpaRepository<InventoryStock, 
     Optional<InventoryStock> findStockByVariantAndWarehouse(@Param("variantId") UUID variantId,
                                                             @Param("warehouseId") UUID warehouseId);
 
+    // Stock lists show the product and warehouse of every row: load them in the same query (no N+1).
+    @EntityGraph(attributePaths = {"variant", "variant.product", "warehouse"})
     List<InventoryStock> findByWarehouse_Id(UUID warehouseId);
+
+    @EntityGraph(attributePaths = {"variant", "variant.product", "warehouse"})
     List<InventoryStock> findByVariant_Id(UUID variantId);
+
+    @EntityGraph(attributePaths = {"variant", "variant.product", "warehouse"})
+    List<InventoryStock> findAllByOrderByIdAsc();
 
     /** Sellable units per variant: on hand minus what open, not-yet-packed orders hold (same rule as checkout). */
     @Query(value = """

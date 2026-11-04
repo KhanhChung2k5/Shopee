@@ -86,34 +86,52 @@ export default function AdminCustomersPage() {
     }
   }
 
-  const setStatus = async (id: string, status: CustomerStatus) => {
+  /** Applies a status; returns whether the backend accepted it (it refuses e.g. a customer with an unfinished order). */
+  const setStatus = async (id: string, status: CustomerStatus): Promise<boolean> => {
     try {
       await apiFetch(`/customers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }, token)
       refresh()
+      return true
     } catch (err) {
       toast.show(err instanceof ApiError ? err.message : 'Cập nhật trạng thái thất bại')
+      return false
     }
   }
 
-  const toggleLock = (id: string) => {
+  const toggleLock = async (id: string) => {
     const c = customers.find((x) => x.id === id)
     if (!c) return
     const next: CustomerStatus = c.status === 'locked' ? 'active' : 'locked'
-    setStatus(id, next)
-    toast.show(next === 'locked' ? `Đã khoá "${c.fullName}"` : `Đã mở khoá "${c.fullName}"`)
+    if (await setStatus(id, next)) toast.show(next === 'locked' ? `Đã khoá "${c.fullName}"` : `Đã mở khoá "${c.fullName}"`)
   }
 
   const softDelete = async (id: string) => {
     const c = customers.find((x) => x.id === id)
     if (!c) return
     if (!(await confirm({ title: 'Xoá mềm khách hàng', message: <>Xoá mềm <strong>{c.fullName}</strong>? Tài khoản bị ẩn khỏi hệ thống nhưng dữ liệu và lịch sử đơn hàng vẫn được giữ nguyên.</>, confirmLabel: 'Xoá mềm', tone: 'danger' }))) return
-    setStatus(id, 'deleted')
+    if (!(await setStatus(id, 'deleted'))) return
     setSelected((prev) => {
       const next = new Set(prev)
       next.delete(id)
       return next
     })
     toast.show(`Đã xoá mềm "${c.fullName}"`)
+  }
+
+  const issueTemporaryPassword = async (c: Customer) => {
+    if (!(await confirm({ title: 'Cấp mật khẩu tạm', message: <>Cấp mật khẩu tạm cho <strong>{c.fullName}</strong>? Mật khẩu hiện tại của khách sẽ không dùng được nữa. Chỉ làm sau khi đã xác minh đúng là chủ tài khoản.</>, confirmLabel: 'Cấp mật khẩu', tone: 'danger' }))) return
+    try {
+      const { temporaryPassword } = await apiFetch<{ temporaryPassword: string }>(`/customers/${c.id}/temporary-password`, { method: 'POST' }, token)
+      const copy = await confirm({
+        title: 'Mật khẩu tạm',
+        message: <>Mật khẩu của <strong>{c.fullName}</strong>: <code className="font-mono font-bold select-all">{temporaryPassword}</code>. Mật khẩu chỉ hiện một lần. Hãy nhắc khách đăng nhập rồi đổi ngay trong trang tài khoản.</>,
+        confirmLabel: 'Sao chép và đóng',
+        cancelLabel: 'Đóng',
+      })
+      if (copy) await navigator.clipboard.writeText(temporaryPassword).catch(() => toast.show('Không sao chép được mật khẩu'))
+    } catch (err) {
+      toast.show(err instanceof ApiError ? err.message : 'Không cấp được mật khẩu tạm')
+    }
   }
 
   const restore = async (id: string) => {
@@ -132,21 +150,25 @@ export default function AdminCustomersPage() {
   // Bulk actions skip soft-deleted rows: the backend refuses to change them (only restore brings them back).
   const selectedNotDeleted = () => [...selected].filter((id) => customers.find((c) => c.id === id)?.status !== 'deleted')
 
-  const bulkLock = async () => {
-    const ids = selectedNotDeleted()
-    await Promise.all(ids.map((id) => apiFetch(`/customers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'locked' }) }, token)))
-    toast.show(`Đã khoá ${ids.length} khách hàng`)
+  /** Applies one status to many customers; reports how many the backend refused instead of stopping at the first. */
+  const bulkStatus = async (ids: string[], status: CustomerStatus, verb: string) => {
+    const results = await Promise.allSettled(ids.map((id) => apiFetch(`/customers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }, token)))
+    const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+    const done = ids.length - failed.length
+    const reason = failed[0]?.reason instanceof ApiError ? ` (${failed[0].reason.message})` : ''
+    toast.show(failed.length === 0 ? `Đã ${verb} ${done} khách hàng` : `Đã ${verb} ${done}/${ids.length} khách hàng; ${failed.length} khách không ${verb} được${reason}`)
     setSelected(new Set())
     refresh()
+  }
+
+  const bulkLock = async () => {
+    await bulkStatus(selectedNotDeleted(), 'locked', 'khoá')
   }
 
   const bulkSoftDelete = async () => {
     const ids = selectedNotDeleted()
     if (!(await confirm({ title: 'Xoá mềm nhiều khách hàng', message: <>Xoá mềm <strong>{ids.length}</strong> khách hàng đã chọn? Dữ liệu và lịch sử đơn hàng vẫn được giữ nguyên.</>, confirmLabel: 'Xoá mềm', tone: 'danger' }))) return
-    await Promise.all(ids.map((id) => apiFetch(`/customers/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'deleted' }) }, token)))
-    toast.show(`Đã xoá mềm ${ids.length} khách hàng`)
-    setSelected(new Set())
-    refresh()
+    await bulkStatus(ids, 'deleted', 'xoá mềm')
   }
 
   const toggleSelectAll = () => {
@@ -282,10 +304,19 @@ export default function AdminCustomersPage() {
                         <button
                           className={buttonClass('outline', 'sm', 'mr-1.5')}
                           type="button"
-                          onClick={() => toggleLock(c.id)}
+                          onClick={() => void toggleLock(c.id)}
                         >
                           {c.status === 'locked' ? 'Mở khoá' : 'Khoá'}
                         </button>
+                        {c.status === 'active' && (
+                          <button
+                            className={buttonClass('outline', 'sm', 'mr-1.5')}
+                            type="button"
+                            onClick={() => void issueTemporaryPassword(c)}
+                          >
+                            Cấp mật khẩu tạm
+                          </button>
+                        )}
                         <button
                           className={buttonClass('outline', 'sm')}
                           type="button"

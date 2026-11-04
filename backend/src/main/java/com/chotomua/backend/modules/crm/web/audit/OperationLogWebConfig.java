@@ -4,7 +4,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-/** Gắn bộ ghi nhật ký vào mọi API. */
+/** Gắn bộ ghi nhật ký vào mọi đường dẫn; {@code OperationActionCatalog.skip} lọc lượt đọc và tín hiệu nền. */
 @Configuration
 public class OperationLogWebConfig implements WebMvcConfigurer {
 
@@ -16,6 +16,6 @@ public class OperationLogWebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(interceptor).addPathPatterns("/api/**");
+        registry.addInterceptor(interceptor).addPathPatterns("/**");
     }
 }

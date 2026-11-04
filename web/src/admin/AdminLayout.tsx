@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../state/AuthContext'
 import { canAccessSection, type Department } from './access'
@@ -99,7 +100,15 @@ const DEPARTMENT_LABEL: Record<Department, string> = {
 export default function AdminLayout() {
   const location = useLocation()
   const { user } = useAuth()
+  const navRef = useRef<HTMLElement>(null)
   const department = (user?.department ?? null) as Department | null
+
+  // On phones the menu is one scrolling row: keep the current section visible, also once web fonts widen the labels.
+  useEffect(() => {
+    const reveal = () => navRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'center' })
+    reveal()
+    void document.fonts.ready.then(reveal)
+  }, [location.pathname])
   const pageTitle = PAGE_TITLES[location.pathname]
     ?? (location.pathname.startsWith('/admin/don-hang/') ? 'Đơn hàng' : 'Quản trị')
 
@@ -110,14 +119,14 @@ export default function AdminLayout() {
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-surface text-on-surface">
-      <aside className="md:sticky md:top-0 md:h-screen md:w-60 flex-shrink-0 flex md:flex-col items-center md:items-stretch gap-space-md md:gap-0 bg-[#14161a] text-[#e4e6eb] px-space-md py-space-sm md:py-space-lg">
+      <aside className="md:sticky md:top-0 md:h-screen md:w-60 flex-shrink-0 flex flex-col items-stretch gap-space-xs md:gap-0 bg-[#14161a] text-[#e4e6eb] px-space-md py-space-sm md:py-space-lg">
         <div className="font-headline-md text-headline-md text-white md:mb-space-xl md:px-space-sm whitespace-nowrap">
           Chợ Tốt <span className="text-[#ffb4a2]">Mua</span>
           <span className="hidden md:block font-label-md text-label-md text-[#9aa0ac] font-medium">Trang quản trị</span>
         </div>
-        <nav className="flex md:flex-col flex-1 overflow-x-auto md:overflow-y-auto" aria-label="Điều hướng quản trị">
+        <nav ref={navRef} className="flex md:flex-col md:flex-1 gap-0.5 md:gap-0 overflow-x-auto md:overflow-y-auto" aria-label="Điều hướng quản trị">
           {visibleGroups.map((group, gi) => (
-            <div className="flex md:flex-col gap-0.5 md:mb-space-md" key={group.title ?? `g${gi}`}>
+            <div className="flex flex-shrink-0 md:flex-col gap-0.5 md:mb-space-md" key={group.title ?? `g${gi}`}>
               {group.title && <div className="hidden md:block px-space-sm pt-1.5 pb-0.5 font-label-sm text-label-sm uppercase tracking-wider text-[#6b7280]">{group.title}</div>}
               {group.items.map((item) => (
                 <NavLink
@@ -134,7 +143,7 @@ export default function AdminLayout() {
                       {item.icon}
                     </g>
                   </svg>
-                  <span className="hidden md:inline">{item.label}</span>
+                  <span>{item.label}</span>
                 </NavLink>
               ))}
             </div>
