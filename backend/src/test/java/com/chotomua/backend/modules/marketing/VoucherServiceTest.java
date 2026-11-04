@@ -34,6 +34,67 @@ class VoucherServiceTest {
     }
 
     @Test
+    void aVoucherAnOrderAlreadyUsedCannotBeDeleted() {
+        VoucherUsageRepository usages = mock(VoucherUsageRepository.class);
+        service.setUsages(usages);
+        UUID id = UUID.randomUUID();
+        Voucher voucher = new Voucher(new VoucherRequest(programId, "USED", "fixed_amount", BigDecimal.TEN, null), "USED");
+        when(vouchers.findById(id)).thenReturn(Optional.of(voucher));
+        when(usages.existsByVoucherId(id)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.delete(id))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("đã được dùng");
+        verify(vouchers, never()).delete(any());
+    }
+
+    @Test
+    void create_checksTheVoucherLimits() {
+        assertThatThrownBy(() -> service.create(new VoucherRequest(programId, "CAP", "fixed_amount", BigDecimal.TEN,
+                null, List.of(), null, new BigDecimal("5"), null, false)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Giảm tối đa chỉ dùng");
+        assertThatThrownBy(() -> service.create(new VoucherRequest(programId, "BIG", "fixed_amount", new BigDecimal("200000"),
+                null, List.of(), new BigDecimal("100000"), null, null, false)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("lớn hơn đơn tối thiểu");
+        assertThatThrownBy(() -> service.create(new VoucherRequest(programId, "ZERO", "percentage", BigDecimal.TEN,
+                null, List.of(), null, null, 0, false)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Tổng lượt dùng");
+        verify(vouchers, never()).save(any());
+
+        when(vouchers.save(any(Voucher.class))).thenAnswer(call -> call.getArgument(0));
+        var ok = service.create(new VoucherRequest(programId, "OK", "percentage", BigDecimal.TEN, null, List.of(),
+                new BigDecimal("300000"), new BigDecimal("50000"), 100, true));
+        assertThat(ok.minOrderAmount()).isEqualByComparingTo("300000");
+        assertThat(ok.maxDiscountAmount()).isEqualByComparingTo("50000");
+        assertThat(ok.usageLimit()).isEqualTo(100);
+        assertThat(ok.newCustomersOnly()).isTrue();
+    }
+
+    @Test
+    void aUsedVoucherKeepsItsTermsButCanStillChangeItsExpiryAndUses() {
+        VoucherUsageRepository usages = mock(VoucherUsageRepository.class);
+        service.setUsages(usages);
+        UUID id = UUID.randomUUID();
+        Voucher voucher = new Voucher(new VoucherRequest(programId, "USED", "percentage", BigDecimal.TEN, null, List.of(),
+                new BigDecimal("300000"), new BigDecimal("50000"), 100, false), "USED");
+        when(vouchers.findById(id)).thenReturn(Optional.of(voucher));
+        when(usages.existsByVoucherId(id)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.update(id, new VoucherRequest(programId, "USED", "percentage", new BigDecimal("20"),
+                null, List.of(), new BigDecimal("300000"), new BigDecimal("50000"), 100, false)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("chỉ được đổi hạn dùng và tổng lượt dùng");
+
+        var updated = service.update(id, new VoucherRequest(programId, "used", "percentage", new BigDecimal("10.00"),
+                start.plusHours(5), List.of(), new BigDecimal("300000.00"), new BigDecimal("50000"), 200, false));
+        assertThat(updated.usageLimit()).isEqualTo(200);
+        assertThat(updated.expiresAt()).isEqualTo(start.plusHours(5));
+    }
+
+    @Test
     void create_acceptsFixedAmountAndNormalizesCode() {
         when(vouchers.save(any(Voucher.class))).thenAnswer(call -> call.getArgument(0));
 

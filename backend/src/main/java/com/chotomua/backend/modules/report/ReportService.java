@@ -57,6 +57,8 @@ public class ReportService {
     }
 
     @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(cacheNames = com.chotomua.backend.common.config.CacheConfig.MANAGEMENT_REPORTS,
+            key = "'revenue:' + #from + ':' + #to")
     public RevenueReport revenue(LocalDate from, LocalDate to) {
         MapSqlParameterSource params = period(from, to);
         Map<LocalDate, DayAcc> days = new LinkedHashMap<>();
@@ -125,20 +127,31 @@ public class ReportService {
                 topProducts(params));
     }
 
-    /** Best sellers of the period by net revenue (each line's share of what its order really cost the buyer). */
+    /**
+     * Best sellers of the period by net revenue (each line's share of what its order really cost the buyer).
+     * A line the buyer sent back and got refunded leaves both its units and its money out.
+     */
     private List<RevenueReport.Product> topProducts(MapSqlParameterSource params) {
         return jdbc.query("WITH " + AVG_COST + ", " + DELIVERED + """
+                , lines AS (
+                    SELECT oi.variant_id,
+                           CASE WHEN r.id IS NULL THEN oi.quantity ELSE 0 END AS units,
+                           CASE WHEN d.subtotal_amount > 0 THEN oi.line_total * d.total_amount / d.subtotal_amount
+                                ELSE oi.line_total END - COALESCE(r.refund_amount, 0) AS revenue
+                    FROM delivered d
+                    JOIN order_items oi ON oi.order_id = d.id
+                    LEFT JOIN refund_returns r ON r.order_item_id = oi.id AND r.kind = 'return' AND r.status = 'refunded'
+                )
                 SELECT pv.id AS variant_id, pv.sku, p.name, p.product_type,
-                       SUM(oi.quantity) AS units,
-                       SUM(CASE WHEN d.subtotal_amount > 0 THEN oi.line_total * d.total_amount / d.subtotal_amount
-                                ELSE oi.line_total END) AS revenue,
+                       SUM(l.units) AS units,
+                       GREATEST(SUM(l.revenue), 0) AS revenue,
                        MAX(c.unit_cost) AS unit_cost
-                FROM delivered d
-                JOIN order_items oi ON oi.order_id = d.id
-                JOIN product_variants pv ON pv.id = oi.variant_id
+                FROM lines l
+                JOIN product_variants pv ON pv.id = l.variant_id
                 JOIN products p ON p.id = pv.product_id
-                LEFT JOIN avg_cost c ON c.variant_id = oi.variant_id
+                LEFT JOIN avg_cost c ON c.variant_id = l.variant_id
                 GROUP BY pv.id, pv.sku, p.name, p.product_type
+                HAVING SUM(l.units) > 0
                 ORDER BY revenue DESC
                 LIMIT 10
                 """, params, (rs, i) -> {
@@ -158,6 +171,8 @@ public class ReportService {
      * period, with the stock's value at average cost and a low-stock warning on what can still be sold today.
      */
     @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(cacheNames = com.chotomua.backend.common.config.CacheConfig.MANAGEMENT_REPORTS,
+            key = "'inventory:' + #from + ':' + #to + ':' + #warehouseId + ':' + #lowStockThreshold")
     public InventoryReport inventory(LocalDate from, LocalDate to, UUID warehouseId, int lowStockThreshold) {
         MapSqlParameterSource params = period(from, to)
                 .addValue("warehouseId", warehouseId)

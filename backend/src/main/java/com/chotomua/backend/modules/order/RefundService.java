@@ -52,6 +52,14 @@ public class RefundService {
         this.inventoryStockService = inventoryStockService;
     }
 
+    /** Optional so unit tests run without a database: prices a return the way the order was discounted. */
+    private OrderDiscountLookup discountLookup;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setDiscountLookup(OrderDiscountLookup discountLookup) {
+        this.discountLookup = discountLookup;
+    }
+
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     void setCrmOrderEvents(com.chotomua.backend.modules.crm.application.CrmOrderEvents crmOrderEvents) {
         this.crmOrderEvents = crmOrderEvents;
@@ -70,12 +78,29 @@ public class RefundService {
         this.loyalty = loyalty;
     }
 
+    /** What sending this line back would refund, before the buyer asks — same rules as {@link #requestReturn}. */
+    @Transactional(readOnly = true)
+    public RefundQuoteResponse quoteReturn(UUID buyerId, UUID orderItemId) {
+        OrderItem item = items.findById(orderItemId)
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy sản phẩm trong đơn"));
+        Order order = orders.findByIdAndUserId(item.getOrderId(), buyerId)
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy đơn hàng"));
+        ReturnRefundCalculator.Result result = priceReturn(order, item);
+        return new RefundQuoteResponse(item.getId(), item.getLineTotal(), result.amount(), result.lostDiscount());
+    }
+
+    public record RefundQuoteResponse(UUID orderItemId, BigDecimal lineTotal, BigDecimal refundAmount,
+                                      BigDecimal lostDiscount) {
+    }
+
     @Transactional
     public RefundResponse requestReturn(UUID buyerId, RefundReturnRequest request) {
         OrderItem item = items.findById(request.orderItemId())
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy sản phẩm trong đơn"));
         Order order = orders.findByIdAndUserId(item.getOrderId(), buyerId)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy đơn hàng"));
+        // Two returns of one buyer are priced one after the other: each sees the lines the other gave back.
+        if (users != null) users.findByIdForUpdate(buyerId);
         if (!OrderStatus.DELIVERED.value().equals(order.getStatus())) {
             throw new IllegalStateException("Chỉ có thể yêu cầu hoàn tiền sau khi đơn đã giao");
         }
@@ -86,7 +111,8 @@ public class RefundService {
         if (refunds.findByOrderItemId(item.getId()).stream().anyMatch(r -> !"rejected".equals(r.getStatus()))) {
             throw new IllegalStateException("Sản phẩm này đã có yêu cầu hoàn tiền");
         }
-        RefundReturn refund = RefundReturn.forReturn(order.getId(), item.getId(), request.reason().trim(), amountFor(order, item));
+        RefundReturn refund = RefundReturn.forReturn(order.getId(), item.getId(), request.reason().trim(),
+                priceReturn(order, item).amount());
         refund.setBankAccount(request.bankName().trim(), request.bankAccountNo().trim(), request.bankAccountName().trim());
         return toResponse(refunds.save(refund), false);
     }
@@ -217,6 +243,29 @@ public class RefundService {
         }
         if (crmOrderEvents != null) order.ifPresent(o -> crmOrderEvents.onOrderRefunded(o.getUserId()));
         return toResponse(refund, true);
+    }
+
+    /**
+     * Prices a returned line against the lines already sent back (requests not rejected): the voucher's share only
+     * on the lines it covered, and a discount the goods kept no longer qualify for comes off the refund.
+     */
+    private ReturnRefundCalculator.Result priceReturn(Order order, OrderItem item) {
+        if (discountLookup == null) {
+            BigDecimal amount = amountFor(order, item);
+            return new ReturnRefundCalculator.Result(amount, BigDecimal.ZERO);
+        }
+        OrderDiscountLookup.Breakdown breakdown = discountLookup.forOrder(order);
+        java.util.Map<UUID, String> types = discountLookup.productTypes(order.getId());
+        List<ReturnRefundCalculator.Line> lines = items.findByOrderId(order.getId()).stream()
+                .map(line -> new ReturnRefundCalculator.Line(line.getId(), line.getLineTotal(),
+                        breakdown.covers(types.get(line.getId()))))
+                .toList();
+        List<UUID> returned = refunds.findByOrderIdOrderByRequestedAtAsc(order.getId()).stream()
+                .filter(r -> RefundReturn.RETURN.equals(r.getKind()) && !"rejected".equals(r.getStatus()))
+                .map(RefundReturn::getOrderItemId)
+                .filter(id -> id != null && !id.equals(item.getId()))
+                .toList();
+        return ReturnRefundCalculator.refund(lines, returned, item.getId(), breakdown.discounts());
     }
 
     /** The line's share of what the buyer actually paid: line total minus its part of the order discount. */

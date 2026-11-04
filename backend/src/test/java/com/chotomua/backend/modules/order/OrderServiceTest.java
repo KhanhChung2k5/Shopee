@@ -88,7 +88,7 @@ class OrderServiceTest {
         when(productVariantLookup.findActiveById(variantId)).thenReturn(Optional.of(
                 new ProductVariantSnapshot(variantId, new BigDecimal("120000.00"), "Tay cầm", "{}")
         ));
-        when(voucherQuoteService.quote(any(), any(VoucherQuoteRequest.class))).thenReturn(
+        when(voucherQuoteService.quoteForCheckout(any(), any(VoucherQuoteRequest.class))).thenReturn(
                 new VoucherQuoteResponse(voucherId, "SALE10", new BigDecimal("240000.00"),
                         new BigDecimal("24000.00"), new BigDecimal("216000.00")));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
@@ -103,7 +103,7 @@ class OrderServiceTest {
         assertThat(result.discountAmount()).isEqualByComparingTo("24000.00");
         assertThat(result.totalAmount()).isEqualByComparingTo("216000.00");
         ArgumentCaptor<VoucherQuoteRequest> quoteCaptor = ArgumentCaptor.forClass(VoucherQuoteRequest.class);
-        verify(voucherQuoteService).quote(org.mockito.ArgumentMatchers.eq(userId), quoteCaptor.capture());
+        verify(voucherQuoteService).quoteForCheckout(org.mockito.ArgumentMatchers.eq(userId), quoteCaptor.capture());
         assertThat(quoteCaptor.getValue().subtotal()).isEqualByComparingTo("240000.00");
         ArgumentCaptor<VoucherUsage> usageCaptor = ArgumentCaptor.forClass(VoucherUsage.class);
         verify(voucherUsageRepository).save(usageCaptor.capture());
@@ -123,7 +123,7 @@ class OrderServiceTest {
         when(productVariantLookup.findActiveById(variantId)).thenReturn(Optional.of(
                 new ProductVariantSnapshot(variantId, new BigDecimal("100000.00"), "Đĩa game", "{}")
         ));
-        when(voucherQuoteService.quote(any(), any(VoucherQuoteRequest.class)))
+        when(voucherQuoteService.quoteForCheckout(any(), any(VoucherQuoteRequest.class)))
                 .thenThrow(new IllegalArgumentException("Voucher đã hết hạn"));
 
         assertThatThrownBy(() -> orderService.createFromSelectedCart(userId,
@@ -175,6 +175,11 @@ class OrderServiceTest {
         });
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
         verify(cartItemRepository).deleteAll(List.of(cartItem));
+        // The recipient is frozen on the order, so editing the address book later cannot change it.
+        ArgumentCaptor<Order> saved = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(saved.capture());
+        assertThat(saved.getValue().getRecipientNameSnapshot()).isEqualTo("Nguyễn Văn A");
+        assertThat(saved.getValue().getRecipientPhoneSnapshot()).isEqualTo("0900000000");
     }
 
     @Test
@@ -296,10 +301,12 @@ class OrderServiceTest {
         when(cartItemRepository.findByUserIdAndIsSelectedTrueOrderByUpdatedAtAsc(userId))
                 .thenReturn(List.of(cartItem));
         when(productVariantLookup.findActiveById(variantId)).thenReturn(Optional.empty());
+        when(productVariantLookup.findCartProductById(variantId)).thenReturn(Optional.of(
+                new CartProductSnapshot(variantId, "Tay cầm DualSense", "controller", null, BigDecimal.TEN, "{}", false)));
 
         assertThatThrownBy(() -> orderService.createFromSelectedCart(userId, new OrderCreateRequest(addressId)))
                 .isInstanceOf(NoSuchElementException.class)
-                .hasMessageContaining(variantId.toString());
+                .hasMessage("Sản phẩm \"Tay cầm DualSense\" đã ngừng bán — vui lòng bỏ khỏi giỏ hàng");
         verify(orderRepository, never()).save(any());
         verify(cartItemRepository, never()).deleteAll(any());
     }
@@ -682,6 +689,54 @@ class OrderServiceTest {
                 new OrderTrackingUpdateRequest("GHN-001", "shipping")
         )).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("cancelled/packed");
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void aFailedDeliveryCancelsTheOrderVoidsCodAndPutsTheGoodsBack() {
+        CheckoutPaymentService payments = mock(CheckoutPaymentService.class);
+        orderService = new OrderService(cartItemRepository, orderRepository, orderItemRepository, orderStatusHistoryRepository,
+                addressRepository, employeeRepository, productVariantLookup, warehouseLookup, voucherQuoteService,
+                voucherUsageRepository, payments, null, null);
+        InventoryStockService inventory = mock(InventoryStockService.class);
+        orderService.setInventoryStockService(inventory);
+        UUID employeeUserId = UUID.randomUUID();
+        Employee employee = employeeOf(employeeUserId, "warehouse");
+        Order order = packedOrder(employee.getId());
+        order.setStatus("shipping");
+        order.setShipmentStatus("shipping");
+        when(employeeRepository.findByUserId(employeeUserId)).thenReturn(Optional.of(employee));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+        when(payments.checkoutPaymentOf(order.getId())).thenReturn(Optional.empty());
+
+        var result = orderService.markDeliveryFailed(employeeUserId, order.getId(), " Khách từ chối nhận ");
+
+        assertThat(result.orderStatus()).isEqualTo("cancelled");
+        assertThat(result.shipmentStatus()).isEqualTo("failed");
+        verify(inventory).returnForOrder(order.getId());
+        verify(payments).cancelForOrder(order.getId());
+        ArgumentCaptor<OrderStatusHistory> history = ArgumentCaptor.forClass(OrderStatusHistory.class);
+        verify(orderStatusHistoryRepository).save(history.capture());
+        assertThat(history.getValue().getStatus()).isEqualTo("cancelled");
+        assertThat(history.getValue().getReason()).isEqualTo("Giao thất bại: Khách từ chối nhận");
+    }
+
+    @Test
+    void onlyAnOrderOnTheWayCanFailDelivery() {
+        UUID employeeUserId = UUID.randomUUID();
+        Employee employee = employeeOf(employeeUserId, "warehouse");
+        Order order = packedOrder(employee.getId());
+        when(employeeRepository.findByUserId(employeeUserId)).thenReturn(Optional.of(employee));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.markDeliveryFailed(employeeUserId, order.getId(), "Không liên lạc được"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("đang giao");
+        order.setStatus("shipping");
+        order.setShipmentStatus("shipping");
+        assertThatThrownBy(() -> orderService.markDeliveryFailed(employeeUserId, order.getId(), "  "))
+                .isInstanceOf(IllegalArgumentException.class);
         verify(orderRepository, never()).save(any());
     }
 

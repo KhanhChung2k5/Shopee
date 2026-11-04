@@ -27,7 +27,8 @@ import java.util.UUID;
 
 /**
  * Phễu: nhắm tới → đã vào hộp thư → đã đọc → mua trong cửa sổ chiến dịch.
- * Có sản phẩm mục tiêu thì "mua" là đơn đã giao chứa sản phẩm đó; không có thì là bất kỳ đơn đã giao nào.
+ * "Mua" là đơn đặt trong cửa sổ chiến dịch và đã giao: đơn đặt trước chiến dịch không phải do chiến dịch mang lại.
+ * Có sản phẩm mục tiêu thì đơn phải chứa sản phẩm đó; không có thì là bất kỳ đơn nào.
  * Chỉ tính thư do chính chiến dịch gửi ({@code campaignId}); không ghi {@code campaign_id} lên đơn.
  */
 @Service
@@ -132,14 +133,14 @@ public class CampaignFunnelService {
         return best;
     }
 
-    /** Đơn đã giao trong cửa sổ; có sản phẩm mục tiêu thì đơn phải chứa ít nhất một sản phẩm đó. */
+    /** Đơn đã giao, đặt trong cửa sổ; có sản phẩm mục tiêu thì đơn phải chứa ít nhất một sản phẩm đó. */
     private boolean boughtInWindow(UUID userId, Set<UUID> targetProducts, Instant from, Instant to) {
         List<DeliveredOrderView> delivered = orders.listDeliveredOrders(userId);
         if (delivered == null) {
             return false;
         }
         for (DeliveredOrderView order : delivered) {
-            if (!CampaignConversionWindow.contains(order.deliveredAt(), from, to)) {
+            if (!CampaignConversionWindow.contains(order.placedAt(), from, to)) {
                 continue;
             }
             if (targetProducts.isEmpty()) {

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Alert, Badge, Button, Card, CardTitle, Field, Modal, inputClass } from '../components/ui'
 import { apiFetch, ApiError } from '../lib/api'
 import { formatVnd } from '../lib/catalog'
@@ -8,6 +8,15 @@ import {
 } from '../lib/refunds'
 
 const EMPTY_BANK: BankAccount = { bankName: '', bankAccountNo: '', bankAccountName: '' }
+
+/** GET /refund-returns/quote — what returning a line would refund, priced the way the order was discounted. */
+interface RefundQuote {
+  orderItemId: string
+  lineTotal: number
+  refundAmount: number
+  /** Discount withheld because what is kept no longer reaches a voucher / promotion minimum order. */
+  lostDiscount: number
+}
 
 /** Bank, account number and holder — where the shop transfers the refund. */
 function BankAccountFields({ value, onChange, disabled }: { value: BankAccount; onChange: (next: BankAccount) => void; disabled?: boolean }) {
@@ -105,6 +114,15 @@ function ReturnRequestModal({ orderItemId, productName, deadline, token, onClose
   const [bank, setBank] = useState(EMPTY_BANK)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [quote, setQuote] = useState<RefundQuote | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    apiFetch<RefundQuote>(`/refund-returns/quote?orderItemId=${orderItemId}`, { signal: controller.signal }, token)
+      .then(setQuote)
+      .catch(() => { if (!controller.signal.aborted) setQuote(null) })
+    return () => controller.abort()
+  }, [orderItemId, token])
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -140,6 +158,22 @@ function ReturnRequestModal({ orderItemId, productName, deadline, token, onClose
           CSKH sẽ xem xét yêu cầu. Khi được duyệt, số tiền bạn đã trả cho sản phẩm này (đã trừ phần giảm giá) sẽ được
           chuyển khoản về tài khoản bên dưới.{deadline ? ` Hạn gửi yêu cầu: ${formatDate(deadline.toISOString())}.` : ''}
         </p>
+        {quote && (
+          <div className="rounded-lg bg-surface-container px-space-md py-space-sm space-y-0.5">
+            <p className="font-body-md text-body-md text-on-surface">
+              Số tiền dự kiến hoàn: <strong>{formatVnd(Number(quote.refundAmount))}</strong>
+              {Number(quote.refundAmount) !== Number(quote.lineTotal) && (
+                <span className="text-on-surface-variant"> (giá sản phẩm {formatVnd(Number(quote.lineTotal))})</span>
+              )}
+            </p>
+            {Number(quote.lostDiscount) > 0 && (
+              <p className="font-label-md text-label-md text-on-surface-variant">
+                Các sản phẩm bạn giữ lại không còn đủ đơn tối thiểu của voucher / khuyến mãi đã dùng, nên phần giảm
+                {' '}{formatVnd(Number(quote.lostDiscount))} của chúng được trừ vào tiền hoàn.
+              </p>
+            )}
+          </div>
+        )}
         <Field label="Lý do trả hàng">
           <textarea className={inputClass} rows={3} maxLength={500} value={reason} disabled={busy}
             onChange={(e) => setReason(e.target.value)} placeholder="VD: Tay cầm bị drift cần analog trái…" />

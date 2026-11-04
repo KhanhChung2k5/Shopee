@@ -28,6 +28,19 @@ public class CustomerAccountService {
 
     private final IdentityPort identity;
     private final OrderPort orders;
+    private com.chotomua.backend.modules.crm.application.CrmOrderEvents crmEvents;
+
+    /** Re-files the customer in RFM segments after a status change (optional, keeps tests simple). */
+    @Autowired(required = false)
+    public void setCrmEvents(com.chotomua.backend.modules.crm.application.CrmOrderEvents crmEvents) {
+        this.crmEvents = crmEvents;
+    }
+
+    private void statusChanged(UUID customerId) {
+        if (crmEvents != null) {
+            crmEvents.onCustomerStatusChanged(customerId);
+        }
+    }
 
     /** Mọi thao tác khách đi qua {@link IdentityPort}, không ghi thẳng bảng user. */
     public CustomerAccountService(IdentityPort identity) {
@@ -69,6 +82,7 @@ public class CustomerAccountService {
         identity.requireCustomerAdmin(actorId);
         requireNoOpenWork(customerId, "khóa");
         identity.lock(customerId);
+        statusChanged(customerId);
         return identity.getCustomer(customerId);
     }
 
@@ -76,6 +90,7 @@ public class CustomerAccountService {
     public CustomerView unlock(UUID actorId, UUID customerId) {
         identity.requireCustomerAdmin(actorId);
         identity.unlock(customerId);
+        statusChanged(customerId);
         return identity.getCustomer(customerId);
     }
 
@@ -84,6 +99,7 @@ public class CustomerAccountService {
         identity.requireCustomerAdmin(actorId);
         requireNoOpenWork(customerId, "xóa");
         identity.softDeleteCustomer(customerId);
+        statusChanged(customerId);
         return identity.getCustomer(customerId);
     }
 
@@ -91,6 +107,7 @@ public class CustomerAccountService {
     public CustomerView restore(UUID actorId, UUID customerId) {
         identity.requireAdmin(actorId);
         identity.restoreCustomer(customerId);
+        statusChanged(customerId);
         return identity.getCustomer(customerId);
     }
 

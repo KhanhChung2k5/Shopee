@@ -275,6 +275,23 @@ class SegmentServiceTest {
         assertThat(memberIds(potential)).doesNotContain(customer.id());
     }
 
+    @Test
+    void aSegmentACampaignTargetedCannotBeDeleted() {
+        var campaigns = new com.chotomua.backend.modules.crm.application.campaign.InMemoryCampaignStore();
+        segments.setCampaignStore(campaigns);
+        SegmentResponse used = segments.create(ACTOR, "Đã dùng", Map.of("preset", "age", "bucket", "all"));
+        SegmentResponse unused = segments.create(ACTOR, "Chưa dùng", Map.of("preset", "age", "bucket", "all"));
+        UUID campaignId = UUID.randomUUID();
+        campaigns.save(new com.chotomua.backend.modules.crm.domain.campaign.Campaign(
+                        campaignId, "Chăm sóc", "in_app", Instant.now(), null, null),
+                List.of(new com.chotomua.backend.modules.crm.domain.campaign.CampaignTarget(campaignId, used.id())));
+
+        assertThatThrownBy(() -> segments.delete(ACTOR, used.id()))
+                .isInstanceOf(SegmentLockedException.class)
+                .hasMessageContaining("chiến dịch");
+        segments.delete(ACTOR, unused.id());
+    }
+
     private List<UUID> memberIds(UUID segmentId) {
         return segments.get(ACTOR, segmentId).members().stream().map(SegmentMemberResponse::userId).toList();
     }

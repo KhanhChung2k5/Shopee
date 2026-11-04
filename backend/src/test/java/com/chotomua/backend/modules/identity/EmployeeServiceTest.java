@@ -31,7 +31,7 @@ class EmployeeServiceTest {
     void update_rejectsMovingLastAdminOutOfAdminDepartment() {
         Employee lastAdmin = employeeOf("admin");
         when(employeeRepository.findById(lastAdmin.getId())).thenReturn(Optional.of(lastAdmin));
-        when(employeeRepository.countByDepartment("admin")).thenReturn(1L);
+        when(employeeRepository.countByDepartmentAndUser_Status("admin", "active")).thenReturn(1L);
 
         assertThatThrownBy(() -> employeeService.update(lastAdmin.getId(), new EmployeeUpdateRequest("sales", null, null)))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -42,7 +42,7 @@ class EmployeeServiceTest {
     void update_allowsMovingAdminOutWhenAnotherAdminRemains() {
         Employee admin = employeeOf("admin");
         when(employeeRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
-        when(employeeRepository.countByDepartment("admin")).thenReturn(2L);
+        when(employeeRepository.countByDepartmentAndUser_Status("admin", "active")).thenReturn(2L);
 
         var response = employeeService.update(admin.getId(), new EmployeeUpdateRequest("sales", "Sales Rep", null));
 
@@ -57,6 +57,51 @@ class EmployeeServiceTest {
         var response = employeeService.update(sales.getId(), new EmployeeUpdateRequest("warehouse", null, null));
 
         assertThat(response.department()).isEqualTo("warehouse");
+    }
+
+    @Test
+    void updateStatus_locksAndUnlocksAnEmployee() {
+        Employee sales = employeeOf("sales");
+        when(employeeRepository.findById(sales.getId())).thenReturn(Optional.of(sales));
+
+        assertThat(employeeService.updateStatus(UUID.randomUUID(), sales.getId(), "locked").status()).isEqualTo("locked");
+        assertThat(sales.getUser().getStatus()).isEqualTo("locked");
+        assertThat(employeeService.updateStatus(UUID.randomUUID(), sales.getId(), "active").status()).isEqualTo("active");
+    }
+
+    @Test
+    void updateStatus_rejectsLockingYourself() {
+        Employee admin = employeeOf("admin");
+        when(employeeRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(employeeRepository.countByDepartmentAndUser_Status("admin", "active")).thenReturn(2L);
+
+        assertThatThrownBy(() -> employeeService.updateStatus(admin.getUser().getId(), admin.getId(), "locked"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("tự khoá");
+        assertThat(admin.getUser().getStatus()).isEqualTo("active");
+    }
+
+    @Test
+    void updateStatus_rejectsLockingTheLastActiveAdmin() {
+        Employee admin = employeeOf("admin");
+        when(employeeRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(employeeRepository.countByDepartmentAndUser_Status("admin", "active")).thenReturn(1L);
+
+        assertThatThrownBy(() -> employeeService.updateStatus(UUID.randomUUID(), admin.getId(), "locked"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("quản trị viên cuối cùng");
+        assertThat(admin.getUser().getStatus()).isEqualTo("active");
+    }
+
+    @Test
+    void update_lockedAdminCanLeaveAdminDepartmentWithoutCountingAsLastAdmin() {
+        Employee lockedAdmin = employeeOf("admin");
+        lockedAdmin.getUser().setStatus("locked");
+        when(employeeRepository.findById(lockedAdmin.getId())).thenReturn(Optional.of(lockedAdmin));
+
+        var response = employeeService.update(lockedAdmin.getId(), new EmployeeUpdateRequest("sales", null, null));
+
+        assertThat(response.department()).isEqualTo("sales");
     }
 
     private static Employee employeeOf(String department) {

@@ -5,6 +5,8 @@ import java.util.regex.Pattern;
 
 /**
  * Đổi phương thức và đường dẫn API thành câu tiếng Việt cho trang nhật ký.
+ * Nhật ký ghi mọi thao tác ghi dữ liệu (không chỉ {@code /api}): khóa/xóa khách, đổi trạng thái đơn,
+ * hoàn tiền, xác nhận thanh toán, nhân viên, khuyến mãi, kho… là bằng chứng kiểm soát nội bộ.
  * Quy tắc cụ thể hơn đứng trước.
  */
 public final class OperationActionCatalog {
@@ -13,6 +15,47 @@ public final class OperationActionCatalog {
             "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 
     private static final List<Rule> RULES = List.of(
+            rule("PATCH", "/customers/" + ID + "/status", "Đổi trạng thái khách hàng"),
+            rule("POST", "/customers/" + ID + "/temporary-password", "Cấp mật khẩu tạm cho khách hàng"),
+            rule("POST", "/users/me/password", "Đổi mật khẩu"),
+            rule("PATCH", "/orders/" + ID + "/status", "Đổi trạng thái đơn hàng"),
+            rule("PATCH", "/orders/" + ID + "/payment-received", "Xác nhận đã nhận thanh toán"),
+            rule("PATCH", "/orders/" + ID + "/shipping-info", "Cập nhật thông tin giao hàng"),
+            rule("PATCH", "/orders/" + ID + "/tracking", "Cập nhật mã vận đơn"),
+            rule("PATCH", "/orders/" + ID + "/delivery-failed", "Báo giao hàng thất bại"),
+            rule("POST", "/orders", "Đặt đơn hàng"),
+            rule("POST", "/refund-returns", "Gửi yêu cầu hoàn tiền"),
+            rule("PATCH", "/refund-returns/" + ID + "/bank-account", "Khai tài khoản nhận hoàn tiền"),
+            rule("PATCH", "/refund-returns/" + ID + "/approve", "Duyệt yêu cầu hoàn tiền"),
+            rule("PATCH", "/refund-returns/" + ID + "/reject", "Từ chối yêu cầu hoàn tiền"),
+            rule("PATCH", "/refund-returns/" + ID + "/received", "Ghi nhận đã nhận hàng hoàn"),
+            rule("PATCH", "/refund-returns/" + ID + "/refunded", "Ghi nhận đã chuyển tiền hoàn"),
+            rule("POST", "/employees", "Tạo nhân viên"),
+            rule("PATCH", "/employees/" + ID, "Cập nhật nhân viên"),
+            rule("PATCH", "/employees/" + ID + "/status", "Khoá hoặc mở khoá nhân viên"),
+            rule("PATCH", "/reviews/" + ID + "/reply", "Phản hồi đánh giá"),
+            rule("POST", "/reviews", "Viết đánh giá sản phẩm"),
+            rule("POST", "/marketing/vouchers", "Tạo voucher"),
+            rule("PUT", "/marketing/vouchers/" + ID, "Sửa voucher"),
+            rule("DELETE", "/marketing/vouchers/" + ID, "Xóa voucher"),
+            rule("POST", "/marketing/programs", "Tạo chương trình khuyến mãi"),
+            rule("PUT", "/marketing/programs/" + ID, "Sửa chương trình khuyến mãi"),
+            rule("DELETE", "/marketing/programs/" + ID, "Xóa chương trình khuyến mãi"),
+            rule("POST", "/marketing/(product|invoice)-discounts", "Tạo ưu đãi"),
+            rule("PUT", "/marketing/(product|invoice)-discounts/" + ID, "Sửa ưu đãi"),
+            rule("DELETE", "/marketing/(product|invoice)-discounts/" + ID, "Xóa ưu đãi"),
+            rule("POST", "/api/catalog/goods-receipts/" + ID + "/approve", "Duyệt phiếu nhập"),
+            rule("POST", "/api/catalog/goods-receipts/" + ID + "/reject", "Từ chối phiếu nhập"),
+            rule("POST", "/api/catalog/goods-receipts", "Lập phiếu nhập"),
+            rule("PUT", "/api/catalog/inventory/stocks/" + ID + "/" + ID, "Điều chỉnh tồn kho"),
+            rule("POST", "/api/catalog/inventory/exports", "Xuất kho"),
+            rule("POST", "/api/catalog/products", "Tạo sản phẩm"),
+            rule("PUT", "/api/catalog/products/" + ID, "Sửa sản phẩm"),
+            rule("DELETE", "/api/catalog/products/" + ID, "Xóa sản phẩm"),
+            rule("POST", "/api/catalog/product-variants", "Tạo biến thể sản phẩm"),
+            rule("PUT", "/api/catalog/product-variants/" + ID, "Sửa biến thể / giá bán"),
+            rule("DELETE", "/api/catalog/product-variants/" + ID, "Xóa biến thể sản phẩm"),
+            rule("POST", "/api/surveys/" + ID + "/publish", "Phát hành khảo sát"),
             rule("POST", "/api/customers/" + ID + "/addresses", "Thêm địa chỉ khách hàng"),
             rule("PUT", "/api/customers/" + ID + "/addresses/" + ID, "Cập nhật địa chỉ khách hàng"),
             rule("POST", "/api/customers/" + ID + "/restore", "Khôi phục khách hàng"),
@@ -63,15 +106,19 @@ public final class OperationActionCatalog {
                 .toList();
     }
 
-    /** Bỏ qua lượt đọc, sức khỏe, nhật ký và tín hiệu đang nhập. */
+    /**
+     * Bỏ qua lượt đọc, sức khỏe, nhật ký, đăng nhập, và tín hiệu không phải thao tác nghiệp vụ:
+     * đang nhập / đang trực (gửi định kỳ), giỏ hàng, xem trước đơn và báo giá voucher.
+     */
     public static boolean skip(String method, String path) {
-        if (path == null || !path.startsWith("/api/")) {
+        if (path == null || path.isBlank() || path.equals("/error")) {
             return true;
         }
-        if (path.startsWith("/api/crm/audit-logs") || path.startsWith("/api/crm/health")) {
+        if (path.startsWith("/api/crm/audit-logs") || path.startsWith("/api/crm/health") || path.startsWith("/auth/")) {
             return true;
         }
-        if (path.endsWith("/typing")) {
+        if (path.endsWith("/typing") || path.equals("/api/conversations/presence")
+                || path.startsWith("/cart-items") || path.equals("/orders/preview") || path.equals("/vouchers/quote")) {
             return true;
         }
         String verb = method == null ? "" : method.toUpperCase();

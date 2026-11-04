@@ -37,6 +37,7 @@ public class OrderController {
         this.orderService = orderService;
     }
 
+    @org.springframework.cache.annotation.CacheEvict(cacheNames = com.chotomua.backend.common.config.CacheConfig.MANAGEMENT_REPORTS, allEntries = true)
     @PostMapping
     public ResponseEntity<OrderResponse> create(
             Authentication authentication,
@@ -73,6 +74,7 @@ public class OrderController {
         return orderService.getForEmployeeUser(userId, id);
     }
 
+    @org.springframework.cache.annotation.CacheEvict(cacheNames = com.chotomua.backend.common.config.CacheConfig.MANAGEMENT_REPORTS, allEntries = true)
     @PatchMapping("/{id}/status")
     public OrderStatusUpdateResponse updateStatus(
             Authentication authentication,
@@ -108,6 +110,21 @@ public class OrderController {
             @Valid @RequestBody OrderTrackingUpdateRequest request
     ) {
         return orderService.updateTracking(currentUserId(authentication), id, request);
+    }
+
+    /** Warehouse: the parcel came back undelivered — cancels the order and puts its goods back in stock. */
+    @org.springframework.cache.annotation.CacheEvict(cacheNames = com.chotomua.backend.common.config.CacheConfig.MANAGEMENT_REPORTS, allEntries = true)
+    @PatchMapping("/{id}/delivery-failed")
+    public OrderShippingResponse deliveryFailed(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @Valid @RequestBody DeliveryFailedRequest request
+    ) {
+        return orderService.markDeliveryFailed(currentUserId(authentication), id, request.reason());
+    }
+
+    public record DeliveryFailedRequest(
+            @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 500) String reason) {
     }
 
     private boolean hasRole(Authentication authentication, String role) {

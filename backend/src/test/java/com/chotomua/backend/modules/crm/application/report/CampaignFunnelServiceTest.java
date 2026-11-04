@@ -110,6 +110,31 @@ class CampaignFunnelServiceTest {
     }
 
     @Test
+    void orderPlacedBeforeTheCampaignButDeliveredDuringItDoesNotCount() {
+        CampaignResponse sent = sendProductCampaign(null);
+        orders.seedDeliveredOrder(new DeliveredOrderView(
+                UUID.randomUUID(), an.id(), BigDecimal.TEN,
+                sent.startAt().plus(2, ChronoUnit.DAYS),
+                List.of(new DeliveredOrderLine(DUALSENSE, CAT, "SP", BigDecimal.TEN)),
+                sent.startAt().minus(1, ChronoUnit.DAYS)));
+
+        assertThat(funnels.build(ADMIN, sent.id()).converted()).isZero();
+    }
+
+    @Test
+    void orderPlacedDuringTheCampaignCountsEvenIfDeliveredAfterIt() {
+        Instant end = Instant.now().plus(1, ChronoUnit.DAYS);
+        CampaignResponse sent = sendProductCampaign(end);
+        orders.seedDeliveredOrder(new DeliveredOrderView(
+                UUID.randomUUID(), an.id(), BigDecimal.TEN,
+                end.plus(3, ChronoUnit.DAYS),
+                List.of(new DeliveredOrderLine(DUALSENSE, CAT, "SP", BigDecimal.TEN)),
+                sent.startAt().plus(1, ChronoUnit.HOURS)));
+
+        assertThat(funnels.build(ADMIN, sent.id()).converted()).isEqualTo(1);
+    }
+
+    @Test
     void purchaseBeforeStartAtDoesNotCount() {
         CampaignResponse sent = sendProductCampaign(null);
         seedPurchase(an.id(), DUALSENSE, sent.startAt().minus(1, ChronoUnit.DAYS));

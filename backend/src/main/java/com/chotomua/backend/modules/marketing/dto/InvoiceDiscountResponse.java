@@ -5,9 +5,11 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record InvoiceDiscountResponse(UUID id, UUID promotionProgramId,
-                                      BigDecimal discountAmount, BigDecimal discountPercent) {
+                                      BigDecimal discountAmount, BigDecimal discountPercent,
+                                      BigDecimal minOrderAmount, BigDecimal maxDiscountAmount) {
     public static InvoiceDiscountResponse from(PromotionInvoiceDetail detail) {
         return new InvoiceDiscountResponse(detail.getId(), detail.getPromotionProgramId(),
-                detail.getDiscountAmount(), detail.getDiscountPercent());
+                detail.getDiscountAmount(), detail.getDiscountPercent(),
+                detail.getMinOrderAmount(), detail.getMaxDiscountAmount());
     }
 }

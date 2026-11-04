@@ -15,4 +15,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
 
     // Count the number of employees by department
     long countByDepartment(String department);
+
+    // Count the employees of a department whose account can still log in
+    long countByDepartmentAndUser_Status(String department, String status);
 }

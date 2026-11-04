@@ -33,6 +33,11 @@ public class CacheConfig {
     public static final String PUBLIC_PRODUCT = "publicProduct";
     /** "Bán chạy" ranking — a few minutes behind is fine. */
     public static final String TOP_SELLERS = "topSellers";
+    /**
+     * Management reports (revenue / profit, stock in–out) per chosen period: the heaviest aggregations in the system.
+     * Evicted by every write that moves their numbers (order status, new order, refund, returned goods, receipt, stock).
+     */
+    public static final String MANAGEMENT_REPORTS = "managementReports";
     /** CRM customer report — heavy to build, a summary that may lag a couple of minutes. */
     public static final String CRM_CUSTOMER_REPORT = "crmCustomerReport";
 
@@ -45,6 +50,7 @@ public class CacheConfig {
         manager.registerCustomCache(PUBLIC_PRODUCT, build(Duration.ofSeconds(30), 1000));
         manager.registerCustomCache(TOP_SELLERS, build(Duration.ofMinutes(5), 20));
         manager.registerCustomCache(CRM_CUSTOMER_REPORT, build(Duration.ofMinutes(2), 5));
+        manager.registerCustomCache(MANAGEMENT_REPORTS, build(Duration.ofMinutes(2), 50));
         return manager;
     }
 

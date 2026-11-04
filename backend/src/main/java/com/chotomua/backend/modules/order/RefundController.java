@@ -35,6 +35,12 @@ public class RefundController {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.requestReturn(userId(auth), request));
     }
 
+    /** What a return of this line would refund (the buyer sees it before sending the request). */
+    @GetMapping("/quote")
+    public RefundService.RefundQuoteResponse quote(Authentication auth, @RequestParam UUID orderItemId) {
+        return service.quoteReturn(userId(auth), orderItemId);
+    }
+
     @PatchMapping("/{id}/bank-account")
     public RefundResponse bankAccount(Authentication auth, @PathVariable UUID id,
                                       @Valid @RequestBody RefundBankAccountRequest request) {
@@ -56,12 +62,14 @@ public class RefundController {
         return service.reject(userId(auth), id, request.note());
     }
 
+    @org.springframework.cache.annotation.CacheEvict(cacheNames = com.chotomua.backend.common.config.CacheConfig.MANAGEMENT_REPORTS, allEntries = true)
     @PatchMapping("/{id}/refunded")
     public RefundResponse refunded(Authentication auth, @PathVariable UUID id, @Valid @RequestBody RefundDecisionRequest request) {
         return service.markRefunded(userId(auth), id, request.transferRef());
     }
 
     /** CS records the returned goods arrived; restock = true puts them back into a warehouse. */
+    @org.springframework.cache.annotation.CacheEvict(cacheNames = com.chotomua.backend.common.config.CacheConfig.MANAGEMENT_REPORTS, allEntries = true)
     @PatchMapping("/{id}/received")
     public RefundResponse received(Authentication auth, @PathVariable UUID id, @RequestBody ReceiveReturnRequest request) {
         return service.receiveReturn(userId(auth), id, request.restock(), request.warehouseId());

@@ -12,6 +12,8 @@ import java.util.UUID;
 /**
  * A voucher always belongs to one promotion program (which carries its dates and target loyalty tier).
  * {@code targetProductTypes} limits it to game_disc / controller / accessory; null or empty = every product.
+ * {@code minOrderAmount}, {@code maxDiscountAmount} (percentage only) and {@code usageLimit} are optional;
+ * {@code newCustomersOnly} keeps it for a buyer's first order.
  */
 public record VoucherRequest(
         @NotNull UUID promotionProgramId,
@@ -19,9 +21,18 @@ public record VoucherRequest(
         @NotBlank @Pattern(regexp = "percentage|fixed_amount") String type,
         @NotNull BigDecimal value,
         OffsetDateTime expiresAt,
-        List<String> targetProductTypes
+        List<String> targetProductTypes,
+        BigDecimal minOrderAmount,
+        BigDecimal maxDiscountAmount,
+        Integer usageLimit,
+        Boolean newCustomersOnly
 ) {
     public VoucherRequest(UUID promotionProgramId, String code, String type, BigDecimal value, OffsetDateTime expiresAt) {
         this(promotionProgramId, code, type, value, expiresAt, List.of());
+    }
+
+    public VoucherRequest(UUID promotionProgramId, String code, String type, BigDecimal value, OffsetDateTime expiresAt,
+                          List<String> targetProductTypes) {
+        this(promotionProgramId, code, type, value, expiresAt, targetProductTypes, null, null, null, false);
     }
 }

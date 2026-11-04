@@ -1,7 +1,6 @@
 package com.chotomua.backend.modules.marketing;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -23,7 +22,7 @@ class FlashSaleCheckoutServiceTest {
     private final FlashSaleCheckoutService service = new FlashSaleCheckoutService(details, programs);
 
     @Test
-    void apply_throwsWhenRequestedQuantityExceedsRemainingFlashSaleLimit() {
+    void apply_fallsBackToListPriceOnceTheFlashSaleIsSoldOut() {
         UUID variantId = UUID.randomUUID();
         UUID programId = UUID.randomUUID();
         PromotionProductDetail detail = activeFlashDetail(programId, variantId, "500000", 2);
@@ -32,9 +31,27 @@ class FlashSaleCheckoutServiceTest {
         when(programs.findById(programId)).thenReturn(Optional.of(activeProgram(programId)));
         ProductVariantSnapshot base = new ProductVariantSnapshot(variantId, new BigDecimal("800000"), "Tay cầm", "{}");
 
-        assertThatThrownBy(() -> service.apply(variantId, 1, base))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Flash Sale đã hết số lượng ưu đãi");
+        ProductVariantSnapshot result = service.apply(variantId, 1, base);
+
+        assertThat(result).isSameAs(base);
+        assertThat(detail.getSoldQty()).isEqualTo(2); // nothing sold past the limit
+    }
+
+    @Test
+    void apply_usesThePercentDiscountWhenTheFlashUnitsLeftCannotCoverTheLine() {
+        UUID variantId = UUID.randomUUID();
+        UUID programId = UUID.randomUUID();
+        PromotionProductDetail flash = activeFlashDetail(programId, variantId, "500000", 2);
+        PromotionProductDetail percent = new PromotionProductDetail(new ProductDiscountRequest(
+                programId, variantId, new BigDecimal("10"), null, null));
+        when(details.findByVariantId(variantId)).thenReturn(List.of(flash, percent));
+        when(programs.findById(programId)).thenReturn(Optional.of(activeProgram(programId)));
+        ProductVariantSnapshot base = new ProductVariantSnapshot(variantId, new BigDecimal("800000"), "Tay cầm", "{}");
+
+        ProductVariantSnapshot result = service.apply(variantId, 3, base);
+
+        assertThat(result.unitPrice()).isEqualByComparingTo("720000");
+        assertThat(flash.getSoldQty()).isZero();
     }
 
     @Test

@@ -72,6 +72,12 @@ public class JdbcConversationStore implements ConversationStore {
     }
 
     @Override
+    public List<Conversation> listByUser(UUID userId) {
+        return jdbc.query(selectSql() + " WHERE c.user_id = ? ORDER BY c.last_message_at DESC NULLS LAST",
+                this::mapConversation, userId);
+    }
+
+    @Override
     public void appendMessage(ConversationMessage message) {
         jdbc.update("""
                 INSERT INTO conversation_messages (id, conversation_id, sender_id, content, sent_at)

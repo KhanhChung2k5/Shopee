@@ -87,6 +87,13 @@ public class InMemorySurveyStore implements SurveyStore {
     }
 
     @Override
+    public synchronized List<SurveySubmission> submissionsBy(UUID userId) {
+        return submissions.values().stream()
+                .filter(row -> row.userId().equals(userId))
+                .toList();
+    }
+
+    @Override
     public synchronized List<SurveySubmission> submissionsOf(UUID surveyId) {
         return submissions.values().stream()
                 .filter(row -> row.surveyId().equals(surveyId))

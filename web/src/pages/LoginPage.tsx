@@ -113,6 +113,12 @@ export default function LoginPage() {
 
             {error && <Alert>{error}</Alert>}
 
+            {mode === 'login' && (
+              <p className="font-body-md text-body-md text-on-surface-variant">
+                Quên mật khẩu? Hãy liên hệ bộ phận CSKH để được xác minh và cấp mật khẩu tạm.
+              </p>
+            )}
+
             <Button type="submit" size="lg" className="w-full" disabled={submitting}>
               {submitting ? 'Đang xử lý...' : mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
             </Button>

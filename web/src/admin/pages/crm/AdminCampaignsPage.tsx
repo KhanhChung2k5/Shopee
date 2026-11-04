@@ -125,7 +125,7 @@ export default function AdminCampaignsPage() {
                     <td>
                       <div className={a.rowActions}>
                         <button type="button" className={buttonClass('outline', 'sm')} onClick={() => toggleFunnel(c.id)}>{funnel ? 'Ẩn phễu' : 'Phễu'}</button>
-                        <button type="button" className={buttonClass('outline', 'sm')} onClick={() => void remove(c)}>Xoá</button>
+                        {c.deliveryStatus === 'scheduled' && <button type="button" className={buttonClass('outline', 'sm')} onClick={() => void remove(c)}>Xoá</button>}
                       </div>
                     </td>
                   </tr>

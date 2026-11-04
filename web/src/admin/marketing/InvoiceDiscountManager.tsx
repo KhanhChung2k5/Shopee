@@ -10,9 +10,13 @@ interface InvoiceForm {
   promotionProgramId: string
   kind: 'percentage' | 'fixed_amount'
   value: string
+  minOrderAmount: string
+  maxDiscountAmount: string
 }
 
-const EMPTY_FORM: InvoiceForm = { promotionProgramId: '', kind: 'percentage', value: '' }
+const EMPTY_FORM: InvoiceForm = { promotionProgramId: '', kind: 'percentage', value: '', minOrderAmount: '', maxDiscountAmount: '' }
+
+const optionalNumber = (value: string) => (value.trim() === '' ? null : Number(value))
 
 interface Props {
   token: string
@@ -34,6 +38,8 @@ export default function InvoiceDiscountManager({ token, programs, discounts, onC
       promotionProgramId: discount.promotionProgramId,
       kind: discount.discountAmount === null ? 'percentage' : 'fixed_amount',
       value: String(discount.discountAmount ?? discount.discountPercent ?? ''),
+      minOrderAmount: discount.minOrderAmount == null ? '' : String(discount.minOrderAmount),
+      maxDiscountAmount: discount.maxDiscountAmount == null ? '' : String(discount.maxDiscountAmount),
     })
     setError(null)
   }
@@ -58,6 +64,8 @@ export default function InvoiceDiscountManager({ token, programs, discounts, onC
             promotionProgramId: form.promotionProgramId,
             discountAmount: form.kind === 'fixed_amount' ? Number(form.value) : null,
             discountPercent: form.kind === 'percentage' ? Number(form.value) : null,
+            minOrderAmount: optionalNumber(form.minOrderAmount),
+            maxDiscountAmount: form.kind === 'percentage' ? optionalNumber(form.maxDiscountAmount) : null,
           }),
         },
         token,
@@ -98,7 +106,7 @@ export default function InvoiceDiscountManager({ token, programs, discounts, onC
         <label>
           Kiểu giảm
           <select className={a.input} value={form.kind}
-            onChange={(event) => setForm({ ...form, kind: event.target.value as InvoiceForm['kind'], value: '' })}>
+            onChange={(event) => setForm({ ...form, kind: event.target.value as InvoiceForm['kind'], value: '', maxDiscountAmount: '' })}>
             <option value="percentage">Phần trăm</option>
             <option value="fixed_amount">Số tiền</option>
           </select>
@@ -109,6 +117,18 @@ export default function InvoiceDiscountManager({ token, programs, discounts, onC
             max={form.kind === 'percentage' ? '100' : '9999999999.99'} step="0.01"
             value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} />
         </label>
+        <label>
+          Đơn tối thiểu (tùy chọn)
+          <input className={a.input} type="number" min="0.01" step="0.01" max="9999999999.99" placeholder="Mọi đơn"
+            value={form.minOrderAmount} onChange={(event) => setForm({ ...form, minOrderAmount: event.target.value })} />
+        </label>
+        {form.kind === 'percentage' && (
+          <label>
+            Giảm tối đa (tùy chọn)
+            <input className={a.input} type="number" min="0.01" step="0.01" max="9999999999.99" placeholder="Không giới hạn"
+              value={form.maxDiscountAmount} onChange={(event) => setForm({ ...form, maxDiscountAmount: event.target.value })} />
+          </label>
+        )}
         {error && <p role="alert" className={a.formMessage}>{error}</p>}
         <div className={a.formActions}>
           <button className={buttonClass('primary')} type="submit" disabled={busy || programs.length === 0}>
@@ -120,12 +140,14 @@ export default function InvoiceDiscountManager({ token, programs, discounts, onC
 
       <div className={a.tableWrap}>
         <table className={a.table}>
-          <thead><tr><th>Chương trình</th><th>Mức giảm</th><th>Thao tác</th></tr></thead>
+          <thead><tr><th>Chương trình</th><th>Mức giảm</th><th>Đơn tối thiểu</th><th>Thao tác</th></tr></thead>
           <tbody>
             {discounts.map((discount) => (
               <tr key={discount.id}>
                 <td>{programs.find((program) => program.id === discount.promotionProgramId)?.code ?? '—'}</td>
-                <td>{discount.discountAmount === null ? `${discount.discountPercent}%` : money.format(discount.discountAmount)}</td>
+                <td>{discount.discountAmount === null ? `${discount.discountPercent}%` : money.format(discount.discountAmount)}
+                  {discount.maxDiscountAmount != null && <span className="block text-on-surface-variant">tối đa {money.format(discount.maxDiscountAmount)}</span>}</td>
+                <td>{discount.minOrderAmount != null ? money.format(discount.minOrderAmount) : 'Mọi đơn'}</td>
                 <td>
                   <div className={a.rowActions}>
                     <button className={buttonClass('outline')} type="button" onClick={() => edit(discount)}>Sửa</button>
@@ -134,7 +156,7 @@ export default function InvoiceDiscountManager({ token, programs, discounts, onC
                 </td>
               </tr>
             ))}
-            {discounts.length === 0 && <tr><td colSpan={3}>Chưa có ưu đãi hóa đơn nào.</td></tr>}
+            {discounts.length === 0 && <tr><td colSpan={4}>Chưa có ưu đãi hóa đơn nào.</td></tr>}
           </tbody>
         </table>
       </div>

@@ -38,6 +38,63 @@ export default function ProfilePage() {
   return <ProfilePageContent token={token as string} logout={logout} isBuyer={user?.role === 'buyer'} />
 }
 
+function ChangePasswordCard({ token }: { token: string }) {
+  const empty = { currentPassword: '', newPassword: '', confirmPassword: '' }
+  const [form, setForm] = useState(empty)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const set = (key: keyof typeof empty, value: string) => {
+    setForm((f) => ({ ...f, [key]: value }))
+    setSaved(false)
+  }
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setSaved(false)
+    if (form.newPassword !== form.confirmPassword) {
+      setError('Mật khẩu nhập lại không khớp')
+      return
+    }
+    setBusy(true)
+    try {
+      await apiFetch('/users/me/password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword: form.currentPassword, newPassword: form.newPassword }),
+      }, token)
+      setForm(empty)
+      setSaved(true)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Không đổi được mật khẩu')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card as="section">
+      <CardTitle icon="lock">Đổi mật khẩu</CardTitle>
+      <form onSubmit={(e) => void submit(e)} className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+        <Field label="Mật khẩu hiện tại" hint="Nếu vừa được cấp mật khẩu tạm, hãy nhập mật khẩu đó rồi đặt mật khẩu mới." className="md:col-span-2">
+          <input className={inputClass} type="password" required autoComplete="current-password" value={form.currentPassword} onChange={(e) => set('currentPassword', e.target.value)} />
+        </Field>
+        <Field label="Mật khẩu mới" hint="Ít nhất 8 ký tự, gồm chữ và số.">
+          <input className={inputClass} type="password" required minLength={8} autoComplete="new-password" value={form.newPassword} onChange={(e) => set('newPassword', e.target.value)} />
+        </Field>
+        <Field label="Nhập lại mật khẩu mới">
+          <input className={inputClass} type="password" required minLength={8} autoComplete="new-password" value={form.confirmPassword} onChange={(e) => set('confirmPassword', e.target.value)} />
+        </Field>
+        <div className="md:col-span-2 space-y-space-sm">
+          {error && <Alert>{error}</Alert>}
+          {saved && <Alert tone="success">Đã đổi mật khẩu.</Alert>}
+          <Button type="submit" icon="lock_reset" disabled={busy}>{busy ? 'Đang lưu…' : 'Đổi mật khẩu'}</Button>
+        </div>
+      </form>
+    </Card>
+  )
+}
+
 function ProfilePageContent({ token, logout, isBuyer }: { token: string; logout: () => void; isBuyer: boolean }) {
   const [tab, setTab] = useState<Tab>('profile')
 
@@ -233,6 +290,7 @@ function ProfilePageContent({ token, logout, isBuyer }: { token: string; logout:
               )}
             </Card>
           )}
+          {tab === 'profile' && <ChangePasswordCard token={token} />}
 
           {tab === 'addresses' && (
             <>

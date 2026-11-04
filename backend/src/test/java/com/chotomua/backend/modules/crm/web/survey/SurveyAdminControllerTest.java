@@ -228,13 +228,14 @@ class SurveyAdminControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.campaigns", hasSize(0)));
 
+        // A survey that reached customers keeps their answers: it can be archived, not deleted.
         mockMvc.perform(delete("/api/surveys/" + surveyId))
-                .andExpect(status().isNoContent());
-        mockMvc.perform(get("/api/surveys/" + surveyId))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isUnprocessableEntity());
+        mockMvc.perform(post("/api/surveys/" + surveyId + "/archive"))
+                .andExpect(status().isOk());
         mockMvc.perform(get("/api/notifications").param("userId", activeId.toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.notifications", hasSize(0)));
+                .andExpect(jsonPath("$.notifications", hasSize(1)));
     }
 
     @Test

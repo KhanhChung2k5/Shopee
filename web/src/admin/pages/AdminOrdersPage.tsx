@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError, apiFetch } from '../../lib/api'
 import { formatVnd } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
 import { a, chipClass, statusPillClass, pageButtonClass } from '../adminUi'
-import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE, awaitsTransfer, orderCode, paymentShort, type OrderStatus, type StaffOrderSummary } from '../orders'
+import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE, awaitsTransfer, isStaleOrder, orderAgeDays, orderCode, paymentShort, type OrderStatus, type StaffOrderSummary } from '../orders'
 import OrderDetailPanel from '../components/OrderDetailPanel'
 
 const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
@@ -31,7 +31,13 @@ export default function AdminOrdersPage() {
   const { id: selectedId } = useParams()
   const [orders, setOrders] = useState<StaffOrderSummary[] | null>(null)
   const [error, setError] = useState('')
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all')
+  // ?trangthai=pending&treo=1 — the dashboard's stale-order warning links here.
+  const [searchParams] = useSearchParams()
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>(() => {
+    const status = searchParams.get('trangthai')
+    return status && status in ORDER_STATUS_LABEL ? (status as OrderStatus) : 'all'
+  })
+  const [staleOnly, setStaleOnly] = useState(() => searchParams.get('treo') === '1')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const rowRefs = useRef(new Map<string, HTMLTableRowElement>())
@@ -54,12 +60,14 @@ export default function AdminOrdersPage() {
   const filtered = useMemo(() => {
     const term = searchQuery.trim().toLocaleLowerCase('vi')
     return (orders ?? []).filter((o) => {
-      const matchStatus = statusFilter === 'all' || o.status === statusFilter
+      const matchStatus = (statusFilter === 'all' || o.status === statusFilter) && (!staleOnly || isStaleOrder(o))
       const haystack = [orderCode(o.id), o.id, o.customer?.fullName, o.customer?.email, o.customer?.phone,
         o.customer?.recipientName, o.customer?.recipientPhone].filter(Boolean).join(' ').toLocaleLowerCase('vi')
       return matchStatus && (!term || haystack.includes(term))
     })
-  }, [orders, statusFilter, searchQuery])
+  }, [orders, statusFilter, staleOnly, searchQuery])
+
+  const staleCount = useMemo(() => (orders ?? []).filter((o) => isStaleOrder(o)).length, [orders])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const page = Math.min(currentPage, totalPages)
@@ -121,6 +129,12 @@ export default function AdminOrdersPage() {
               {f.label}{f.value !== 'all' && counts[f.value] ? ` (${counts[f.value]})` : ''}
             </button>
           ))}
+          {(staleCount > 0 || staleOnly) && (
+            <button type="button" className={chipClass(staleOnly)} aria-pressed={staleOnly}
+              onClick={() => { setStaleOnly(!staleOnly); setCurrentPage(1) }}>
+              Đơn treo ({staleCount})
+            </button>
+          )}
         </div>
 
         {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
@@ -164,7 +178,12 @@ export default function AdminOrdersPage() {
                         : <span className="font-body-md text-body-md text-on-surface-variant">{paymentShort(o)}</span>}
                     </td>
                     <td className={`whitespace-nowrap ${col(false)}`}>{dateTime.format(new Date(o.createdAt))}</td>
-                    <td><span className={statusPillClass(ORDER_STATUS_TONE[o.status])}>{ORDER_STATUS_LABEL[o.status] ?? o.status}</span></td>
+                    <td>
+                      <span className={statusPillClass(ORDER_STATUS_TONE[o.status])}>{ORDER_STATUS_LABEL[o.status] ?? o.status}</span>
+                      {isStaleOrder(o) && (
+                        <span className="block mt-0.5 font-label-sm text-label-sm text-[#EA580C] whitespace-nowrap">Treo {orderAgeDays(o)} ngày</span>
+                      )}
+                    </td>
                   </tr>
                 )
               })}

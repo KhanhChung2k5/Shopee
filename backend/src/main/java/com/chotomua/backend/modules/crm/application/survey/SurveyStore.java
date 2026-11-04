@@ -33,6 +33,9 @@ public interface SurveyStore {
 
     List<SurveySubmission> submissionsOf(UUID surveyId);
 
+    /** Mọi bài nộp của một khách, không kèm câu trả lời — để hộp thư biết thư mời nào đã trả lời. */
+    List<SurveySubmission> submissionsBy(UUID userId);
+
     /** Xóa phiếu, câu hỏi, đối tượng và bài nộp. */
     void delete(UUID id);
 }

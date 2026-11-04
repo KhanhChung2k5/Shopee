@@ -13,6 +13,8 @@ public record NotificationResponse(
         String content,
         String status,
         Instant sentAt,
-        UUID orderId
+        UUID orderId,
+        boolean surveyAnswered,
+        boolean surveyClosed
 ) {
 }

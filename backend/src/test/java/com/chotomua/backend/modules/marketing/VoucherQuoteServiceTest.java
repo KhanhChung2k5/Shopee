@@ -141,6 +141,99 @@ class VoucherQuoteServiceTest {
                 .hasMessageContaining("đã sử dụng");
     }
 
+    @Test
+    void quote_needsTheMinimumOrderAndCapsAPercentageAtItsMaximum() {
+        when(vouchers.findByCodeIgnoreCase("SAVE")).thenReturn(Optional.of(limited("percentage", "20",
+                new BigDecimal("500000"), new BigDecimal("50000"), null, false)));
+
+        assertThatThrownBy(() -> service.quote(userId, new VoucherQuoteRequest("SAVE", new BigDecimal("400000"))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("đơn từ")
+                .hasMessageContaining("còn thiếu");
+        var quote = service.quote(userId, new VoucherQuoteRequest("SAVE", new BigDecimal("1000000")));
+        assertThat(quote.discountAmount()).isEqualByComparingTo("50000"); // 20% = 200.000, capped
+    }
+
+    @Test
+    void quote_measuresTheMinimumOrderBeforeTheInvoicePromotion() {
+        when(vouchers.findByCodeIgnoreCase("SAVE")).thenReturn(Optional.of(limited("fixed_amount", "20000",
+                new BigDecimal("500000"), null, null, false)));
+        var goods = List.of(new VoucherQuoteRequest.Item("game_disc", new BigDecimal("500000")));
+
+        // 500.000 of goods, 50.000 off by the invoice promotion: the minimum is still met.
+        var quote = service.quote(userId, new VoucherQuoteRequest("SAVE", new BigDecimal("450000"), goods));
+        assertThat(quote.discountAmount()).isEqualByComparingTo("20000");
+        assertThat(quote.payableAmount()).isEqualByComparingTo("430000");
+
+        var tooLittle = List.of(new VoucherQuoteRequest.Item("game_disc", new BigDecimal("499999")));
+        assertThatThrownBy(() -> service.quote(userId, new VoucherQuoteRequest("SAVE", new BigDecimal("449999"), tooLittle)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("còn thiếu");
+    }
+
+    @Test
+    void quote_measuresAProductTypeVoucherMinimumOnItsLinesBeforeTheInvoicePromotion() {
+        when(vouchers.findByCodeIgnoreCase("SAVE")).thenReturn(Optional.of(new Voucher(new VoucherRequest(programId, "SAVE",
+                "fixed_amount", new BigDecimal("20000"), null, List.of("game_disc"), new BigDecimal("500000"), null, null, false), "SAVE")));
+
+        // Every line is covered and the invoice promotion took 50.000: still 500.000 of discs.
+        var allDiscs = List.of(new VoucherQuoteRequest.Item("game_disc", new BigDecimal("500000")));
+        assertThat(service.quote(userId, new VoucherQuoteRequest("SAVE", new BigDecimal("450000"), allDiscs)).discountAmount())
+                .isEqualByComparingTo("20000");
+
+        // Other lines never count towards it.
+        var mixed = List.of(new VoucherQuoteRequest.Item("game_disc", new BigDecimal("400000")),
+                new VoucherQuoteRequest.Item("controller", new BigDecimal("300000")));
+        assertThatThrownBy(() -> service.quote(userId, new VoucherQuoteRequest("SAVE", new BigDecimal("700000"), mixed)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("còn thiếu");
+    }
+
+    @Test
+    void quote_rejectsAVoucherWhoseUsesAreAllTaken() {
+        Voucher voucher = limited("fixed_amount", "10000", null, null, 3, false);
+        when(vouchers.findByCodeIgnoreCase("SAVE")).thenReturn(Optional.of(voucher));
+        when(usages.countActiveUses(any())).thenReturn(3L);
+
+        assertThatThrownBy(() -> service.quote(userId, new VoucherQuoteRequest("SAVE", new BigDecimal("100000"))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("hết lượt");
+    }
+
+    @Test
+    void quoteForCheckout_locksTheVoucherRowBeforeCountingUses() {
+        Voucher voucher = limited("fixed_amount", "10000", null, null, 3, false);
+        org.springframework.test.util.ReflectionTestUtils.setField(voucher, "id", UUID.randomUUID());
+        when(vouchers.findByCodeIgnoreCase("SAVE")).thenReturn(Optional.of(voucher));
+        when(vouchers.findByIdForUpdate(voucher.getId())).thenReturn(Optional.of(voucher));
+        when(usages.countActiveUses(voucher.getId())).thenReturn(2L);
+
+        var quote = service.quoteForCheckout(userId, new VoucherQuoteRequest("SAVE", new BigDecimal("100000")));
+
+        assertThat(quote.discountAmount()).isEqualByComparingTo("10000");
+        org.mockito.Mockito.verify(vouchers).findByIdForUpdate(voucher.getId());
+    }
+
+    @Test
+    void quote_keepsANewCustomerVoucherForTheFirstOrder() {
+        when(vouchers.findByCodeIgnoreCase("SAVE")).thenReturn(Optional.of(limited("fixed_amount", "10000", null, null, null, true)));
+        when(usages.hasPlacedOrder(userId)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.quote(userId, new VoucherQuoteRequest("SAVE", new BigDecimal("100000"))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("khách hàng mới");
+
+        when(usages.hasPlacedOrder(userId)).thenReturn(false);
+        assertThat(service.quote(userId, new VoucherQuoteRequest("SAVE", new BigDecimal("100000"))).discountAmount())
+                .isEqualByComparingTo("10000");
+    }
+
+    private Voucher limited(String type, String value, BigDecimal minOrder, BigDecimal maxDiscount, Integer usageLimit,
+                            boolean newCustomersOnly) {
+        return new Voucher(new VoucherRequest(programId, "SAVE", type, new BigDecimal(value), null, List.of(),
+                minOrder, maxDiscount, usageLimit, newCustomersOnly), "SAVE");
+    }
+
     private void programFor(String tier) {
         OffsetDateTime now = OffsetDateTime.now();
         when(programs.findById(programId)).thenReturn(Optional.of(new PromotionProgram(

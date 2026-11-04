@@ -37,6 +37,7 @@ public class CustomerProfileService {
     private final ProfileStore store;
     private final Clock clock;
     private SegmentService segments;
+    private org.springframework.cache.CacheManager cacheManager;
 
     @Autowired
     public CustomerProfileService(IdentityPort identity, OrderPort orders, ProfileStore store) {
@@ -55,6 +56,12 @@ public class CustomerProfileService {
     @Autowired(required = false)
     public void setSegmentService(SegmentService segments) {
         this.segments = segments;
+    }
+
+    /** Báo cáo khách hàng được cache: tính lại hồ sơ thì bỏ bản cũ để trang hiện số mới ngay. */
+    @Autowired(required = false)
+    public void setCacheManager(org.springframework.cache.CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
     }
 
     /** Xem hồ sơ. Chưa tính lại thì trả số 0, nhãn {@code new}, chưa có mốc tính. */
@@ -90,6 +97,12 @@ public class CustomerProfileService {
         store.save(profile);
         if (segments != null) {
             segments.syncRfmMember(customer.id(), profile.rfmSegment(), CustomerStatus.ACTIVE.equals(customer.status()));
+        }
+        if (cacheManager != null) {
+            org.springframework.cache.Cache report = cacheManager.getCache(com.chotomua.backend.common.config.CacheConfig.CRM_CUSTOMER_REPORT);
+            if (report != null) {
+                report.clear();
+            }
         }
         return profile;
     }

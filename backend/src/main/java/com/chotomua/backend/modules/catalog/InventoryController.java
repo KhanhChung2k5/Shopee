@@ -54,12 +54,12 @@ public class InventoryController {
         } else if (variantId != null) {
             result = stocks.findByVariant_Id(variantId);
         } else {
-            result = stocks.findAll();
+            result = stocks.findAllByOrderByIdAsc();
         }
         return result.stream().map(StockResponse::from).toList();
     }
 
-    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS}, allEntries = true)
+    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS, CacheConfig.MANAGEMENT_REPORTS}, allEntries = true)
     @PutMapping("/stocks/{variantId}/{warehouseId}")
     @Transactional
     public StockResponse setStock(@PathVariable UUID variantId, @PathVariable UUID warehouseId,
@@ -85,7 +85,7 @@ public class InventoryController {
         return StockResponse.from(savedStock);
     }
 
-    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS}, allEntries = true)
+    @CacheEvict(cacheNames = {CacheConfig.PUBLIC_PRODUCTS, CacheConfig.PUBLIC_PRODUCT, CacheConfig.TOP_SELLERS, CacheConfig.MANAGEMENT_REPORTS}, allEntries = true)
     @PostMapping("/exports")
     @Transactional
     public StockResponse exportStock(@Valid @RequestBody ExportStockRequest request) {
