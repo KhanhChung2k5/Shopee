@@ -5,8 +5,10 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -49,6 +51,7 @@ class ReviewReplyFlowTest {
     private final UUID buyer = UUID.randomUUID();
     private final UUID csUser = UUID.randomUUID();
     private UUID orderItem;
+    private UUID orderId;
 
     @BeforeEach
     void seedDeliveredOrderAndCsEmployee() {
@@ -62,8 +65,12 @@ class ReviewReplyFlowTest {
         jdbc.update("INSERT INTO addresses (id, user_id, recipient_name, phone, full_address) VALUES (?, ?, 'A', '0900000000', 'HCM')",
                 address, buyer);
         UUID order = UUID.randomUUID();
+        orderId = order;
         jdbc.update("INSERT INTO orders (id, user_id, address_id, shipping_address_snapshot, subtotal_amount, total_amount, status) "
                 + "VALUES (?, ?, ?, 'HCM', 100000, 100000, 'delivered')", order, buyer, address);
+        // Reviews are open for 30 days from delivery, which the order's status history records.
+        jdbc.update("INSERT INTO order_status_histories (id, order_id, status, changed_at) VALUES (?, ?, 'delivered', now())",
+                UUID.randomUUID(), order);
         orderItem = UUID.randomUUID();
         jdbc.update("INSERT INTO order_items (id, order_id, variant_id, quantity, unit_price, line_total, product_name_snapshot) "
                 + "VALUES (?, ?, ?, 1, 100000, 100000, 'Tay cầm thử')", orderItem, order, variant);
@@ -97,6 +104,71 @@ class ReviewReplyFlowTest {
                 .andExpect(jsonPath("$[*].id", not(hasItem(reviewId))));
         mockMvc.perform(get("/reviews/manage").with(staff("DEPT_CS")))
                 .andExpect(jsonPath("$[?(@.id == '%s')].repliedByName".formatted(reviewId), hasItem("CSKH thử")));
+    }
+
+    @Test
+    void buyerSeesChangesAndRemovesTheirReviewWithinTheWindow() throws Exception {
+        mockMvc.perform(get("/reviews/mine").param("orderId", orderId.toString()).with(buyerAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lines[0].canReview").value(true))
+                .andExpect(jsonPath("$.lines[0].review").doesNotExist());
+        String reviewId = JsonPath.read(mockMvc.perform(post("/reviews").with(buyerAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"orderItemId\":\"%s\",\"rating\":5,\"comment\":\"Tốt\"}".formatted(orderItem)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+
+        // After a reload the page knows the line is reviewed and offers to change it, not to review it again.
+        mockMvc.perform(get("/reviews/mine").param("orderId", orderId.toString()).with(buyerAuth()))
+                .andExpect(jsonPath("$.lines[0].canReview").value(false))
+                .andExpect(jsonPath("$.lines[0].canEdit").value(true))
+                .andExpect(jsonPath("$.lines[0].review.id").value(reviewId));
+        mockMvc.perform(put("/reviews/" + reviewId).with(buyerAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"orderItemId\":\"%s\",\"rating\":2,\"comment\":\"Đổi ý: pin yếu\"}".formatted(orderItem)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rating").value(2))
+                .andExpect(jsonPath("$.comment").value("Đổi ý: pin yếu"));
+        mockMvc.perform(delete("/reviews/" + reviewId).with(buyerAuth())).andExpect(status().isNoContent());
+        mockMvc.perform(get("/reviews/mine").param("orderId", orderId.toString()).with(buyerAuth()))
+                .andExpect(jsonPath("$.lines[0].canReview").value(true));
+    }
+
+    @Test
+    void anotherBuyerCannotChangeAReview() throws Exception {
+        String reviewId = JsonPath.read(mockMvc.perform(post("/reviews").with(buyerAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"orderItemId\":\"%s\",\"rating\":5}".formatted(orderItem)))
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        UUID stranger = UUID.randomUUID();
+        mockMvc.perform(put("/reviews/" + reviewId).with(as(stranger, "ROLE_BUYER"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"orderItemId\":\"%s\",\"rating\":1}".formatted(orderItem)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/reviews/" + reviewId).with(as(stranger, "ROLE_BUYER"))).andExpect(status().isForbidden());
+        mockMvc.perform(post("/reviews").with(as(stranger, "ROLE_BUYER"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"orderItemId\":\"%s\",\"rating\":1}".formatted(orderItem)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void noReviewMoreThan30DaysAfterDeliveryOrOnALineSentBack() throws Exception {
+        String body = "{\"orderItemId\":\"%s\",\"rating\":4}".formatted(orderItem);
+        jdbc.update("UPDATE order_status_histories SET changed_at = now() - interval '31 days' WHERE order_id = ?", orderId);
+        mockMvc.perform(post("/reviews").with(buyerAuth()).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Đã quá 30 ngày kể từ khi nhận hàng"));
+
+        jdbc.update("UPDATE order_status_histories SET changed_at = now() WHERE order_id = ?", orderId);
+        entityManager.clear(); // the test shares one persistence context; forget the history row read above
+        jdbc.update("INSERT INTO refund_returns (id, order_id, order_item_id, kind, status, requested_at) VALUES (?, ?, ?, 'return', 'requested', now())",
+                UUID.randomUUID(), orderId, orderItem);
+        mockMvc.perform(post("/reviews").with(buyerAuth()).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Sản phẩm đã yêu cầu trả hàng nên không đánh giá được"));
+        mockMvc.perform(get("/reviews/mine").param("orderId", orderId.toString()).with(buyerAuth()))
+                .andExpect(jsonPath("$.lines[0].canReview").value(false))
+                .andExpect(jsonPath("$.lines[0].blockedReason").value("Sản phẩm đã yêu cầu trả hàng nên không đánh giá được"));
     }
 
     @Test

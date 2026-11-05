@@ -38,6 +38,7 @@ import { CartProvider } from './state/CartContext'
 import { AuthProvider } from './state/AuthContext'
 import { DialogProvider } from './state/DialogContext'
 import ProfilePage from './pages/ProfilePage'
+import InvoicePage from './pages/InvoicePage'
 import RequireStaff from './components/RequireStaff'
 import RequireDepartment from './components/RequireDepartment'
 import MobileNav from './components/MobileNav'
@@ -112,6 +113,8 @@ function App() {
           <Route path="phan-khuc" element={<RequireDepartment><AdminSegmentsPage /></RequireDepartment>} />
           <Route path="chien-dich" element={<RequireDepartment><AdminCampaignsPage /></RequireDepartment>} />
         </Route>
+        {/* Printable invoice: outside both shells so it prints without the site header and menu. */}
+        <Route path="/hoa-don/:orderId" element={<InvoicePage />} />
         <Route path="/*" element={<CustomerShell />} />
       </Routes>
       </DialogProvider>

@@ -69,6 +69,14 @@ public class OrderService {
         this.crmOrderEvents = crmOrderEvents;
     }
 
+    /** Issues the sales invoice when an order is delivered (optional, like CRM, for the unit-test constructors). */
+    private InvoiceService invoiceService;
+
+    @Autowired(required = false)
+    void setInvoiceService(InvoiceService invoiceService) {
+        this.invoiceService = invoiceService;
+    }
+
     /** Optional for the same reason: stock leaves the warehouse when an order is packed, and comes back if it is cancelled. */
     private InventoryStockService inventoryStockService;
 
@@ -341,6 +349,7 @@ public class OrderService {
         order.setStatus(nextOrderStatus);
         Order saved = orderRepository.save(order);
         if ("delivered".equals(nextOrderStatus) && checkoutPaymentService != null) checkoutPaymentService.settleOnDelivery(saved.getId());
+        if ("delivered".equals(nextOrderStatus) && invoiceService != null) invoiceService.issueIfDue(saved.getId());
         if ("delivered".equals(nextOrderStatus) && loyaltyAwardService != null) loyaltyAwardService.award(saved);
         if ("delivered".equals(nextOrderStatus) && crmOrderEvents != null) crmOrderEvents.onOrderDelivered(saved.getUserId(), saved.getId());
         orderStatusHistoryRepository.save(new OrderStatusHistory(
@@ -388,6 +397,12 @@ public class OrderService {
                 ? orderRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 : orderRepository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, status);
         return toSummaries(orders);
+    }
+
+    /** Every order of one customer, newest first, for the staff customer page (callers check the department). */
+    @Transactional(readOnly = true)
+    public List<OrderSummaryResponse> listForCustomer(UUID customerId) {
+        return toSummaries(orderRepository.findByUserIdOrderByCreatedAtDesc(customerId));
     }
 
     @Transactional(readOnly = true)

@@ -61,6 +61,32 @@ public class CustomerController {
         this.crmEvents = crmEvents;
     }
 
+    // Orders and addresses for the customer detail view (optional so slim test contexts still start)
+    private com.chotomua.backend.modules.order.OrderService orderService;
+    private AddressRepository addresses;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setOrderService(com.chotomua.backend.modules.order.OrderService orderService) {
+        this.orderService = orderService;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAddresses(AddressRepository addresses) {
+        this.addresses = addresses;
+    }
+
+    /** One customer with addresses and every order (status, payment, total) — CS / admin, like the rest of /customers. */
+    @GetMapping("/{id}/detail")
+    @Transactional(readOnly = true)
+    public com.chotomua.backend.modules.identity.dto.CustomerDetailResponse detail(@PathVariable UUID id) {
+        User user = userRepository.findById(id)
+                .filter(u -> "buyer".equals(u.getRole()))
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy khách hàng"));
+        return com.chotomua.backend.modules.identity.dto.CustomerDetailResponse.of(user,
+                addresses == null ? List.of() : addresses.findByUserId(id),
+                orderService == null ? List.of() : orderService.listForCustomer(id));
+    }
+
     // List all customers
     @GetMapping
     @Transactional(readOnly = true)

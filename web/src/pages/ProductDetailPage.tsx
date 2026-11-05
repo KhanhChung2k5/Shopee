@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import ProductReviews from '../components/ProductReviews'
 import ProductThumb from '../components/ProductThumb'
 import { Alert, Badge, Button, ButtonLink, Card, CardTitle, EmptyState, Loading, Page, QtyStepper } from '../components/ui'
 import { fetchProduct, formatVnd, resolveCatalogImageUrl, type CatalogProduct, type ProductType } from '../lib/catalog'
@@ -244,6 +245,8 @@ export default function ProductDetailPage() {
           </Card>
         </div>
       </div>
+
+      <ProductReviews productId={product.id} />
     </Page>
   )
 }

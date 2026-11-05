@@ -61,4 +61,13 @@ public class Review {
     public String getReplyText() { return replyText; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void reply(UUID employeeId, String text) { this.employeeReplyId = employeeId; this.replyText = text; }
+
+    /** The buyer changes their own rating or comment (the shop's reply stays). */
+    public void edit(int rating, String comment) {
+        if (rating < 1 || rating > 5) {
+            throw new IllegalArgumentException("Điểm đánh giá phải từ 1 đến 5");
+        }
+        this.rating = rating;
+        this.comment = comment;
+    }
 }

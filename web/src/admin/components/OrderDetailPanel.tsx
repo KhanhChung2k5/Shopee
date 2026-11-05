@@ -8,6 +8,7 @@ import { buttonClass } from '../../components/ui'
 import { useDialog } from '../../state/DialogContext'
 import { REFUND_KIND_LABEL, REFUND_STATUS_LABEL, REFUND_STATUS_TONE } from '../../lib/refunds'
 import { canAccessSection, type Department } from '../access'
+import { fetchOrderInvoices, invoiceDate, reissueInvoice, type OrderInvoices, type ReissueInvoice } from '../../lib/invoices'
 import {
   ORDER_STATUS_LABEL, ORDER_STATUS_TONE, PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL, SHIPMENT_STATUS_LABEL, orderCode,
   type OrderStatus, type StaffOrderDetail,
@@ -288,6 +289,13 @@ export default function OrderDetailPanel({ orderId, onClose, onChanged, position
           )}
         </Section>
 
+        {order.status === 'delivered' && (
+          <Section title="Hoá đơn">
+            <InvoiceSection orderId={order.id} token={token} canReissue={canDecide}
+              defaultName={customer?.recipientName ?? customer?.fullName ?? ''} />
+          </Section>
+        )}
+
         <Section title="Khách hàng & giao hàng">
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-space-md gap-y-space-xs font-body-md text-body-md">
             <Field label="Tài khoản">{customer?.fullName ?? '—'}</Field>
@@ -335,6 +343,87 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
     <div className="min-w-0">
       <dt className="font-label-md text-label-md text-on-surface-variant">{label}</dt>
       <dd className="break-words">{children}</dd>
+    </div>
+  )
+}
+
+/** The order's invoice: number and date, print link, and — for sales/admin — reissue it for the buyer's company. */
+function InvoiceSection({ orderId, token, canReissue, defaultName }: { orderId: string; token: string | null; canReissue: boolean; defaultName: string }) {
+  const [data, setData] = useState<OrderInvoices | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [form, setForm] = useState<ReissueInvoice | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(() => {
+    fetchOrderInvoices(token, orderId).then(setData).catch((e) => setError(e instanceof ApiError ? e.message : 'Không tải được hoá đơn'))
+  }, [orderId, token])
+  useEffect(load, [load])
+
+  const save = async () => {
+    if (!form) return
+    setSaving(true)
+    setError(null)
+    try {
+      await reissueInvoice(token, orderId, form)
+      setForm(null)
+      load()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Không lập lại được hoá đơn')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const current = data?.current
+  const field = (key: keyof ReissueInvoice, label: string, placeholder = '') => (
+    <label className="flex flex-col gap-0.5 font-label-md text-label-md text-on-surface-variant">
+      {label}
+      <input className={a.input} value={form?.[key] ?? ''} placeholder={placeholder} disabled={saving}
+        onChange={(e) => setForm((f) => f && { ...f, [key]: e.target.value })} />
+    </label>
+  )
+
+  return (
+    <div className="space-y-space-xs font-body-md text-body-md">
+      {error && <p role="alert" className="text-error">{error}</p>}
+      {!data && !error && <p className="text-on-surface-variant">Đang tải…</p>}
+      {data && !current && <p className="text-on-surface-variant">Đơn chưa có hoá đơn (chỉ lập khi đã giao và đã thanh toán).</p>}
+      {current && (
+        <>
+          <Row label="Số hoá đơn"><strong>{current.invoiceNo}</strong></Row>
+          <Row label="Ngày lập">{invoiceDate(current.issuedAt)}</Row>
+          <Row label="Người mua">{current.buyerCompany ? `${current.buyerCompany} · MST ${current.buyerTaxCode}` : current.buyerName}</Row>
+          <Row label={`Thuế GTGT (${current.vatRate}%)`}>{formatVnd(current.vatAmount)}</Row>
+          {data && data.cancelled.length > 0 && <Row label="Đã huỷ">{data.cancelled.map((i) => i.invoiceNo).join(', ')}</Row>}
+          <div className="flex flex-wrap gap-space-xs pt-space-xs">
+            <a className={buttonClass('outline', 'sm')} href={`/hoa-don/${orderId}`} target="_blank" rel="noreferrer">Xem / in hoá đơn</a>
+            {canReissue && !form && (
+              <button type="button" className={buttonClass('outline', 'sm')}
+                onClick={() => setForm({ buyerName: current.buyerName || defaultName, buyerCompany: current.buyerCompany ?? '', buyerTaxCode: current.buyerTaxCode ?? '',
+                  buyerAddress: current.buyerAddress ?? '', buyerEmail: current.buyerEmail ?? '', reason: '' })}>
+                Lập lại hoá đơn
+              </button>
+            )}
+          </div>
+        </>
+      )}
+      {form && (
+        <div className="space-y-space-xs rounded-lg border border-line bg-surface-container-lowest p-space-sm">
+          <p className="font-label-md text-label-md text-on-surface-variant">Hoá đơn hiện tại sẽ bị huỷ và thay bằng hoá đơn mới với thông tin dưới đây.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-xs">
+            {field('buyerName', 'Người mua hàng *')}
+            {field('buyerCompany', 'Tên công ty', 'Bỏ trống nếu là cá nhân')}
+            {field('buyerTaxCode', 'Mã số thuế', '10 chữ số')}
+            {field('buyerEmail', 'Email nhận hoá đơn')}
+          </div>
+          {field('buyerAddress', 'Địa chỉ')}
+          {field('reason', 'Lý do lập lại *', 'VD: Khách yêu cầu xuất hoá đơn công ty')}
+          <div className="flex justify-end gap-space-xs">
+            <button type="button" className={buttonClass('outline', 'sm')} disabled={saving} onClick={() => { setForm(null); setError(null) }}>Huỷ</button>
+            <button type="button" className={buttonClass('primary', 'sm')} disabled={saving} onClick={() => void save()}>{saving ? 'Đang lập…' : 'Huỷ hoá đơn cũ và lập lại'}</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

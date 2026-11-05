@@ -104,8 +104,16 @@ export default function AdminLayout() {
   const department = (user?.department ?? null) as Department | null
 
   // On phones the menu is one scrolling row: keep the current section visible, also once web fonts widen the labels.
+  // Only the menu row scrolls (scrollIntoView would also move the page on desktop).
   useEffect(() => {
-    const reveal = () => navRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'center' })
+    const reveal = () => {
+      const nav = navRef.current
+      const current = nav?.querySelector<HTMLElement>('[aria-current="page"]')
+      if (!nav || !current || nav.scrollWidth <= nav.clientWidth) return
+      const navBox = nav.getBoundingClientRect()
+      const box = current.getBoundingClientRect()
+      nav.scrollLeft += box.left - navBox.left - (navBox.width - box.width) / 2
+    }
     reveal()
     void document.fonts.ready.then(reveal)
   }, [location.pathname])
