@@ -56,7 +56,7 @@ public class SecurityConfig {
                 // Public storefront discovery, while catalog management stays staff-only.
                 .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/catalog/categories", "/api/catalog/categories/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/reviews", "/api/products/top-sellers").permitAll()
+                .requestMatchers(HttpMethod.GET, "/reviews", "/reviews/product/*", "/api/products/top-sellers").permitAll()
                 // Sales only reads warehouse names (order panel shows which warehouse an order ships from).
                 .requestMatchers(HttpMethod.GET, "/api/catalog/warehouses", "/api/catalog/warehouses/**")
                 .hasAnyAuthority("DEPT_SALES", "DEPT_WAREHOUSE", "DEPT_ADMIN")
@@ -78,6 +78,8 @@ public class SecurityConfig {
                         "/orders/*/delivery-failed"
                 ).hasRole("STAFF")
                 .requestMatchers(HttpMethod.PATCH, "/orders/*/payment-received").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
+                // Hoá đơn: khách xem hoá đơn đơn của mình, nhân viên xem mọi hoá đơn (GET /orders/** ở trên); lập lại chỉ bán hàng + admin.
+                .requestMatchers(HttpMethod.POST, "/orders/*/invoice/reissue").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
                 // Hoàn tiền: khách gửi yêu cầu / khai tài khoản nhận; CSKH + admin duyệt và ghi nhận đã chuyển trả.
                 .requestMatchers(HttpMethod.POST, "/refund-returns").hasRole("BUYER")
                 .requestMatchers(HttpMethod.GET, "/refund-returns/quote").hasRole("BUYER")
@@ -90,6 +92,9 @@ public class SecurityConfig {
                 .requestMatchers("/vouchers", "/vouchers/**").hasAuthority("ROLE_BUYER")
                 .requestMatchers("/loyalty", "/loyalty/**").hasAuthority("ROLE_BUYER")
                 .requestMatchers(HttpMethod.POST, "/reviews").hasRole("BUYER")
+                .requestMatchers(HttpMethod.GET, "/reviews/mine").hasRole("BUYER")
+                .requestMatchers(HttpMethod.PUT, "/reviews/*").hasRole("BUYER")
+                .requestMatchers(HttpMethod.DELETE, "/reviews/*").hasRole("BUYER")
                 .requestMatchers(HttpMethod.PATCH, "/reviews/*/reply").hasAnyAuthority("DEPT_SALES", "DEPT_CS", "DEPT_ADMIN")
                 .requestMatchers(HttpMethod.GET, "/reviews/manage").hasAnyAuthority("DEPT_SALES", "DEPT_CS", "DEPT_ADMIN")
                 .requestMatchers("/marketing", "/marketing/**").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")

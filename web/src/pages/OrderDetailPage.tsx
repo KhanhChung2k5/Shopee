@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import { Alert, Badge, Button, ButtonLink, Card, CardTitle, EmptyState, Loading, Page, PageHeader, SummaryRow, cx, inputClass } from '../components/ui'
 import ProductThumb from '../components/ProductThumb'
 import { formatVnd } from '../lib/catalog'
@@ -8,6 +8,7 @@ import { SHIPMENT_LABEL, STATUS_LABEL, STATUS_TONE, formatOrderDate as formatDat
 import { useAuth } from '../state/AuthContext'
 import type { Refund } from '../lib/refunds'
 import { CancellationRefundCard, ItemRefund } from './OrderRefunds'
+import { fetchOrderInvoices, invoiceDate, type OrderInvoices } from '../lib/invoices'
 
 interface OrderItem {
   id: string
@@ -71,6 +72,20 @@ interface ReviewResponse {
   rating: number
   comment: string | null
   replyText: string | null
+}
+
+/** GET /reviews/mine?orderId= — per line: its review, and whether it can be reviewed or changed now. */
+interface ReviewLine {
+  orderItemId: string
+  review: ReviewResponse | null
+  canReview: boolean
+  canEdit: boolean
+  blockedReason: string | null
+}
+
+interface OrderReviews {
+  deadline: string | null
+  lines: ReviewLine[]
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -160,9 +175,24 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
     }
   }, [orderId, retryKey, token])
 
+  const [reviews, setReviews] = useState<OrderReviews | null>(null)
+  const [invoices, setInvoices] = useState<OrderInvoices | null>(null)
+  const delivered = order?.status === 'delivered'
+
+  const loadReviews = () => {
+    apiFetch<OrderReviews>(`/reviews/mine?orderId=${orderId}`, {}, token).then(setReviews).catch(() => setReviews(null))
+  }
+  useEffect(() => {
+    if (!delivered) return
+    loadReviews()
+    fetchOrderInvoices(token, orderId).then(setInvoices).catch(() => setInvoices(null))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [delivered, orderId, token])
+
   /** Refetch quietly after a refund request or bank-account change. */
   const reload = () => {
     apiFetch<OrderDetail>(`/orders/${orderId}`, {}, token).then(setOrder).catch(() => undefined)
+    if (delivered) loadReviews() // a return request closes the line to reviews
   }
 
   const retry = () => {
@@ -260,8 +290,15 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
                       </div>
                       <strong className="font-price-md text-price-md text-on-surface whitespace-nowrap">{formatVnd(Number(item.lineTotal))}</strong>
                     </div>
-                    {order.status === 'delivered' && (
-                      <OrderItemReview orderItemId={item.id} productName={item.productNameSnapshot} token={token} />
+                    {order.status === 'delivered' && reviews && (
+                      <OrderItemReview
+                        line={reviews.lines.find((line) => line.orderItemId === item.id) ?? null}
+                        deadline={reviews.deadline}
+                        orderItemId={item.id}
+                        productName={item.productNameSnapshot}
+                        token={token}
+                        onChanged={loadReviews}
+                      />
                     )}
                     {order.status === 'delivered' && (
                       <ItemRefund orderItemId={item.id} productName={item.productNameSnapshot} refunds={refunds}
@@ -319,6 +356,21 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
               </p>
             )}
           </Card>
+
+          {invoices?.current && (
+            <Card as="section" className="space-y-space-sm">
+              <CardTitle icon="receipt_long">Hoá đơn</CardTitle>
+              <div className="font-body-md text-body-md space-y-0.5">
+                <div className="flex justify-between gap-space-sm"><span className="text-on-surface-variant">Số hoá đơn</span><strong>{invoices.current.invoiceNo}</strong></div>
+                <div className="flex justify-between gap-space-sm"><span className="text-on-surface-variant">Ngày lập</span><span>{invoiceDate(invoices.current.issuedAt)}</span></div>
+                <div className="flex justify-between gap-space-sm"><span className="text-on-surface-variant">Thuế GTGT ({invoices.current.vatRate}%)</span><span>{formatVnd(Number(invoices.current.vatAmount))}</span></div>
+              </div>
+              <Link to={`/hoa-don/${order.id}`} className="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-primary py-2 font-title-md text-title-md text-primary hover:bg-primary-fixed/40">
+                <span className="material-symbols-outlined text-lg" aria-hidden="true">print</span>Xem và in hoá đơn
+              </Link>
+              <p className="font-label-md text-label-md text-on-surface-variant">Cần hoá đơn công ty (có mã số thuế)? Gửi yêu cầu hỗ trợ, shop sẽ lập lại hoá đơn cho bạn.</p>
+            </Card>
+          )}
 
           {cancellationRefund && <CancellationRefundCard refund={cancellationRefund} token={token} onChanged={reload} />}
 
@@ -380,18 +432,44 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
   )
 }
 
-/** KAN-234: lets a buyer rate (1-5 stars) and comment on a delivered order item.
- * There's no GET endpoint for reviews yet, so "already reviewed" is only known
- * for this session — submitting again shows the backend's own duplicate error. */
-function OrderItemReview({ orderItemId, productName, token }: { orderItemId: string; productName: string; token: string }) {
-  const [open, setOpen] = useState(false)
+function Stars({ value }: { value: number }) {
+  return (
+    <span className="flex text-primary" aria-label={`${value} sao`}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <span key={star} aria-hidden="true" className="material-symbols-outlined text-base" style={star <= value ? { fontVariationSettings: "'FILL' 1" } : undefined}>star</span>
+      ))}
+    </span>
+  )
+}
+
+/**
+ * A buyer's review of one delivered line: write it, then (within 30 days of delivery) change or remove it.
+ * What is allowed comes from GET /reviews/mine, so a reload shows the review instead of the button again.
+ */
+function OrderItemReview({ line, deadline, orderItemId, productName, token, onChanged }: {
+  line: ReviewLine | null
+  deadline: string | null
+  orderItemId: string
+  productName: string
+  token: string
+  onChanged: () => void
+}) {
+  const review = line?.review ?? null
+  const [editing, setEditing] = useState(false)
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [submitted, setSubmitted] = useState<ReviewResponse | null>(null)
+  const until = deadline ? new Date(deadline).toLocaleDateString('vi-VN') : null
 
-  const submitReview = async () => {
+  const startEditing = () => {
+    setRating(review?.rating ?? 0)
+    setComment(review?.comment ?? '')
+    setError(null)
+    setEditing(true)
+  }
+
+  const save = async () => {
     if (rating < 1) {
       setError('Vui lòng chọn số sao đánh giá')
       return
@@ -399,78 +477,106 @@ function OrderItemReview({ orderItemId, productName, token }: { orderItemId: str
     setSubmitting(true)
     setError(null)
     try {
-      const result = await apiFetch<ReviewResponse>('/reviews', {
-        method: 'POST',
+      await apiFetch<ReviewResponse>(review ? `/reviews/${review.id}` : '/reviews', {
+        method: review ? 'PUT' : 'POST',
         body: JSON.stringify({ orderItemId, rating, comment: comment.trim() || null }),
       }, token)
-      setSubmitted(result)
-      setOpen(false)
+      setEditing(false)
+      onChanged()
     } catch (requestError) {
-      setError(requestError instanceof ApiError ? requestError.message : 'Không gửi được đánh giá')
+      setError(requestError instanceof ApiError ? requestError.message : 'Không lưu được đánh giá')
     } finally {
       setSubmitting(false)
     }
   }
 
-  if (submitted) {
+  const remove = async () => {
+    if (!review || !window.confirm(`Xoá đánh giá của bạn về ${productName}?`)) return
+    setSubmitting(true)
+    try {
+      await apiFetch<void>(`/reviews/${review.id}`, { method: 'DELETE' }, token)
+      onChanged()
+    } catch (requestError) {
+      setError(requestError instanceof ApiError ? requestError.message : 'Không xoá được đánh giá')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (editing) {
     return (
-      <div className="ml-20 rounded-lg bg-secondary-container/40 px-space-md py-space-sm space-y-0.5">
-        <span className="flex text-primary" aria-label={`Đã đánh giá ${submitted.rating} sao`}>
+      <div className="ml-20 rounded-lg border border-line p-space-md space-y-space-sm">
+        <div className="flex gap-0.5" role="radiogroup" aria-label="Chọn số sao">
           {[1, 2, 3, 4, 5].map((star) => (
-            <span key={star} className="material-symbols-outlined text-base" style={star <= submitted.rating ? { fontVariationSettings: "'FILL' 1" } : undefined}>star</span>
+            <button
+              key={star}
+              type="button"
+              className="text-primary cursor-pointer disabled:cursor-not-allowed hover:scale-110 transition-transform"
+              aria-pressed={star <= rating}
+              aria-label={`${star} sao`}
+              onClick={() => setRating(star)}
+              disabled={submitting}
+            >
+              <span className="material-symbols-outlined text-3xl" style={star <= rating ? { fontVariationSettings: "'FILL' 1" } : undefined}>star</span>
+            </button>
           ))}
-        </span>
-        {submitted.comment && <p className="font-body-md text-body-md text-on-surface">{submitted.comment}</p>}
-        <span className="block font-label-md text-label-md text-on-secondary-container">Cảm ơn bạn đã đánh giá {productName}!</span>
+        </div>
+        <textarea
+          className={inputClass}
+          maxLength={2000}
+          rows={3}
+          value={comment}
+          onChange={(event) => setComment(event.target.value)}
+          placeholder="Sản phẩm dùng thế nào? Chia sẻ để người mua sau tham khảo…"
+          disabled={submitting}
+        />
+        {error && <Alert>{error}</Alert>}
+        <div className="flex justify-end gap-space-sm">
+          <Button variant="outline" size="sm" disabled={submitting} onClick={() => { setEditing(false); setError(null) }}>Huỷ</Button>
+          <Button size="sm" disabled={submitting} onClick={() => void save()}>
+            {submitting ? 'Đang lưu…' : review ? 'Lưu thay đổi' : 'Gửi đánh giá'}
+          </Button>
+        </div>
       </div>
     )
   }
 
-  if (!open) {
+  if (review) {
     return (
-      <div className="ml-20">
-        <Button variant="outline" size="sm" icon="rate_review" onClick={() => setOpen(true)}>
-          Viết đánh giá
-        </Button>
+      <div className="ml-20 rounded-lg bg-secondary-container/40 px-space-md py-space-sm space-y-1">
+        <div className="flex flex-wrap items-center justify-between gap-space-sm">
+          <Stars value={review.rating} />
+          {line?.canEdit && (
+            <span className="flex gap-space-xs">
+              <Button variant="outline" size="sm" icon="edit" disabled={submitting} onClick={startEditing}>Sửa</Button>
+              <Button variant="outline" size="sm" icon="delete" disabled={submitting} onClick={() => void remove()}>Xoá</Button>
+            </span>
+          )}
+        </div>
+        {review.comment && <p className="font-body-md text-body-md text-on-surface">{review.comment}</p>}
+        {review.replyText && (
+          <p className="rounded border-l-4 border-primary bg-surface-container-lowest px-space-sm py-1 font-body-md text-body-md">
+            <span className="block font-label-md text-label-md text-primary">Phản hồi của Chợ Tốt Mua</span>{review.replyText}
+          </p>
+        )}
+        <span className="block font-label-md text-label-md text-on-secondary-container">
+          {line?.canEdit && until ? `Bạn có thể sửa hoặc xoá đánh giá đến hết ngày ${until}.` : 'Cảm ơn bạn đã đánh giá!'}
+        </span>
+        {error && <Alert>{error}</Alert>}
       </div>
     )
   }
 
-  return (
-    <div className="ml-20 rounded-lg border border-line p-space-md space-y-space-sm">
-      <div className="flex gap-0.5" role="radiogroup" aria-label="Chọn số sao">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            className="text-primary cursor-pointer disabled:cursor-not-allowed hover:scale-110 transition-transform"
-            aria-pressed={star <= rating}
-            aria-label={`${star} sao`}
-            onClick={() => setRating(star)}
-            disabled={submitting}
-          >
-            <span className="material-symbols-outlined text-3xl" style={star <= rating ? { fontVariationSettings: "'FILL' 1" } : undefined}>star</span>
-          </button>
-        ))}
+  if (line?.canReview) {
+    return (
+      <div className="ml-20 flex flex-wrap items-center gap-space-sm">
+        <Button variant="outline" size="sm" icon="rate_review" onClick={startEditing}>Viết đánh giá</Button>
+        {until && <span className="font-label-md text-label-md text-on-surface-variant">Hạn đánh giá: {until}</span>}
       </div>
-      <textarea
-        className={inputClass}
-        maxLength={2000}
-        rows={3}
-        value={comment}
-        onChange={(event) => setComment(event.target.value)}
-        placeholder="Sản phẩm dùng thế nào? Chia sẻ để người mua sau tham khảo…"
-        disabled={submitting}
-      />
-      {error && <Alert>{error}</Alert>}
-      <div className="flex justify-end gap-space-sm">
-        <Button variant="outline" size="sm" disabled={submitting} onClick={() => { setOpen(false); setError(null) }}>
-          Huỷ
-        </Button>
-        <Button size="sm" disabled={submitting} onClick={() => void submitReview()}>
-          {submitting ? 'Đang gửi…' : 'Gửi đánh giá'}
-        </Button>
-      </div>
-    </div>
-  )
+    )
+  }
+
+  return line?.blockedReason
+    ? <p className="ml-20 font-label-md text-label-md text-on-surface-variant">{line.blockedReason}</p>
+    : null
 }

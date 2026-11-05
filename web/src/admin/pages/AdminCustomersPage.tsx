@@ -6,6 +6,7 @@ import { apiFetch, ApiError } from '../../lib/api'
 import { a, chipClass, statusPillClass } from '../adminUi'
 import { buttonClass } from '../../components/ui'
 import { useDialog } from '../../state/DialogContext'
+import CustomerDetailPanel from '../components/CustomerDetailPanel'
 
 const STATUS_LABEL: Record<CustomerStatus, string> = {
   active: 'Hoạt động',
@@ -44,6 +45,7 @@ export default function AdminCustomersPage() {
   const [sortKey, setSortKey] = useState<SortKey>('fullName')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [detailId, setDetailId] = useState<string | null>(null)
   const toast = useToast()
 
   const refresh = () => {
@@ -291,6 +293,9 @@ export default function AdminCustomersPage() {
                     <span className={statusPillClass(c.status)}>{STATUS_LABEL[c.status]}</span>
                   </td>
                   <td className="whitespace-nowrap">
+                    <button className={buttonClass('primary', 'sm', 'mr-1.5')} type="button" onClick={() => setDetailId(c.id)}>
+                      Chi tiết
+                    </button>
                     {c.status === 'deleted' ? (
                       canRestore ? (
                         <button className={buttonClass('outline', 'sm')} type="button" onClick={() => restore(c.id)}>
@@ -340,6 +345,7 @@ export default function AdminCustomersPage() {
         Khách hàng tự đăng ký qua app — admin không tạo tài khoản khách hàng trực tiếp.
       </p>
 
+      {detailId && <CustomerDetailPanel customerId={detailId} onClose={() => setDetailId(null)} />}
       {toast.message && <div className={a.toast} role="status">{toast.message}</div>}
     </div>
   )

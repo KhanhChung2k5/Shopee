@@ -6,6 +6,17 @@ public interface ReviewRepository extends JpaRepository<Review,UUID>{
     Optional<Review> findByOrderItemId(UUID id);
     List<Review> findByOrderItemIdIn(List<UUID> ids);
 
+    /** Every review left on any variant of one product, newest first (product page). */
+    @Query(value = "SELECT r.id AS id, r.rating AS rating, r.comment AS comment, r.reply_text AS replyText, "
+        + "r.created_at AS createdAt, u.full_name AS buyerName, oi.product_name_snapshot AS productName "
+        + "FROM reviews r "
+        + "JOIN order_items oi ON oi.id = r.order_item_id "
+        + "JOIN product_variants pv ON pv.id = oi.variant_id "
+        + "JOIN users u ON u.id = r.user_id "
+        + "WHERE pv.product_id = :productId "
+        + "ORDER BY r.created_at DESC", nativeQuery = true)
+    List<ReviewShowcaseProjection> findForProduct(@Param("productId") UUID productId);
+
     @Query(value = "SELECT r.id AS id, r.rating AS rating, r.comment AS comment, r.reply_text AS replyText, "
         + "r.created_at AS createdAt, u.full_name AS buyerName, oi.product_name_snapshot AS productName "
         + "FROM reviews r "
