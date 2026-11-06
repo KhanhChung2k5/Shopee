@@ -174,17 +174,7 @@ public class CrmDatabaseSeeder implements ApplicationRunner {
                 "Quản trị viên",
                 StaffDepartment.ADMIN,
                 "Quản trị");
-        ensureStaff(
-                CrmDemoActors.CS_LEAD_ID,
-                UUID.fromString("e2222222-2222-2222-2222-222222222222"),
-                roleId,
-                roleName,
-                salaryRequired,
-                "0900000002",
-                "cslead@chototmua.local",
-                "Trưởng nhóm CSKH",
-                StaffDepartment.CS,
-                "Trưởng nhóm CSKH");
+        // Tài khoản "Trưởng nhóm CSKH" đã bỏ (06/11/2026): quyền chỉ theo bộ phận, trưởng nhóm không khác CSKH.
         ensureStaff(
                 CrmDemoActors.CS_ID,
                 UUID.fromString("e3333333-3333-3333-3333-333333333333"),
