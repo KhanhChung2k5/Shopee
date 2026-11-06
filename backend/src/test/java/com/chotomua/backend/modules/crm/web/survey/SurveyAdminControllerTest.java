@@ -1,5 +1,7 @@
 package com.chotomua.backend.modules.crm.web.survey;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import com.chotomua.backend.BackendApplication;
 import com.chotomua.backend.modules.crm.adapter.fake.FakeIdentityPort;
 import com.chotomua.backend.modules.crm.application.notification.InMemoryNotificationStore;
@@ -71,14 +73,14 @@ class SurveyAdminControllerTest {
         surveys.clear();
         segments.clear();
         notifications.clear();
-        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
+        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(CS_LEAD_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(CS_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void adminCreatesSurveyWithTextAndChoiceQuestions() throws Exception {
         MvcResult created = mockMvc.perform(post("/api/surveys")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -119,7 +121,7 @@ class SurveyAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void choiceWithoutOptionsIsRejected() throws Exception {
         String surveyId = createDraft();
         mockMvc.perform(post("/api/surveys/" + surveyId + "/questions")
@@ -160,7 +162,7 @@ class SurveyAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void archiveKeepsQuestionsAndBlocksFurtherEdits() throws Exception {
         String surveyId = createDraft();
         mockMvc.perform(post("/api/surveys/" + surveyId + "/questions")
@@ -190,7 +192,7 @@ class SurveyAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void sendPutsSurveyInActiveCustomerInboxWithoutCampaign() throws Exception {
         String surveyId = createDraft();
         addQuestion(surveyId);
@@ -224,7 +226,7 @@ class SurveyAdminControllerTest {
                 .andExpect(jsonPath("$.notifications[0].referenceType").value("survey"))
                 .andExpect(jsonPath("$.notifications[0].referenceId").value(surveyId));
 
-        mockMvc.perform(get("/api/campaigns"))
+        mockMvc.perform(get("/api/campaigns").with(user(SALES_ID).authorities(new SimpleGrantedAuthority("DEPT_SALES"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.campaigns", hasSize(0)));
 
@@ -239,7 +241,7 @@ class SurveyAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void keepsChosenAudienceAndDescriptionAfterSend() throws Exception {
         String surveyId = createDraft();
         addQuestion(surveyId);
@@ -289,7 +291,7 @@ class SurveyAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void saveRewritesInboxLetterAndResendKeepsASingleNotice() throws Exception {
         MvcResult created = mockMvc.perform(post("/api/surveys")
                         .contentType(MediaType.APPLICATION_JSON)

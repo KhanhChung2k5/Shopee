@@ -64,13 +64,13 @@ class CustomerProfileControllerTest {
         identity.reset();
         orders.reset();
         profiles.clear();
-        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
+        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(CS_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void recalculateThenGetReturnsDeliveredTotals() throws Exception {
         CustomerView customer = identity.seedCustomer(
                 "An", "male", LocalDate.of(1998, 5, 12), CustomerStatus.ACTIVE);
@@ -128,7 +128,7 @@ class CustomerProfileControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void missingCustomerIsNotFound() throws Exception {
         mockMvc.perform(post("/api/crm/profiles/" + UUID.randomUUID() + "/recalculate"))
                 .andExpect(status().isNotFound())

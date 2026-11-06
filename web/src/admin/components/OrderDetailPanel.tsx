@@ -32,8 +32,9 @@ export default function OrderDetailPanel({ orderId, onClose, onChanged, position
   const { token, user } = useAuth()
   const { confirm, prompt } = useDialog()
   const department = user?.department
-  const canDecide = department === 'sales' || department === 'admin'
-  const canShip = department === 'warehouse' || department === 'admin'
+  // CSKH chỉ xem đơn (tra cứu khi khách hỏi); bán hàng xác nhận / thanh toán / hoá đơn; kho đóng gói / giao.
+  const canDecide = department === 'sales'
+  const canShip = department === 'warehouse'
   const [order, setOrder] = useState<StaffOrderDetail | null>(null)
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [error, setError] = useState('')
@@ -347,7 +348,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-/** The order's invoice: number and date, print link, and — for sales/admin — reissue it for the buyer's company. */
+/** The order's invoice: number and date, print link, and — for sales — reissue it for the buyer's company. */
 function InvoiceSection({ orderId, token, canReissue, defaultName }: { orderId: string; token: string | null; canReissue: boolean; defaultName: string }) {
   const [data, setData] = useState<OrderInvoices | null>(null)
   const [error, setError] = useState<string | null>(null)

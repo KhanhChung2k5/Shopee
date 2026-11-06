@@ -5,6 +5,8 @@ import { ApiError } from '../../../lib/api'
 import { formatVnd } from '../../../lib/catalog'
 import { RFM_LABEL, RFM_TONE, fetchCustomerReport, recalculateProfile, type CustomerReport } from '../../../lib/crm'
 import { useAuth } from '../../../state/AuthContext'
+import { SearchBox } from '../../components/ListSearch'
+import { matches } from '../../components/listSearchState'
 
 /** CRM: hồ sơ khách hàng, LTV và phân loại RFM (p5-01/p5-09). */
 export default function AdminCrmProfilesPage() {
@@ -38,7 +40,7 @@ export default function AdminCrmProfilesPage() {
 
   const filtered = customers
     .filter((c) => rfm === 'all' || (c.rfmSegment ?? 'other') === rfm)
-    .filter((c) => !query.trim() || (c.fullName ?? '').toLowerCase().includes(query.trim().toLowerCase()))
+    .filter((c) => matches(query, c.fullName, c.ageLabel, c.genderLabel))
     .sort((x, y) => Number(y.ltv) - Number(x.ltv))
 
   const recalc = async (id: string) => {
@@ -83,7 +85,7 @@ export default function AdminCrmProfilesPage() {
       </div>
 
       <div className={a.toolbar}>
-        <input className={`${a.input} !w-72`} type="search" placeholder="Tìm theo tên khách hàng..." value={query} onChange={(e) => setQuery(e.target.value)} />
+        <SearchBox page="crm-profiles" placeholder="Tìm theo tên, nhóm tuổi, giới tính..." value={query} onChange={setQuery} />
         <div className={a.filterBar}>
           {['all', 'champions', 'loyal', 'potential', 'at_risk', 'lost', 'new', 'other'].map((key) => (
             <button key={key} type="button" className={chipClass(rfm === key)} onClick={() => setRfm(key)}>

@@ -51,7 +51,8 @@ const NAV_GROUPS: NavGroup[] = [
     title: 'CRM',
     items: [
       { to: '/admin/khach-hang', label: 'Khách hàng', icon: <path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM20 19v-1.2a3 3 0 0 0-2.2-2.9M15 4.2a3 3 0 0 1 0 5.8" /> },
-      { to: '/admin/bao-cao', label: 'Báo cáo nhân khẩu học', icon: <path d="M4 20V10M10 20V4M16 20v-7M4 20h16" /> },
+      { to: '/admin/bao-cao', end: true, label: 'Báo cáo nhân khẩu học', icon: <path d="M4 20V10M10 20V4M16 20v-7M4 20h16" /> },
+      { to: '/admin/bao-cao/khao-sat', label: 'Thống kê khảo sát', icon: <path d="M5 4h14v16H5zM8 15v2M12 11v6M16 8v9" /> },
       { to: '/admin/crm', label: 'Hồ sơ & RFM', icon: <path d="M12 3 4 7v6c0 4 3.4 7.4 8 8 4.6-.6 8-4 8-8V7l-8-4ZM9 12l2 2 4-4" /> },
       { to: '/admin/ho-tro', label: 'Hỗ trợ khách hàng', icon: <path d="M4 5h16v11H8l-4 4V5ZM8 9h8M8 12h5" /> },
       { to: '/admin/danh-gia', label: 'Đánh giá sản phẩm', icon: <path d="m12 3 2.7 5.5 6 .9-4.4 4.2 1 6L12 16.8 6.6 19.6l1-6L3.3 9.4l6-.9L12 3Z" /> },
@@ -80,6 +81,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/khach-hang': 'Quản lý khách hàng',
   '/admin/bao-cao-quan-tri': 'Báo cáo quản trị',
   '/admin/bao-cao': 'Báo cáo nhân khẩu học',
+  '/admin/bao-cao/khao-sat': 'Thống kê khảo sát',
   '/admin/crm': 'Hồ sơ & RFM khách hàng',
   '/admin/ho-tro': 'Hỗ trợ khách hàng',
   '/admin/danh-gia': 'Đánh giá sản phẩm',

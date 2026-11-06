@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { a } from '../adminUi'
 import { Badge, buttonClass, cx } from '../../components/ui'
@@ -10,6 +10,8 @@ import { useAuth } from '../../state/AuthContext'
 import { useDialog } from '../../state/DialogContext'
 import { canAccessSection, type Department } from '../access'
 import { orderCode } from '../orders'
+import { SearchBox, StatusFilter } from '../components/ListSearch'
+import { matches } from '../components/listSearchState'
 
 const FILTERS: [RefundStatus | 'all', string][] = [
   ['requested', 'Chờ duyệt'],
@@ -31,6 +33,8 @@ export default function AdminRefundsPage() {
   const [refunds, setRefunds] = useState<Refund[] | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const shown = useMemo(() => refunds?.filter((r) => matches(query, r.customerName, r.customerEmail, r.productName, orderCode(r.orderId), r.reason, r.transferRef)) ?? null, [refunds, query])
 
   const load = useCallback(() => {
     if (!token) return
@@ -100,19 +104,16 @@ export default function AdminRefundsPage() {
     <div>
       <div className={a.toolbar}>
         <h1 className="!mb-0">Hoàn tiền</h1>
+        <SearchBox page="refunds" placeholder="Tìm khách, mã đơn, sản phẩm..." value={query} onChange={setQuery} />
       </div>
-      <div className={cx(a.filterBar, 'mb-space-md')}>
-        {FILTERS.map(([key, label]) => (
-          <button key={key} type="button" className={buttonClass(filter === key ? 'primary' : 'outline', 'sm')} onClick={() => setFilter(key)}>{label}</button>
-        ))}
-      </div>
+      <StatusFilter options={FILTERS} value={filter} onChange={setFilter} />
       {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
 
       {!refunds && <div className={a.empty}>Đang tải…</div>}
-      {refunds?.length === 0 && <div className={a.empty}>Không có yêu cầu hoàn tiền nào ở mục này.</div>}
+      {shown?.length === 0 && <div className={a.empty}>Không có yêu cầu hoàn tiền nào ở mục này.</div>}
 
       <div className="space-y-space-md">
-        {refunds?.map((r) => (
+        {shown?.map((r) => (
           <div key={r.id} className={a.card}>
             <div className="flex flex-wrap items-start justify-between gap-space-sm">
               <div className="min-w-0">

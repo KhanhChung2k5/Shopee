@@ -81,13 +81,13 @@ class SurveyParticipationControllerTest {
         segments.clear();
         campaigns.clear();
         notifications.clear();
-        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
+        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(CS_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void lockedAndDeletedAreLeftOutOfTheSurveyAudience() throws Exception {
         identity.seedCustomer(AN_ID, "An", "an@seed.local", "0901111111", "male",
                 LocalDate.of(2004, 3, 1), CustomerStatus.ACTIVE);
@@ -101,6 +101,7 @@ class SurveyParticipationControllerTest {
         String surveyId = createSurveyWithQuestion("Bạn thấy giao hàng thế nào?");
 
         mockMvc.perform(post("/api/campaigns")
+                        .with(user(SALES_ID).authorities(new SimpleGrantedAuthority("DEPT_SALES")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(campaignBody(segmentId, surveyId)))
                 .andExpect(status().isCreated())
@@ -130,7 +131,7 @@ class SurveyParticipationControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void oneOfTwoInvitationsSubmittedIsFiftyPercentWithoutMail() throws Exception {
         identity.seedCustomer(AN_ID, "An", "an@seed.local", "0901111111", "male",
                 LocalDate.of(2004, 3, 1), CustomerStatus.ACTIVE);
@@ -142,6 +143,7 @@ class SurveyParticipationControllerTest {
         CreatedSurvey survey = createSurvey("Sau giao hàng");
 
         mockMvc.perform(post("/api/campaigns")
+                        .with(user(SALES_ID).authorities(new SimpleGrantedAuthority("DEPT_SALES")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(campaignBody(segmentId, survey.id())))
                 .andExpect(status().isCreated())

@@ -52,7 +52,7 @@ class SegmentServiceTest {
                 new InMemorySegmentStore(),
                 new OrderCountRfmStub(orders, null, CLOCK),
                 CLOCK);
-        identity.seedStaff(ACTOR, StaffDepartment.ADMIN);
+        identity.seedStaff(ACTOR, StaffDepartment.SALES);
     }
 
     @Test

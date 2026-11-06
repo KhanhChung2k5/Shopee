@@ -46,7 +46,7 @@ class CustomerReportServiceTest {
         identity = new FakeIdentityPort();
         orders = new FakeOrderPort();
         reports = new CustomerReportService(identity, orders, CLOCK);
-        identity.seedStaff(ACTOR, StaffDepartment.ADMIN);
+        identity.seedStaff(ACTOR, StaffDepartment.CS);
     }
 
     @Test

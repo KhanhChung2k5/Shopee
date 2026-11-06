@@ -24,34 +24,47 @@
 
 ## 2. Bảng phân quyền từng mục admin (đang áp dụng)
 
-| Mục sidebar | sales | warehouse | admin | cs | Lý do |
+> ✅ **Đã chốt (06/11/2026) — phân tách nhiệm vụ:** `admin` là **quản trị hệ thống**, chỉ quản lý
+> tài khoản nhân viên và xem nhật ký thao tác; **không làm nghiệp vụ** (không sửa sản phẩm, duyệt
+> hoàn tiền hay khoá khách hàng). Mỗi nghiệp vụ thuộc đúng một bộ phận, bộ phận khác chỉ được xem
+> khi cần cho công việc. Mỗi bộ phận chỉ xem báo cáo của mình (không có vai trò "ban giám đốc").
+
+✅ toàn quyền · 👁 chỉ xem · ❌ không có quyền
+
+| Mục sidebar | sales | warehouse | cs | admin | Lý do |
 |---|:---:|:---:|:---:|:---:|---|
-| Tổng quan | ✅ | ✅ | ✅ | ✅ | Ai cũng cần xem dashboard chung |
-| Sản phẩm | ✅ | ❌ | ✅ | ❌ | Sales tạo/sửa sản phẩm |
-| Kho hàng | ❌ | ✅ | ✅ | ❌ | Warehouse quản lý tồn kho, duyệt phiếu nhập |
-| Đơn hàng | ✅ | ✅ | ✅ | ❌ | Sales xử lý đơn, warehouse đóng gói/xuất kho |
-| Marketing | ✅ | ❌ | ✅ | ❌ | Voucher/flash sale là quyết định kinh doanh |
-| Khách hàng | ❌ | ❌ | ✅ | ✅ | Quản lý khách hàng thuộc CRM, do CS phụ trách |
-| Báo cáo | ❌ | ❌ | ✅ | ✅ (chỉ xem) | Báo cáo khách hàng — CS cần để chăm sóc khách |
-| Nhân viên | ❌ | ❌ | ✅ | ❌ | Chỉ admin tạo/sửa nhân viên |
-
-**Admin luôn thấy mọi mục** — quyền cao nhất trong hệ thống.
-
-> ✅ **Đã chốt (23/10/2026):** giữ đúng 4 bộ phận `sales` / `warehouse` / `admin` / `cs` —
-> **không thêm bộ phận `crm`**. Phân hệ CRM do Phòng CSKH (`cs`) phụ trách, khớp cơ cấu
-> tổ chức trong báo cáo HTTTDN và class diagram.
+| Tổng quan | ✅ | ✅ | ✅ | ✅ | Mỗi bộ phận thấy số liệu của mình; admin thấy số tài khoản nhân viên |
+| Sản phẩm | ✅ | 👁 | ❌ | ❌ | Bán hàng tạo/sửa; kho xem để biết biến thể khi nhập hàng |
+| Kho hàng, phiếu nhập | ❌ | ✅ | ❌ | ❌ | Kho quản lý tồn kho, duyệt phiếu nhập |
+| Đơn hàng | ✅ | ✅ | 👁 | ❌ | Bán hàng xác nhận / thanh toán / hoá đơn; kho đóng gói, giao; CSKH tra cứu khi khách hỏi |
+| Hoàn tiền / trả hàng | ❌ | ❌ | ✅ | ❌ | CSKH duyệt và ghi nhận chuyển khoản |
+| Marketing (voucher, flash sale) | ✅ | ❌ | ❌ | ❌ | Quyết định kinh doanh |
+| Khách hàng | ❌ | ❌ | ✅ | ❌ | Quản lý khách hàng thuộc CRM, do CSKH phụ trách |
+| Đánh giá sản phẩm (phản hồi) | ❌ | ❌ | ✅ | ❌ | Chăm sóc khách là việc của CSKH |
+| Báo cáo quản trị | ✅ doanh thu | ✅ nhập–xuất–tồn | ❌ | ❌ | Mỗi bộ phận xem báo cáo của mình |
+| Báo cáo khách hàng | ❌ | ❌ | ✅ | ❌ | |
+| Nhân viên | ❌ | ❌ | ❌ | ✅ | Tạo tài khoản, phân bộ phận, khoá/mở, cấp mật khẩu tạm |
+| Nhật ký thao tác | ❌ | ❌ | ❌ | 👁 | Chỉ xem, không sửa/xoá được (append-only) |
 
 ### 2.1 Phân quyền chức năng phân hệ CRM (module `modules/crm`)
 
-| Chức năng CRM | sales | warehouse | admin | cs | Ghi chú |
+| Chức năng CRM | sales | warehouse | cs | admin | Ghi chú |
 |---|:---:|:---:|:---:|:---:|---|
-| Hồ sơ khách hàng, LTV / RFM | ❌ | ❌ | ✅ | ✅ | |
-| Thêm / khoá / xoá mềm khách hàng | ❌ | ❌ | ✅ | ✅ | |
-| Hội thoại / ticket, assign, escalate | ❌ | ❌ | ✅ | ✅ | Đúng vai trò Phòng CSKH |
-| Khảo sát: tạo, gửi, xem kết quả | ❌ | ❌ | ✅ | ✅ | |
-| Phân khúc khách hàng & chiến dịch | ✅ | ❌ | ✅ | ❌ | Quyết định kinh doanh, giống Marketing/voucher |
-| Báo cáo khách hàng | ❌ | ❌ | ✅ | ✅ (chỉ xem) | |
-| Nhật ký thao tác (audit log) | ❌ | ❌ | ✅ | ❌ | Chỉ quản trị hệ thống |
+| Hồ sơ khách hàng, LTV / RFM | ❌ | ❌ | ✅ | ❌ | |
+| Thêm / khoá / xoá mềm / khôi phục khách hàng | ❌ | ❌ | ✅ | ❌ | Khôi phục trước đây chỉ admin, nay chuyển cho CSKH |
+| Cấp mật khẩu tạm cho khách | ❌ | ❌ | ✅ | ❌ | Phải xác minh đúng chủ tài khoản trước; thao tác được ghi nhật ký |
+| Hội thoại / ticket, assign, escalate | ❌ | ❌ | ✅ | ❌ | Chỉ nhân viên CSKH được nhận ticket |
+| Khảo sát: tạo, gửi, xem kết quả | ❌ | ❌ | ✅ | ❌ | |
+| Gợi ý sản phẩm cho khách | ❌ | ❌ | ✅ | ❌ | Khách xem gợi ý của chính mình |
+| Phân khúc khách hàng: tạo, sửa, xoá | ✅ | ❌ | ❌ | ❌ | Quyết định kinh doanh |
+| Phân khúc khách hàng: xem | ✅ | ❌ | 👁 | ❌ | CSKH cần chọn phân khúc để gửi khảo sát |
+| Chiến dịch, phễu chuyển đổi chiến dịch | ✅ | ❌ | ❌ | ❌ | Quyết định kinh doanh |
+| Xem hộp thư của khách | ❌ | ❌ | ✅ | ❌ | Ai cũng đọc được hộp thư của chính mình |
+| Báo cáo khách hàng | ❌ | ❌ | ✅ | ❌ | |
+| Nhật ký thao tác (audit log) | ❌ | ❌ | ❌ | 👁 | Chỉ quản trị hệ thống |
+
+Các quy tắc giữ nguyên: không tự khoá mình, không khoá / hạ quyền admin cuối cùng còn hoạt động,
+không tự cấp mật khẩu tạm cho mình (đổi mật khẩu trong trang tài khoản).
 
 ## 3. Cách chặn đang thực thi (đã code + test thật)
 
@@ -60,8 +73,11 @@
 | Buyer không vào được `/admin` | Frontend (`RequireStaff`) | ✅ |
 | Mọi API cần đăng nhập (trừ `/health`, `/auth/*`) | Backend (`SecurityConfig`) | ✅ |
 | Chỉ `department=admin` gọi được API `/employees/**` | Backend — chặn cứng, không thể bypass qua URL/DevTools | ✅ |
+| Admin bị từ chối (403) ở mọi API nghiệp vụ: sản phẩm, kho, đơn hàng, hoàn tiền, khách hàng, CRM, báo cáo | Backend (`SecurityConfig`, `@PreAuthorize`, kiểm tra trong service) | ✅ |
 | Sidebar + route admin lọc theo department | Frontend (`access.ts` + `RequireDepartment`) | ✅ |
-| Không cho đổi department của **admin cuối cùng** | Backend (`EmployeeService`) | ✅ |
+| Không cho đổi department của **admin cuối cùng còn hoạt động** | Backend (`EmployeeService`) | ✅ |
+| Khoá nhân viên: không tự khoá mình, không khoá admin cuối cùng còn hoạt động | Backend (`EmployeeService`) | ✅ |
+| Tài khoản bị khoá không đăng nhập được, token cũ mất hiệu lực trong khoảng 30 giây | Backend (`AuthService`, `JwtAuthenticationFilter`) | ✅ |
 
 ## 4. Giới hạn hiện tại — cần nhóm biết trước khi code Phase 2-5
 

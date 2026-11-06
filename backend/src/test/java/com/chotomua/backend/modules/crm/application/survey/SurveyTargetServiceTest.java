@@ -48,7 +48,7 @@ class SurveyTargetServiceTest {
         surveys = new InMemorySurveyStore();
         targets = new InMemorySurveyTargetStore();
         service = new SurveyTargetService(identity, products, surveys, targets);
-        identity.seedStaff(ADMIN, StaffDepartment.ADMIN);
+        identity.seedStaff(ADMIN, StaffDepartment.CS);
         identity.seedStaff(SALES, StaffDepartment.SALES);
         seedCatalog();
         surveyId = UUID.randomUUID();

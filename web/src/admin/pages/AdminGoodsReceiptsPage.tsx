@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ApiError, apiFetch } from '../../lib/api'
 import { formatVnd, type GoodsReceipt, type InventoryStock } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
@@ -7,6 +7,8 @@ import { buttonClass } from '../../components/ui'
 import { useDialog } from '../../state/DialogContext'
 import VariantPicker from '../components/VariantPicker'
 import type { VariantOption } from '../variants'
+import { SearchBox, StatusFilter } from '../components/ListSearch'
+import { matches } from '../components/listSearchState'
 
 interface Warehouse { id: string; name: string }
 interface ReceiptLine { variantId: string; quantity: string; unitCost: string }
@@ -27,6 +29,11 @@ export default function AdminGoodsReceiptsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | GoodsReceipt['status']>('all')
+  const shown = useMemo(() => receipts.filter((r) => (statusFilter === 'all' || r.status === statusFilter)
+    && matches(query, r.code, r.supplierName, r.warehouseName, r.createdByName, ...r.items.flatMap((item) => [item.productName, item.sku]))),
+  [receipts, query, statusFilter])
 
   const refresh = useCallback(async () => {
     if (!token) return
@@ -117,9 +124,14 @@ export default function AdminGoodsReceiptsPage() {
 
   return <div>
     <div className={a.toolbar}>
-      <h1 className="!mb-0">Phiếu nhập hàng ({receipts.length})</h1>
+      <h1 className="!mb-0">Phiếu nhập hàng ({shown.length}/{receipts.length})</h1>
+      <div className="flex flex-wrap items-start gap-2.5">
+      <SearchBox page="goods-receipts" placeholder="Tìm mã phiếu, nhà cung cấp, sản phẩm..." value={query} onChange={setQuery} />
       <button className={buttonClass('primary')} type="button" onClick={() => setShowForm((value) => !value)}>{showForm ? 'Đóng biểu mẫu' : '+ Tạo phiếu nhập'}</button>
+      </div>
     </div>
+    <StatusFilter options={[['all', 'Tất cả'], ['pending', 'Chờ duyệt'], ['approved', 'Đã duyệt'], ['rejected', 'Đã từ chối']] as const} value={statusFilter} onChange={setStatusFilter}
+      counts={{ all: receipts.length, pending: receipts.filter((r) => r.status === 'pending').length, approved: receipts.filter((r) => r.status === 'approved').length, rejected: receipts.filter((r) => r.status === 'rejected').length }} />
     {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
     {showForm && <form className={a.catalogForm} onSubmit={createReceipt}>
       <div className={a.formHeading}><h2>Phiếu nhập mới</h2></div>
@@ -140,7 +152,7 @@ export default function AdminGoodsReceiptsPage() {
     </form>}
     {loading ? <p>Đang tải phiếu nhập…</p> : <div className={a.tableWrap}><table className={a.table}>
       <thead><tr><th>Mã phiếu</th><th>Thời gian</th><th>Kho / nhà cung cấp</th><th>Sản phẩm</th><th>Tổng giá trị</th><th>Người lập / người duyệt</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-      <tbody>{receipts.map((receipt) => <tr key={receipt.id}>
+      <tbody>{shown.map((receipt) => <tr key={receipt.id}>
         <td>{receipt.code}</td><td>{new Date(receipt.receivedAt).toLocaleString('vi-VN')}</td>
         <td>{receipt.warehouseName}<br />{receipt.supplierName ?? '—'}</td>
         <td>{receipt.items.length === 0 ? '—' : <ul className="max-h-32 overflow-y-auto">{receipt.items.map((item) => <li key={item.id}>{item.productName} × {item.quantity} <small className="block text-on-surface-variant">{item.sku}</small></li>)}</ul>}</td><td>{formatVnd(receipt.totalCost)}</td>

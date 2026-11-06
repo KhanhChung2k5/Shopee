@@ -4,6 +4,7 @@ import { Badge, buttonClass } from '../../../components/ui'
 import { ApiError, apiFetch } from '../../../lib/api'
 import { timeVi } from '../../../lib/crm'
 import { useAuth } from '../../../state/AuthContext'
+import { SearchBox, StatusFilter } from '../../components/ListSearch'
 
 interface LogItem {
   id: string
@@ -87,6 +88,21 @@ export default function AdminAuditLogPage() {
     setPage(1)
   }
 
+  // Ô tìm kiếm áp dụng sau khi ngừng gõ (không cần bấm Lọc); kết quả lọc ngay khi bấm nút.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setFilters((f) => (f.q === draft.q ? f : { ...f, q: draft.q }))
+      setPage(1)
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [draft.q])
+
+  const setOutcome = (outcome: string) => {
+    setDraft((f) => ({ ...f, outcome }))
+    setFilters((f) => ({ ...f, outcome }))
+    setPage(1)
+  }
+
   const set = (key: keyof Filters) => (e: { target: { value: string } }) => setDraft((f) => ({ ...f, [key]: e.target.value }))
   const p = result?.pagination
 
@@ -97,8 +113,9 @@ export default function AdminAuditLogPage() {
         {p && <span className="font-body-md text-body-md text-on-surface-variant">{p.totalItems.toLocaleString('vi-VN')} bản ghi</span>}
       </div>
 
-      <form className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2fr_repeat(4,1fr)_auto] gap-space-sm items-center mb-space-md" onSubmit={apply}>
-        <input className={a.input} placeholder="Tìm theo đường dẫn, thao tác, người…" value={draft.q} onChange={set('q')} />
+      <StatusFilter options={[['', 'Mọi kết quả'], ['success', 'Thành công'], ['failed', 'Thất bại / bị từ chối']] as const} value={filters.outcome as '' | 'success' | 'failed'} onChange={setOutcome} />
+      <form className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2fr_repeat(3,1fr)_auto] gap-space-sm items-start mb-space-md" onSubmit={apply}>
+        <SearchBox page="audit" placeholder="Tìm theo đường dẫn, thao tác, người…" value={draft.q} onChange={(q) => setDraft((f) => ({ ...f, q }))} className="sm:!w-full [&_input]:sm:!w-full" />
         <select className={a.input} value={draft.actor} onChange={set('actor')} aria-label="Người thao tác">
           <option value="">Mọi người</option>
           {facets?.actors.map((o) => <option key={o.login} value={o.login}>{o.label} ({o.login})</option>)}
@@ -110,11 +127,6 @@ export default function AdminAuditLogPage() {
         <select className={a.input} value={draft.action} onChange={set('action')} aria-label="Thao tác">
           <option value="">Mọi thao tác</option>
           {facets?.actions.map((x) => <option key={x} value={x}>{x}</option>)}
-        </select>
-        <select className={a.input} value={draft.outcome} onChange={set('outcome')} aria-label="Kết quả">
-          <option value="">Mọi kết quả</option>
-          <option value="success">Thành công</option>
-          <option value="failed">Thất bại / bị từ chối</option>
         </select>
         <div className="flex gap-space-xs">
           <button type="submit" className={buttonClass('primary', 'sm')}>Lọc</button>

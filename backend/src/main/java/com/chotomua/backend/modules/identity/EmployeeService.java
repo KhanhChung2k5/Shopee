@@ -123,6 +123,26 @@ public class EmployeeService {
         return EmployeeResponse.from(employee);
     }
 
+    /**
+     * Admin gives a staff member who forgot their password a temporary one (shown once, only the hash is stored);
+     * the staff member changes it on the profile page. Admin's own password goes through the normal change instead.
+     */
+    @Transactional
+    public String issueTemporaryPassword(UUID actorUserId, UUID employeeId) {
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy nhân viên"));
+        User user = employee.getUser();
+        if (user.getId().equals(actorUserId)) {
+            throw new IllegalArgumentException("Hãy tự đổi mật khẩu của mình trong trang tài khoản.");
+        }
+        if (!"active".equals(user.getStatus())) {
+            throw new IllegalStateException("Chỉ cấp mật khẩu tạm cho tài khoản đang hoạt động.");
+        }
+        String password = TemporaryPasswords.generate();
+        user.setPasswordHash(passwordEncoder.encode(password));
+        return password;
+    }
+
     private long activeAdminCount() {
         return employeeRepository.countByDepartmentAndUser_Status("admin", "active");
     }

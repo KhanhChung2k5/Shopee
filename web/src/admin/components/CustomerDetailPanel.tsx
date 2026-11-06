@@ -30,7 +30,7 @@ const timeVi = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
 
 /** GET /customers/{id}/detail — the account, its CRM figures, addresses and every order with its status. */
-export default function CustomerDetailPanel({ customerId, onClose }: { customerId: string; onClose: () => void }) {
+export default function CustomerDetailPanel({ customerId, onClose, onEdit }: { customerId: string; onClose: () => void; onEdit?: (customer: Customer) => void }) {
   const { token, user } = useAuth()
   const [detail, setDetail] = useState<CustomerDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -72,6 +72,11 @@ export default function CustomerDetailPanel({ customerId, onClose }: { customerI
           </div>
           <div className="flex items-center gap-space-sm">
             {c && <span className={statusPillClass(c.status)}>{STATUS_LABEL[c.status] ?? c.status}</span>}
+            {c && onEdit && c.status !== 'deleted' && (
+              <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1 font-label-md text-label-md text-on-surface hover:border-primary cursor-pointer" onClick={() => onEdit(c)}>
+                <span className="material-symbols-outlined !text-base">edit</span>Sửa thông tin
+              </button>
+            )}
             <button ref={closeRef} type="button" aria-label="Đóng" onClick={onClose}
               className="material-symbols-outlined rounded-lg p-1 text-on-surface-variant hover:bg-surface-container cursor-pointer">close</button>
           </div>

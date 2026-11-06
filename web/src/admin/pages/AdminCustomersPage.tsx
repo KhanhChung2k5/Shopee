@@ -3,10 +3,13 @@ import { age, type Customer, type CustomerStatus } from '../types/customer'
 import { formatVnd } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
 import { apiFetch, ApiError } from '../../lib/api'
-import { a, chipClass, statusPillClass } from '../adminUi'
+import { a, statusPillClass } from '../adminUi'
 import { buttonClass } from '../../components/ui'
 import { useDialog } from '../../state/DialogContext'
 import CustomerDetailPanel from '../components/CustomerDetailPanel'
+import CustomerEditDialog from '../components/CustomerEditDialog'
+import { RecentViews, SearchBox, StatusFilter } from '../components/ListSearch'
+import { matches, useRecentViews } from '../components/listSearchState'
 
 const STATUS_LABEL: Record<CustomerStatus, string> = {
   active: 'Hoạt động',
@@ -14,12 +17,12 @@ const STATUS_LABEL: Record<CustomerStatus, string> = {
   deleted: 'Đã xoá mềm',
 }
 
-const STATUS_FILTERS: { value: CustomerStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'Tất cả' },
-  { value: 'active', label: 'Hoạt động' },
-  { value: 'locked', label: 'Đã khoá' },
-  { value: 'deleted', label: 'Đã xoá mềm' },
-]
+const STATUS_FILTERS = [
+  ['all', 'Tất cả'],
+  ['active', 'Hoạt động'],
+  ['locked', 'Đã khoá'],
+  ['deleted', 'Đã xoá mềm'],
+] as const
 
 type SortKey = 'fullName' | 'age' | 'totalOrders' | 'ltv'
 
@@ -35,8 +38,8 @@ function useToast() {
 
 export default function AdminCustomersPage() {
   const { token, user } = useAuth()
-  // Restoring a soft-deleted account is admin-only (enforced by POST /api/customers/{id}/restore).
-  const canRestore = user?.department === 'admin'
+  // Restoring a soft-deleted account is CS-only (enforced by POST /api/customers/{id}/restore).
+  const canRestore = user?.department === 'cs'
   const { confirm } = useDialog()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -46,6 +49,10 @@ export default function AdminCustomersPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [editing, setEditing] = useState<Customer | null>(null)
+  const [detailVersion, setDetailVersion] = useState(0)
+  const viewed = useRecentViews('customers')
+  const openDetail = (c: Customer) => { setDetailId(c.id); viewed.push(c.id, c.fullName ?? c.email ?? 'Khách hàng') }
   const toast = useToast()
 
   const refresh = () => {
@@ -64,11 +71,8 @@ export default function AdminCustomersPage() {
   }, [token])
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
     let list = customers.filter(
-      (c) =>
-        (statusFilter === 'all' || c.status === statusFilter) &&
-        (!q || (c.fullName ?? '').toLowerCase().includes(q) || (c.email ?? '').toLowerCase().includes(q)),
+      (c) => (statusFilter === 'all' || c.status === statusFilter) && matches(query, c.fullName, c.email, c.phone),
     )
     list = [...list].sort((a, b) => {
       const va = sortKey === 'fullName' ? (a.fullName ?? '') : sortKey === 'age' ? (age(a.dob) ?? -1) : sortKey === 'totalOrders' ? a.totalOrders : a.ltv
@@ -206,26 +210,11 @@ export default function AdminCustomersPage() {
       {loadError && <p className="font-body-md text-body-md text-error mb-space-md">{loadError}</p>}
 
       <div className={a.toolbar}>
-        <input
-          className={`${a.input} max-w-[280px]`}
-          type="search"
-          placeholder="Tìm theo tên hoặc email..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <div className={a.filterBar}>
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              className={chipClass(statusFilter === f.value)}
-              onClick={() => setStatusFilter(f.value)}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        <SearchBox page="customers" placeholder="Tìm theo tên, email hoặc SĐT..." value={query} onChange={setQuery} />
       </div>
+      <StatusFilter options={STATUS_FILTERS} value={statusFilter} onChange={setStatusFilter}
+        counts={{ all: customers.length, active: customers.filter((c) => c.status === 'active').length, locked: customers.filter((c) => c.status === 'locked').length, deleted: customers.filter((c) => c.status === 'deleted').length }} />
+      <RecentViews items={viewed.items} onClear={viewed.clear} onOpen={(id) => { const c = customers.find((x) => x.id === id); if (c) openDetail(c); else setDetailId(id) }} />
 
       {selected.size > 0 && (
         <div className={a.bulkBar}>
@@ -293,9 +282,14 @@ export default function AdminCustomersPage() {
                     <span className={statusPillClass(c.status)}>{STATUS_LABEL[c.status]}</span>
                   </td>
                   <td className="whitespace-nowrap">
-                    <button className={buttonClass('primary', 'sm', 'mr-1.5')} type="button" onClick={() => setDetailId(c.id)}>
+                    <button className={buttonClass('primary', 'sm', 'mr-1.5')} type="button" onClick={() => openDetail(c)}>
                       Chi tiết
                     </button>
+                    {c.status !== 'deleted' && (
+                      <button className={buttonClass('outline', 'sm', 'mr-1.5')} type="button" onClick={() => setEditing(c)}>
+                        Sửa
+                      </button>
+                    )}
                     {c.status === 'deleted' ? (
                       canRestore ? (
                         <button className={buttonClass('outline', 'sm')} type="button" onClick={() => restore(c.id)}>
@@ -345,7 +339,14 @@ export default function AdminCustomersPage() {
         Khách hàng tự đăng ký qua app — admin không tạo tài khoản khách hàng trực tiếp.
       </p>
 
-      {detailId && <CustomerDetailPanel customerId={detailId} onClose={() => setDetailId(null)} />}
+      {detailId && (
+        <CustomerDetailPanel key={`${detailId}-${detailVersion}`} customerId={detailId} onClose={() => setDetailId(null)}
+          onEdit={(c) => setEditing(c)} />
+      )}
+      {editing && (
+        <CustomerEditDialog customer={editing} onClose={() => setEditing(null)}
+          onSaved={(message) => { setEditing(null); setDetailVersion((v) => v + 1); refresh(); toast.show(message) }} />
+      )}
       {toast.message && <div className={a.toast} role="status">{toast.message}</div>}
     </div>
   )

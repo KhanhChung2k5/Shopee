@@ -159,8 +159,8 @@ class SupportTicketEscalationE2ETest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.csatScore").value(5));
 
-        // 9. Afterwards an admin still sees the full hand-over history.
-        mockMvc.perform(get("/api/conversations/" + id).with(staff(ADMIN, "DEPT_ADMIN")))
+        // 9. Afterwards the CS lead still sees the full hand-over history.
+        mockMvc.perform(get("/api/conversations/" + id).with(staff(CS_LEAD, "DEPT_CS")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("closed"))
                 .andExpect(jsonPath("$.assignments", hasSize(2)))

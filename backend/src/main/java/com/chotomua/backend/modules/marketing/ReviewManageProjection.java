@@ -14,4 +14,6 @@ public interface ReviewManageProjection {
     String getProductName();
     UUID getOrderId();
     String getRepliedByName();
+    /** Sản phẩm của biến thể đã mua — để trang quản lý mở trang sản phẩm. */
+    UUID getProductId();
 }

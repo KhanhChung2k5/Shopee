@@ -9,6 +9,8 @@ import {
 } from '../../../lib/crm'
 import { useAuth } from '../../../state/AuthContext'
 import { useDialog } from '../../../state/DialogContext'
+import { RecentViews, SearchBox, StatusFilter } from '../../components/ListSearch'
+import { matches, useRecentViews } from '../../components/listSearchState'
 
 /** "Auto after delivery" choice → product filter on the survey (OrderDeliveredSurveyDispatcher). */
 const AUTO_TARGETS: { value: string; label: string; filter: { productType?: string; publishedOnly: boolean } | null }[] = [
@@ -39,6 +41,10 @@ export default function AdminSurveysPage() {
   const [notice, setNotice] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'sent' | 'closed'>('all')
+  const viewed = useRecentViews('surveys')
+  const openSurvey = (s: Survey) => { setSelectedId(s.id); viewed.push(s.id, s.title) }
 
   const load = useCallback(() => {
     if (!token) return
@@ -51,6 +57,9 @@ export default function AdminSurveysPage() {
   useEffect(() => { if (token) fetchSegments(token).then((d) => setSegments(d.segments)).catch(() => setSegments([])) }, [token])
 
   const selected = surveys?.find((s) => s.id === selectedId) ?? null
+  const shown = surveys?.filter((s) => (statusFilter === 'all' || s.status === statusFilter)
+    && matches(query, s.title, s.description, ...s.questions.map((q) => q.questionText))) ?? null
+  const countOf = (status: string) => surveys?.filter((s) => s.status === status).length ?? 0
 
   const create = async (event: FormEvent) => {
     event.preventDefault()
@@ -65,7 +74,13 @@ export default function AdminSurveysPage() {
 
   return (
     <div>
-      <h1>Khảo sát khách hàng</h1>
+      <div className={a.toolbar}>
+        <h1 className="!mb-0">Khảo sát khách hàng</h1>
+        <SearchBox page="surveys" placeholder="Tìm tên khảo sát, câu hỏi..." value={query} onChange={setQuery} />
+      </div>
+      <StatusFilter options={[['all', 'Tất cả'], ['draft', 'Nháp'], ['sent', 'Đã gửi'], ['closed', 'Đã lưu trữ']] as const} value={statusFilter} onChange={setStatusFilter}
+        counts={{ all: surveys?.length ?? 0, draft: countOf('draft'), sent: countOf('sent'), closed: countOf('closed') }} />
+      <RecentViews items={viewed.items} onClear={viewed.clear} onOpen={setSelectedId} />
       {error && <p className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
       {notice && <p className="font-body-md text-body-md text-secondary mb-space-md">{notice}</p>}
 
@@ -82,9 +97,9 @@ export default function AdminSurveysPage() {
               <thead><tr><th>Khảo sát</th><th>Trạng thái</th><th>Câu hỏi</th></tr></thead>
               <tbody>
                 {!surveys && <tr><td colSpan={3} className="text-center !py-space-xl text-on-surface-variant">Đang tải…</td></tr>}
-                {surveys?.length === 0 && <tr><td colSpan={3} className="text-center !py-space-xl text-on-surface-variant">Chưa có khảo sát nào.</td></tr>}
-                {surveys?.map((s) => (
-                  <tr key={s.id} className={cx('cursor-pointer', s.id === selectedId && 'is-selected')} onClick={() => setSelectedId(s.id)}>
+                {shown?.length === 0 && <tr><td colSpan={3} className="text-center !py-space-xl text-on-surface-variant">{surveys?.length ? 'Không có khảo sát nào khớp bộ lọc.' : 'Chưa có khảo sát nào.'}</td></tr>}
+                {shown?.map((s) => (
+                  <tr key={s.id} className={cx('cursor-pointer', s.id === selectedId && 'is-selected')} onClick={() => openSurvey(s)}>
                     <td><div className="font-semibold">{s.title}</div><div className="font-label-md text-label-md text-on-surface-variant">{timeVi(s.createdAt)}</div></td>
                     <td><Badge tone={STATUS_TONE[s.status] ?? 'neutral'}>{SURVEY_STATUS_LABEL[s.status] ?? s.status}</Badge></td>
                     <td>{s.questions.length}</td>

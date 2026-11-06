@@ -29,17 +29,11 @@ class FakeIdentityPortTest {
     }
 
     @Test
-    void adminCanLockAndUnlockCustomer() {
+    void systemAdminIsRejectedFromCustomerManagement() {
         UUID admin = identity.seedStaff(StaffDepartment.ADMIN);
-        CustomerView customer = identity.seedCustomer(
-                "Nguyen Van A", "male", LocalDate.of(1998, 5, 1), CustomerStatus.ACTIVE);
 
-        identity.requireCustomerAdmin(admin);
-        identity.lock(customer.id());
-        assertThat(identity.getCustomer(customer.id()).status()).isEqualTo(CustomerStatus.LOCKED);
-
-        identity.unlock(customer.id());
-        assertThat(identity.getCustomer(customer.id()).status()).isEqualTo(CustomerStatus.ACTIVE);
+        assertThatThrownBy(() -> identity.requireCustomerAdmin(admin))
+                .isInstanceOf(CrmForbiddenException.class);
     }
 
     @Test
@@ -72,12 +66,12 @@ class FakeIdentityPortTest {
     }
 
     @Test
-    void requireCrmStaffAllowsAdminCrmAndCsButNotSales() {
-        identity.requireCrmStaff(identity.seedStaff(StaffDepartment.ADMIN));
-        identity.requireCrmStaff(identity.seedStaff(StaffDepartment.CS));
+    void requireCrmStaffAllowsOnlyCs() {
         identity.requireCrmStaff(identity.seedStaff(StaffDepartment.CS));
 
         assertThatThrownBy(() -> identity.requireCrmStaff(identity.seedStaff(StaffDepartment.SALES)))
+                .isInstanceOf(CrmForbiddenException.class);
+        assertThatThrownBy(() -> identity.requireCrmStaff(identity.seedStaff(StaffDepartment.ADMIN)))
                 .isInstanceOf(CrmForbiddenException.class);
     }
 
@@ -126,12 +120,12 @@ class FakeIdentityPortTest {
     }
 
     @Test
-    void onlyAdminMayRestore() {
+    void onlySystemAdminMayReadTheOperationLog() {
         UUID admin = identity.seedStaff(StaffDepartment.ADMIN);
-        UUID crm = identity.seedStaff(StaffDepartment.CS);
+        UUID cs = identity.seedStaff(StaffDepartment.CS);
 
-        identity.requireAdmin(admin);
-        assertThatThrownBy(() -> identity.requireAdmin(crm))
+        identity.requireSystemAdmin(admin);
+        assertThatThrownBy(() -> identity.requireSystemAdmin(cs))
                 .isInstanceOf(CrmForbiddenException.class)
                 .hasMessageContaining("quản trị");
     }

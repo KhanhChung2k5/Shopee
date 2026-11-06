@@ -389,7 +389,7 @@ class OrderServiceTest {
     }
 
     @Test
-    void listForEmployeeUser_filtersByStatusAndRejectsCs() {
+    void listForEmployeeUser_filtersByStatusAndRejectsSystemAdmin() {
         UUID salesUserId = UUID.randomUUID();
         when(employeeRepository.findByUserId(salesUserId)).thenReturn(Optional.of(employeeOf(salesUserId, "sales")));
         when(orderRepository.findByStatusOrderByCreatedAtDesc("pending")).thenReturn(List.of());
@@ -397,9 +397,15 @@ class OrderServiceTest {
         assertThat(orderService.listForEmployeeUser(salesUserId, "pending")).isEmpty();
         verify(orderRepository).findByStatusOrderByCreatedAtDesc("pending");
 
+        // CSKH xem đơn để tra cứu khi khách hỏi; quản trị hệ thống không làm nghiệp vụ.
         UUID csUserId = UUID.randomUUID();
         when(employeeRepository.findByUserId(csUserId)).thenReturn(Optional.of(employeeOf(csUserId, "cs")));
-        assertThatThrownBy(() -> orderService.listForEmployeeUser(csUserId, null))
+        when(orderRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of());
+        assertThat(orderService.listForEmployeeUser(csUserId, null)).isEmpty();
+
+        UUID adminUserId = UUID.randomUUID();
+        when(employeeRepository.findByUserId(adminUserId)).thenReturn(Optional.of(employeeOf(adminUserId, "admin")));
+        assertThatThrownBy(() -> orderService.listForEmployeeUser(adminUserId, null))
                 .isInstanceOf(AccessDeniedException.class);
     }
 

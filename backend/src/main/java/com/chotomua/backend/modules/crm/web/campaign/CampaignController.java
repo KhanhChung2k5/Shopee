@@ -29,7 +29,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/campaigns")
-@PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_SALES')")
+@PreAuthorize("hasAuthority('DEPT_SALES')")
 public class CampaignController {
 
     private final CampaignService campaigns;
@@ -61,6 +61,11 @@ public class CampaignController {
 
     @PostMapping
     public ResponseEntity<CampaignResponse> create(@Valid @RequestBody CreateCampaignRequest request) {
+        if (Boolean.TRUE.equals(request.draft())) {
+            CampaignResponse draft = campaigns.saveDraft(
+                    currentActor.requireUserId(), request.name(), request.segmentIds(), request.content(), request.startAt());
+            return ResponseEntity.created(ResourceLocation.of("/api/campaigns/" + draft.id())).body(draft);
+        }
         CampaignResponse created = campaigns.send(
                 currentActor.requireUserId(),
                 request.name(),
@@ -77,7 +82,13 @@ public class CampaignController {
     @PutMapping("/{id}")
     public CampaignResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateCampaignRequest request) {
         return campaigns.update(
-                currentActor.requireUserId(), id, request.name(), request.content(), request.startAt());
+                currentActor.requireUserId(), id, request.name(), request.content(), request.startAt(), request.segmentIds());
+    }
+
+    /** Gửi bản nháp (ngay, hoặc lên lịch nếu lịch dự kiến còn ở tương lai). */
+    @PostMapping("/{id}/send")
+    public CampaignResponse sendDraft(@PathVariable UUID id) {
+        return campaigns.sendDraft(currentActor.requireUserId(), id);
     }
 
     @DeleteMapping("/{id}")

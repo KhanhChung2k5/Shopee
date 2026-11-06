@@ -19,6 +19,7 @@ interface ShowcaseReview {
   createdAt: string
   buyerName: string | null
   productName: string | null
+  productId: string | null
 }
 
 function timeAgo(iso: string) {
@@ -179,6 +180,14 @@ export default function LeaderboardReviews() {
                       "{rev.comment}"
                     </p>
                   </div>
+                  {rev.productId && (
+                    <Link to={`/san-pham/${rev.productId}#danh-gia`}
+                      className="mt-space-xs inline-flex items-center gap-1 font-label-md text-label-md text-primary hover:underline">
+                      <span className="material-symbols-outlined !text-base">sports_esports</span>
+                      <span className="line-clamp-1">{rev.productName ?? 'Xem sản phẩm'}</span>
+                      <span className="material-symbols-outlined !text-base">chevron_right</span>
+                    </Link>
+                  )}
                 </div>
               )
             })

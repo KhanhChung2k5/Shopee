@@ -43,7 +43,7 @@ class CampaignSurveyRulesTest {
 
     @BeforeEach
     void setUp() {
-        identity.seedStaff(ADMIN, StaffDepartment.ADMIN);
+        identity.seedStaff(ADMIN, StaffDepartment.SALES);
         customer = identity.seedCustomer("An", "male", LocalDate.of(1998, 5, 12), CustomerStatus.ACTIVE);
         segmentId = UUID.randomUUID();
         Instant at = Instant.now();

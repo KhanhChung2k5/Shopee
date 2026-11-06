@@ -105,7 +105,7 @@ public class CustomerAccountService {
 
     /** Khôi phục khách đã xóa về đang hoạt động — chỉ quản trị viên. */
     public CustomerView restore(UUID actorId, UUID customerId) {
-        identity.requireAdmin(actorId);
+        identity.requireCustomerAdmin(actorId);
         identity.restoreCustomer(customerId);
         statusChanged(customerId);
         return identity.getCustomer(customerId);

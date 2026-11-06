@@ -27,7 +27,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/crm")
-@PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_SALES', 'DEPT_CS')")
+@PreAuthorize("hasAnyAuthority('DEPT_SALES', 'DEPT_CS')")
 public class ProductCatalogController {
 
     private final ProductCatalogService catalog;

@@ -28,7 +28,7 @@ class CustomerAccountServiceTest {
 
     @BeforeEach
     void setUp() {
-        identity.seedStaff(ADMIN, StaffDepartment.ADMIN);
+        identity.seedStaff(ADMIN, StaffDepartment.CS);
         customer = identity.seedCustomer("Cong Khanh", "male", LocalDate.of(1999, 1, 1), CustomerStatus.ACTIVE);
     }
 

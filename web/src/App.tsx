@@ -16,6 +16,7 @@ import AdminLayout from './admin/AdminLayout'
 import AdminDashboardPage from './admin/pages/AdminDashboardPage'
 import AdminCustomersPage from './admin/pages/AdminCustomersPage'
 import AdminDemographicsPage from './admin/pages/AdminDemographicsPage'
+import AdminSurveyStatsPage from './admin/pages/AdminSurveyStatsPage'
 import AdminReportsPage from './admin/pages/AdminReportsPage'
 import AdminProductsPage from './admin/pages/AdminProductsPage'
 import AdminInventoryPage from './admin/pages/AdminInventoryPage'
@@ -104,6 +105,7 @@ function App() {
           <Route path="khach-hang" element={<RequireDepartment><AdminCustomersPage /></RequireDepartment>} />
           <Route path="bao-cao-quan-tri" element={<RequireDepartment><AdminReportsPage /></RequireDepartment>} />
           <Route path="bao-cao" element={<RequireDepartment><AdminDemographicsPage /></RequireDepartment>} />
+          <Route path="bao-cao/khao-sat" element={<RequireDepartment><AdminSurveyStatsPage /></RequireDepartment>} />
           <Route path="nhan-vien" element={<RequireDepartment><AdminEmployeesPage /></RequireDepartment>} />
           <Route path="nhat-ky" element={<RequireDepartment><AdminAuditLogPage /></RequireDepartment>} />
           <Route path="crm" element={<RequireDepartment><AdminCrmProfilesPage /></RequireDepartment>} />
