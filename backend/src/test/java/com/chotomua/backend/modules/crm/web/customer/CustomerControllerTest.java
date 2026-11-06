@@ -71,13 +71,13 @@ class CustomerControllerTest {
     @BeforeEach
     void setUp() {
         identity.reset();
-        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
+        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(CS_LEAD_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(CS_ID), StaffDepartment.CS);
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void adminCanCreateLockUnlockAndSoftDelete() throws Exception {
         String id = createCustomerAndReturnId();
 
@@ -176,7 +176,7 @@ class CustomerControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void softDeletedCustomerIsHiddenUntilIncludeDeletedAndAdminCanRestore() throws Exception {
         CustomerView existing = identity.seedCustomer(
                 "Le Van C", "male", LocalDate.of(2000, 12, 12), CustomerStatus.ACTIVE);
@@ -207,7 +207,7 @@ class CustomerControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void adminCanRestoreDeletedCustomerViaPatchActive() throws Exception {
         CustomerView existing = identity.seedCustomer(
                 "Pham Van D", "male", LocalDate.of(1999, 4, 4), CustomerStatus.DELETED);
@@ -221,9 +221,20 @@ class CustomerControllerTest {
 
     @Test
     @WithMockUser(username = CS_LEAD_ID, authorities = "DEPT_CS")
-    void crmManagerCannotRestoreDeletedCustomer() throws Exception {
+    void customerCareCanRestoreDeletedCustomer() throws Exception {
         CustomerView existing = identity.seedCustomer(
                 "Le Van C", "male", LocalDate.of(2000, 12, 12), CustomerStatus.DELETED);
+
+        mockMvc.perform(post("/api/customers/" + existing.id() + "/restore"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(CustomerStatus.ACTIVE));
+    }
+
+    @Test
+    @WithMockUser(username = CS_LEAD_ID, authorities = "DEPT_ADMIN")
+    void systemAdminCannotManageCustomers() throws Exception {
+        CustomerView existing = identity.seedCustomer(
+                "Le Van E", "male", LocalDate.of(2000, 12, 12), CustomerStatus.DELETED);
 
         mockMvc.perform(post("/api/customers/" + existing.id() + "/restore"))
                 .andExpect(status().isForbidden());
@@ -231,12 +242,11 @@ class CustomerControllerTest {
         mockMvc.perform(patch("/api/customers/" + existing.id())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"active\"}"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.message").value(containsString("quản trị")));
+                .andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void createRejectsBlankNameWithVietnameseMessage() throws Exception {
         mockMvc.perform(post("/api/customers")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -246,7 +256,7 @@ class CustomerControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void adminCanUpdateCustomerProfile() throws Exception {
         String id = createCustomerAndReturnId();
 
@@ -277,7 +287,7 @@ class CustomerControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void cannotUpdateDeletedCustomer() throws Exception {
         CustomerView existing = identity.seedCustomer(
                 "Gone", "male", LocalDate.of(1988, 3, 3), CustomerStatus.DELETED);
@@ -317,7 +327,7 @@ class CustomerControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void adminCanCreateAndUpdateCustomerAddress() throws Exception {
         String customerId = createCustomerAndReturnId();
 

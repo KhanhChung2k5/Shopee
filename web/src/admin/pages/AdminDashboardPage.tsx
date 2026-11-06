@@ -41,18 +41,27 @@ const QUICK_LINKS = [
   { to: '/admin/bao-cao', title: 'Báo cáo nhân khẩu học', hint: 'Phân bố tuổi, giới tính, ngành hàng ưa thích' },
   { to: '/admin/san-pham', title: 'Sản phẩm', hint: 'Danh sách catalog, trạng thái đang bán/ẩn' },
   { to: '/admin/don-hang', title: 'Đơn hàng', hint: 'Theo dõi & cập nhật trạng thái xử lý' },
+  { to: '/admin/nhan-vien', title: 'Tài khoản nhân viên', hint: 'Tạo tài khoản, phân bộ phận, khoá / mở' },
+  { to: '/admin/nhat-ky', title: 'Nhật ký thao tác', hint: 'Ai làm gì, lúc nào, thành công hay bị từ chối' },
 ]
+
+type Dept = 'sales' | 'warehouse' | 'admin' | 'cs'
+interface StaffAccount { id: string; department: Dept; status: 'active' | 'locked' | 'deleted' }
+const DEPT_LABEL: Record<Dept, string> = { sales: 'Bán hàng', warehouse: 'Kho vận', cs: 'CSKH', admin: 'Quản trị' }
 
 export default function AdminDashboardPage() {
   const { token, user } = useAuth()
   const department = (user?.department ?? null) as Department | null
-  // GET /customers is cs/admin only — other departments would just get a 403.
+  // GET /customers is cs only — other departments would just get a 403.
   const canSeeCustomers = canAccessSection('/admin/khach-hang', department)
   const [customers, setCustomers] = useState<Customer[]>([])
-  // GET /orders is for sales / warehouse / admin only.
+  // GET /orders is for sales / warehouse / cs only.
   const canSeeOrders = canAccessSection('/admin/don-hang', department)
   const [orders, setOrders] = useState<StaffOrderSummary[]>([])
-  // Revenue comes from the report API (recognised on delivery) — sales / admin only.
+  // Revenue comes from the report API (recognised on delivery) — sales only.
+  // Quản trị hệ thống chỉ thấy số liệu tài khoản nhân viên (GET /employees chỉ cho admin).
+  const canSeeStaff = canAccessSection('/admin/nhan-vien', department)
+  const [staff, setStaff] = useState<StaffAccount[]>([])
   const canSeeRevenue = canSeeRevenueReport(department)
   const [revenue, setRevenue] = useState<RevenueReport | null>(null)
 
@@ -68,6 +77,11 @@ export default function AdminDashboardPage() {
     if (!token || !canSeeOrders) return
     apiFetch<StaffOrderSummary[]>('/orders', {}, token).then(setOrders).catch(() => setOrders([]))
   }, [token, canSeeOrders])
+
+  useEffect(() => {
+    if (!token || !canSeeStaff) return
+    apiFetch<StaffAccount[]>('/employees', {}, token).then(setStaff).catch(() => setStaff([]))
+  }, [token, canSeeStaff])
 
   useEffect(() => {
     if (!token || !canSeeCustomers) return
@@ -98,6 +112,36 @@ export default function AdminDashboardPage() {
   return (
     <div>
       <h1>Tổng quan</h1>
+
+      {canSeeStaff && (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-space-md mb-space-lg">
+        <div className={`${a.card} flex flex-col justify-center`}>
+          <div className={a.statLabel}>Tài khoản nhân viên</div>
+          <div className={a.statValue}>{staff.filter((e) => e.status !== 'deleted').length}</div>
+        </div>
+        <div className={`${a.card} flex flex-col justify-center`}>
+          <div className={a.statLabel}>Đang hoạt động</div>
+          <div className={`${a.statValue} !text-secondary`}>{staff.filter((e) => e.status === 'active').length}</div>
+        </div>
+        <div className={`${a.card} flex flex-col justify-center`}>
+          <div className={a.statLabel}>Đã khoá</div>
+          <div className={`${a.statValue} !text-[#ca8a04]`}>{staff.filter((e) => e.status === 'locked').length}</div>
+        </div>
+        <div className={`${a.card} lg:col-span-3`}>
+          <div className={`${a.statLabel} !mb-space-md`}>Nhân viên đang hoạt động theo bộ phận</div>
+          <table className={a.tableCompact}>
+            <tbody>
+              {(Object.keys(DEPT_LABEL) as Dept[]).map((d) => (
+                <tr key={d}>
+                  <td>{DEPT_LABEL[d]}</td>
+                  <td className="text-right font-bold">{staff.filter((e) => e.department === d && e.status === 'active').length}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      )}
 
       {canSeeCustomers && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-space-md mb-space-lg">
@@ -222,7 +266,9 @@ export default function AdminDashboardPage() {
       </div>
 
       <p className="mt-space-lg font-body-md text-body-md text-on-surface-variant">
-        Mọi số liệu trên trang lấy trực tiếp từ dữ liệu khách hàng và đơn hàng thật.
+        {canSeeStaff
+          ? 'Quản trị hệ thống chỉ quản lý tài khoản nhân viên và nhật ký thao tác; số liệu kinh doanh thuộc từng bộ phận.'
+          : 'Mọi số liệu trên trang lấy trực tiếp từ dữ liệu khách hàng và đơn hàng thật.'}
       </p>
     </div>
   )

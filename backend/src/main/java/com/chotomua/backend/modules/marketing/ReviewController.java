@@ -82,11 +82,11 @@ public class ReviewController {
         return ResponseEntity.noContent().build();
     }
 
-    /** Sales, CS or admin answers a review (or changes their answer) — from the admin page or the product page. */
+    /** CS answers a review (or changes their answer) — from the admin page or the product page. */
     @PatchMapping("/{id}/reply")
     public ReviewResponse reply(Authentication auth, @PathVariable UUID id, @Valid @RequestBody ReviewReplyRequest request) {
         Employee employee = employees.findByUserId(userId(auth)).orElseThrow(() -> new AccessDeniedException("Không tìm thấy nhân viên"));
-        if (!List.of("sales", "cs", "admin").contains(employee.getDepartment())) {
+        if (!"cs".equals(employee.getDepartment())) {
             throw new AccessDeniedException("Không có quyền phản hồi đánh giá");
         }
         Review review = reviews.findById(id).orElseThrow(() -> new NoSuchElementException("Không tìm thấy đánh giá"));

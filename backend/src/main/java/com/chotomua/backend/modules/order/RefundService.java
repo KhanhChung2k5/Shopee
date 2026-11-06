@@ -299,7 +299,7 @@ public class RefundService {
     private Employee requireCsOrAdmin(UUID staffUserId) {
         Employee employee = employees.findByUserId(staffUserId)
                 .orElseThrow(() -> new AccessDeniedException("Không tìm thấy nhân viên"));
-        if (!"cs".equals(employee.getDepartment()) && !"admin".equals(employee.getDepartment())) {
+        if (!"cs".equals(employee.getDepartment())) {
             throw new AccessDeniedException("Chỉ CSKH hoặc Admin được xử lý hoàn tiền");
         }
         return employee;

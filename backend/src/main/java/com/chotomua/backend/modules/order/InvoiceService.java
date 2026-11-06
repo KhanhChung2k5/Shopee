@@ -72,12 +72,12 @@ public class InvoiceService {
         return new InvoiceResponse.ForOrder(current, cancelled);
     }
 
-    /** Sales/admin cancel the valid invoice and issue a replacement with the buyer details given. */
+    /** Sales cancel the valid invoice and issue a replacement with the buyer details given. */
     @Transactional
     public InvoiceResponse reissue(UUID orderId, UUID employeeUserId, ReissueRequest request) {
         Employee employee = employees.findByUserId(employeeUserId).orElseThrow(() -> new AccessDeniedException("Không tìm thấy nhân viên"));
-        if (!"sales".equals(employee.getDepartment()) && !"admin".equals(employee.getDepartment())) {
-            throw new AccessDeniedException("Chỉ bán hàng hoặc quản trị viên được lập lại hoá đơn");
+        if (!"sales".equals(employee.getDepartment())) {
+            throw new AccessDeniedException("Chỉ nhân viên bán hàng được lập lại hoá đơn");
         }
         Invoice old = invoices.findByOrderIdAndStatus(orderId, Invoice.ISSUED)
                 .orElseThrow(() -> new IllegalStateException("Đơn chưa có hoá đơn để lập lại"));

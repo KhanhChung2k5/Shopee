@@ -102,7 +102,7 @@ class CampaignControllerTest {
         orders.reset();
         products.reset();
         productTargets.clear();
-        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
+        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.SALES);
         identity.seedStaff(UUID.fromString(CS_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
         products.seed(new ProductView(
@@ -112,7 +112,7 @@ class CampaignControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_SALES")
     void sendSkipsLockedAndDeletedEvenWhenTheyRemainSegmentMembers() throws Exception {
         LocalDate young = LocalDate.now().minusYears(20);
         CustomerView active = identity.seedCustomer(
@@ -137,7 +137,7 @@ class CampaignControllerTest {
                 .andExpect(jsonPath("$.skipped[?(@.status=='locked')]", hasSize(2)))
                 .andExpect(jsonPath("$.skipped[?(@.status=='deleted')]", hasSize(1)));
 
-        mockMvc.perform(get("/api/notifications").param("userId", active.id().toString()))
+        mockMvc.perform(get("/api/notifications").param("userId", active.id().toString()).with(user(CS_ID).authorities(new SimpleGrantedAuthority("DEPT_CS"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications", hasSize(1)))
                 .andExpect(jsonPath("$.notifications[0].content").value("Ưu đãi trong app"))
@@ -283,7 +283,7 @@ class CampaignControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_SALES")
     void renameAndDeleteUpdatesTheCustomerInbox() throws Exception {
         LocalDate young = LocalDate.now().minusYears(20);
         identity.seedCustomer(
@@ -307,7 +307,7 @@ class CampaignControllerTest {
                 .andExpect(jsonPath("$.content").value("Nội dung đã sửa"))
                 .andExpect(jsonPath("$.sentCount").value(1));
 
-        mockMvc.perform(get("/api/notifications").param("userId", ACTIVE_ID))
+        mockMvc.perform(get("/api/notifications").param("userId", ACTIVE_ID).with(user(CS_ID).authorities(new SimpleGrantedAuthority("DEPT_CS"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications[0].content").value("Nội dung đã sửa"));
 
@@ -316,13 +316,13 @@ class CampaignControllerTest {
                 .andExpect(status().isUnprocessableEntity());
         mockMvc.perform(get("/api/campaigns/" + campaignId))
                 .andExpect(status().isOk());
-        mockMvc.perform(get("/api/notifications").param("userId", ACTIVE_ID))
+        mockMvc.perform(get("/api/notifications").param("userId", ACTIVE_ID).with(user(CS_ID).authorities(new SimpleGrantedAuthority("DEPT_CS"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications", hasSize(1)));
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_SALES")
     void futureScheduleStaysOutOfTheInboxUntilDue() throws Exception {
         LocalDate young = LocalDate.now().minusYears(20);
         identity.seedCustomer(
@@ -338,13 +338,13 @@ class CampaignControllerTest {
                 .andExpect(jsonPath("$.deliveryStatus").value("scheduled"))
                 .andExpect(jsonPath("$.sentCount").value(0));
 
-        mockMvc.perform(get("/api/notifications").param("userId", ACTIVE_ID))
+        mockMvc.perform(get("/api/notifications").param("userId", ACTIVE_ID).with(user(CS_ID).authorities(new SimpleGrantedAuthority("DEPT_CS"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications", hasSize(0)));
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_SALES")
     void recipientListShowsTenThenTheRest() throws Exception {
         LocalDate young = LocalDate.now().minusYears(20);
         for (int index = 1; index <= 11; index++) {
@@ -371,7 +371,7 @@ class CampaignControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_SALES")
     void sendUnionsSegmentMembersAndProductBuyers() throws Exception {
         LocalDate young = LocalDate.now().minusYears(20);
         LocalDate older = LocalDate.now().minusYears(40);
@@ -396,19 +396,19 @@ class CampaignControllerTest {
                 .andExpect(jsonPath("$.skipped", hasSize(1)))
                 .andExpect(jsonPath("$.skipped[0].status").value("locked"));
 
-        mockMvc.perform(get("/api/notifications").param("userId", inSegment.id().toString()))
+        mockMvc.perform(get("/api/notifications").param("userId", inSegment.id().toString()).with(user(CS_ID).authorities(new SimpleGrantedAuthority("DEPT_CS"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications", hasSize(1)));
-        mockMvc.perform(get("/api/notifications").param("userId", buyer.id().toString()))
+        mockMvc.perform(get("/api/notifications").param("userId", buyer.id().toString()).with(user(CS_ID).authorities(new SimpleGrantedAuthority("DEPT_CS"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications", hasSize(1)));
-        mockMvc.perform(get("/api/notifications").param("userId", lockedBuyer.id().toString()))
+        mockMvc.perform(get("/api/notifications").param("userId", lockedBuyer.id().toString()).with(user(CS_ID).authorities(new SimpleGrantedAuthority("DEPT_CS"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications", hasSize(0)));
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_SALES")
     void sendWithProductTargetOnlyDoesNotRequireSegment() throws Exception {
         LocalDate young = LocalDate.now().minusYears(20);
         CustomerView buyer = identity.seedCustomer(
@@ -427,7 +427,7 @@ class CampaignControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_SALES")
     void sendWithoutSegmentOrProductIsRejected() throws Exception {
         mockMvc.perform(post("/api/campaigns")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -473,7 +473,7 @@ class CampaignControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_SALES")
     void aCustomerReadingTheMailStaysCountedAsSentAndListedAsARecipient() throws Exception {
         CustomerView an = identity.seedCustomer(
                 UUID.fromString(ACTIVE_ID), "An", "an@seed.local", "0901111111", "male", LocalDate.now().minusYears(20), CustomerStatus.ACTIVE);
@@ -499,7 +499,7 @@ class CampaignControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_SALES")
     void editingASurveyKeepsTheWordingOfACampaignLetter() throws Exception {
         CustomerView an = identity.seedCustomer(
                 UUID.fromString(ACTIVE_ID), "An", "an@seed.local", "0901111111", "male", LocalDate.now().minusYears(20), CustomerStatus.ACTIVE);
@@ -519,6 +519,7 @@ class CampaignControllerTest {
                 UUID.randomUUID(), binh.id(), "survey", surveyId, "in_app", "Khảo sát cũ", "sent", Instant.now())));
 
         mockMvc.perform(put("/api/surveys/" + surveyId)
+                        .with(user(CS_ID).authorities(new SimpleGrantedAuthority("DEPT_CS")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"title":"Khảo sát mới"}

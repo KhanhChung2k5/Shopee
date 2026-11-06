@@ -14,4 +14,5 @@ public interface ReviewShowcaseProjection {
     Instant getCreatedAt();
     String getBuyerName();
     String getProductName();
+    UUID getProductId();
 }

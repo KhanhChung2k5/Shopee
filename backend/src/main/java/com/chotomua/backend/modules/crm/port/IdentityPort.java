@@ -11,8 +11,7 @@ import java.util.UUID;
 
 /**
  * Cổng sang phân hệ danh tính (nhóm A). CRM không tiêm kho User trực tiếp.
- * {@code requireCustomerAdmin}: quản trị hoặc quản lý CRM (câu chuyện 1–3).
- * {@code requireCrmStaff}: quản trị, quản lý CRM hoặc CSKH (câu chuyện 4–7).
+ * Quản trị viên (admin) chỉ quản lý tài khoản nhân viên và xem nhật ký; nghiệp vụ CRM do CSKH (cs) phụ trách.
  */
 public interface IdentityPort {
 
@@ -52,21 +51,18 @@ public interface IdentityPort {
     /** Cập nhật địa chỉ thuộc khách. Không sửa khi khách đã xóa. */
     AddressView updateAddress(UUID customerId, UUID addressId, UpsertAddressCommand command);
 
-    /** Câu chuyện 1–3: chỉ quản trị hoặc quản lý CRM. CSKH phải bị từ chối. */
+    /** Quản lý tài khoản khách (thêm, khoá, xoá mềm, khôi phục, mật khẩu tạm): chỉ CSKH. */
     void requireCustomerAdmin(UUID actorId);
-
-    /** Khôi phục khách đã xóa: chỉ quản trị viên hệ thống. */
-    void requireAdmin(UUID actorId);
 
     /** Nhật ký thao tác: chỉ quản trị viên hệ thống. */
     void requireSystemAdmin(UUID actorId);
 
-    /** Câu chuyện 4–7: quản trị, quản lý CRM hoặc CSKH. */
+    /** Hồ sơ, hỗ trợ, khảo sát, gợi ý: chỉ CSKH. */
     void requireCrmStaff(UUID actorId);
 
-    /** Quản lý phân khúc / chiến dịch: quản trị viên hoặc nhân viên kinh doanh. */
+    /** Quản lý phân khúc / chiến dịch: chỉ nhân viên kinh doanh. */
     void requireMarketingStaff(UUID actorId);
 
-    /** Xem phân khúc, danh mục sản phẩm để chọn đối tượng: quản trị, kinh doanh hoặc CSKH. */
+    /** Xem phân khúc, danh mục sản phẩm để chọn đối tượng: kinh doanh hoặc CSKH. */
     void requireAudienceReader(UUID actorId);
 }

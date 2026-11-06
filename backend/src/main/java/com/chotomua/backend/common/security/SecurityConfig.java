@@ -58,49 +58,53 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/catalog/categories", "/api/catalog/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/reviews", "/reviews/product/*", "/api/products/top-sellers").permitAll()
                 // Sales only reads warehouse names (order panel shows which warehouse an order ships from).
+                // Phân quyền theo docs/phan-quyen-he-thong.md: admin chỉ quản trị tài khoản + nhật ký, không làm nghiệp vụ.
                 .requestMatchers(HttpMethod.GET, "/api/catalog/warehouses", "/api/catalog/warehouses/**")
-                .hasAnyAuthority("DEPT_SALES", "DEPT_WAREHOUSE", "DEPT_ADMIN")
+                .hasAnyAuthority("DEPT_SALES", "DEPT_WAREHOUSE")
                 .requestMatchers("/api/catalog/warehouses/**", "/api/catalog/goods-receipts/**", "/api/catalog/inventory/**")
-                .hasAnyAuthority("DEPT_WAREHOUSE", "DEPT_ADMIN")
-                .requestMatchers(HttpMethod.GET, "/api/catalog/product-variants", "/api/catalog/product-variants/**")
-                .hasAnyAuthority("DEPT_SALES", "DEPT_WAREHOUSE", "DEPT_ADMIN")
+                .hasAuthority("DEPT_WAREHOUSE")
+                // Kho chỉ xem sản phẩm / biến thể (để biết biến thể khi nhập hàng); bán hàng quản lý catalog.
+                .requestMatchers(HttpMethod.GET, "/api/catalog/products", "/api/catalog/products/**",
+                        "/api/catalog/product-variants", "/api/catalog/product-variants/**")
+                .hasAnyAuthority("DEPT_SALES", "DEPT_WAREHOUSE")
                 .requestMatchers("/api/catalog/categories/**", "/api/catalog/products/**", "/api/catalog/product-variants/**")
-                .hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
+                .hasAuthority("DEPT_SALES")
                 .requestMatchers("/cart-items", "/cart-items/**").hasRole("BUYER")
                 .requestMatchers(HttpMethod.POST, "/orders").hasRole("BUYER")
                 .requestMatchers(HttpMethod.POST, "/orders/preview").hasRole("BUYER")
-                .requestMatchers(HttpMethod.GET, "/orders/**").hasAnyRole("BUYER", "STAFF")
-                .requestMatchers(HttpMethod.PATCH, "/orders/*/status").hasAnyRole("BUYER", "STAFF")
+                // Nhân viên xem đơn: bán hàng, kho, CSKH (CSKH chỉ xem để tra cứu khi khách hỏi).
+                .requestMatchers(HttpMethod.GET, "/orders/**").hasAnyAuthority("ROLE_BUYER", "DEPT_SALES", "DEPT_WAREHOUSE", "DEPT_CS")
+                .requestMatchers(HttpMethod.PATCH, "/orders/*/status").hasAnyAuthority("ROLE_BUYER", "DEPT_SALES")
                 .requestMatchers(
                         HttpMethod.PATCH,
                         "/orders/*/shipping-info",
                         "/orders/*/tracking",
                         "/orders/*/delivery-failed"
-                ).hasRole("STAFF")
-                .requestMatchers(HttpMethod.PATCH, "/orders/*/payment-received").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
-                // Hoá đơn: khách xem hoá đơn đơn của mình, nhân viên xem mọi hoá đơn (GET /orders/** ở trên); lập lại chỉ bán hàng + admin.
-                .requestMatchers(HttpMethod.POST, "/orders/*/invoice/reissue").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
-                // Hoàn tiền: khách gửi yêu cầu / khai tài khoản nhận; CSKH + admin duyệt và ghi nhận đã chuyển trả.
+                ).hasAuthority("DEPT_WAREHOUSE")
+                .requestMatchers(HttpMethod.PATCH, "/orders/*/payment-received").hasAuthority("DEPT_SALES")
+                // Hoá đơn: khách xem hoá đơn đơn của mình, nhân viên xem hoá đơn (GET /orders/** ở trên); lập lại chỉ bán hàng.
+                .requestMatchers(HttpMethod.POST, "/orders/*/invoice/reissue").hasAuthority("DEPT_SALES")
+                // Hoàn tiền: khách gửi yêu cầu / khai tài khoản nhận; CSKH duyệt và ghi nhận đã chuyển trả.
                 .requestMatchers(HttpMethod.POST, "/refund-returns").hasRole("BUYER")
                 .requestMatchers(HttpMethod.GET, "/refund-returns/quote").hasRole("BUYER")
                 .requestMatchers(HttpMethod.PATCH, "/refund-returns/*/bank-account").hasRole("BUYER")
-                .requestMatchers("/refund-returns", "/refund-returns/**").hasAnyAuthority("DEPT_CS", "DEPT_ADMIN")
+                .requestMatchers("/refund-returns", "/refund-returns/**").hasAuthority("DEPT_CS")
                 // Only staff in the "admin" department may create internal employee accounts.
                 .requestMatchers("/employees/**").hasAuthority("DEPT_ADMIN")
                 // CRM "Khách hàng" admin page — do CS phụ trách (theo docs/phan-quyen-he-thong.md).
-                .requestMatchers("/customers/**").hasAnyAuthority("DEPT_CS", "DEPT_ADMIN")
+                .requestMatchers("/customers/**").hasAuthority("DEPT_CS")
                 .requestMatchers("/vouchers", "/vouchers/**").hasAuthority("ROLE_BUYER")
                 .requestMatchers("/loyalty", "/loyalty/**").hasAuthority("ROLE_BUYER")
                 .requestMatchers(HttpMethod.POST, "/reviews").hasRole("BUYER")
                 .requestMatchers(HttpMethod.GET, "/reviews/mine").hasRole("BUYER")
                 .requestMatchers(HttpMethod.PUT, "/reviews/*").hasRole("BUYER")
                 .requestMatchers(HttpMethod.DELETE, "/reviews/*").hasRole("BUYER")
-                .requestMatchers(HttpMethod.PATCH, "/reviews/*/reply").hasAnyAuthority("DEPT_SALES", "DEPT_CS", "DEPT_ADMIN")
-                .requestMatchers(HttpMethod.GET, "/reviews/manage").hasAnyAuthority("DEPT_SALES", "DEPT_CS", "DEPT_ADMIN")
-                .requestMatchers("/marketing", "/marketing/**").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
-                // Báo cáo quản trị: doanh thu / lợi nhuận cho kinh doanh, nhập–xuất–tồn cho kho; admin xem cả hai.
-                .requestMatchers(HttpMethod.GET, "/api/reports/revenue").hasAnyAuthority("DEPT_SALES", "DEPT_ADMIN")
-                .requestMatchers(HttpMethod.GET, "/api/reports/inventory").hasAnyAuthority("DEPT_WAREHOUSE", "DEPT_ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/reviews/*/reply").hasAuthority("DEPT_CS")
+                .requestMatchers(HttpMethod.GET, "/reviews/manage").hasAuthority("DEPT_CS")
+                .requestMatchers("/marketing", "/marketing/**").hasAuthority("DEPT_SALES")
+                // Báo cáo quản trị: doanh thu / lợi nhuận cho kinh doanh, nhập–xuất–tồn cho kho.
+                .requestMatchers(HttpMethod.GET, "/api/reports/revenue").hasAuthority("DEPT_SALES")
+                .requestMatchers(HttpMethod.GET, "/api/reports/inventory").hasAuthority("DEPT_WAREHOUSE")
                 .requestMatchers("/api/reports/**").denyAll()
                 .anyRequest().authenticated()
             )

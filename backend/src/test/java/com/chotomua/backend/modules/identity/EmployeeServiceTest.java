@@ -104,6 +104,34 @@ class EmployeeServiceTest {
         assertThat(response.department()).isEqualTo("sales");
     }
 
+    @Test
+    void temporaryPassword_replacesTheHashAndIsReturnedOnce() {
+        Employee sales = employeeOf("sales");
+        sales.getUser().setStatus("active");
+        when(employeeRepository.findById(sales.getId())).thenReturn(Optional.of(sales));
+
+        String password = employeeService.issueTemporaryPassword(UUID.randomUUID(), sales.getId());
+
+        assertThat(password).isNotBlank();
+        assertThat(new BCryptPasswordEncoder().matches(password, sales.getUser().getPasswordHash())).isTrue();
+    }
+
+    @Test
+    void temporaryPassword_rejectsOwnAccountAndLockedAccounts() {
+        Employee admin = employeeOf("admin");
+        admin.getUser().setStatus("active");
+        when(employeeRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        assertThatThrownBy(() -> employeeService.issueTemporaryPassword(admin.getUser().getId(), admin.getId()))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        Employee locked = employeeOf("cs");
+        locked.getUser().setStatus("locked");
+        when(employeeRepository.findById(locked.getId())).thenReturn(Optional.of(locked));
+        assertThatThrownBy(() -> employeeService.issueTemporaryPassword(UUID.randomUUID(), locked.getId()))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(locked.getUser().getPasswordHash()).isEqualTo("hash");
+    }
+
     private static Employee employeeOf(String department) {
         User user = new User("staff", "hash");
         setId(user, UUID.randomUUID());

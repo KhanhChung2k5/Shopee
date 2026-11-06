@@ -67,7 +67,7 @@ class CampaignFunnelServiceTest {
                 notifications, new InMemorySurveyStore());
         funnels = new CampaignFunnelService(
                 identity, orders, products, campaignStore, productTargets, notifications);
-        identity.seedStaff(ADMIN, StaffDepartment.ADMIN);
+        identity.seedStaff(ADMIN, StaffDepartment.SALES);
         products.seed(new ProductView(
                 DUALSENSE, "Tay cầm DualSense", "Sony", "controller",
                 CAT, "Tay cầm", null, List.of("PS5"), new BigDecimal("1890000"), "published"));

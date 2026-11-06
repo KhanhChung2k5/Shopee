@@ -58,7 +58,7 @@ public class SurveyParticipationController {
     }
 
     @GetMapping("/{id}/stats")
-    @PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_CS')")
+    @PreAuthorize("hasAuthority('DEPT_CS')")
     public SurveyStatsResponse stats(@PathVariable UUID id) {
         return surveys.stats(currentActor.requireUserId(), id);
     }

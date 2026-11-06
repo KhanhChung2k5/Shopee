@@ -48,7 +48,7 @@ class CustomerProfileServiceTest {
         orders = new FakeOrderPort();
         store = new InMemoryProfileStore();
         profiles = new CustomerProfileService(identity, orders, store, CLOCK);
-        identity.seedStaff(ACTOR, StaffDepartment.ADMIN);
+        identity.seedStaff(ACTOR, StaffDepartment.CS);
         identity.seedStaff(SALES, StaffDepartment.SALES);
     }
 

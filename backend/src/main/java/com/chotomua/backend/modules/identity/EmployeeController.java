@@ -4,6 +4,7 @@ import com.chotomua.backend.modules.identity.dto.EmployeeRequest;
 import com.chotomua.backend.modules.identity.dto.EmployeeResponse;
 import com.chotomua.backend.modules.identity.dto.EmployeeStatusRequest;
 import com.chotomua.backend.modules.identity.dto.EmployeeUpdateRequest;
+import com.chotomua.backend.modules.identity.dto.TemporaryPasswordResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -54,5 +55,11 @@ public class EmployeeController {
     @PatchMapping("/{id}/status")
     public EmployeeResponse updateStatus(Authentication authentication, @PathVariable UUID id, @Valid @RequestBody EmployeeStatusRequest request) {
         return employeeService.updateStatus(UUID.fromString(authentication.getName()), id, request.status());
+    }
+
+    // Issue a temporary password to a staff member who forgot theirs (shown once)
+    @PostMapping("/{id}/temporary-password")
+    public TemporaryPasswordResponse issueTemporaryPassword(Authentication authentication, @PathVariable UUID id) {
+        return new TemporaryPasswordResponse(employeeService.issueTemporaryPassword(UUID.fromString(authentication.getName()), id));
     }
 }

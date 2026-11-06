@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { a } from '../../adminUi'
 import { Badge, buttonClass, cx } from '../../../components/ui'
 import { ApiError } from '../../../lib/api'
@@ -8,8 +8,10 @@ import {
   type ConversationDetail, type ConversationMessage, type ConversationSummary, type SupportAgent,
 } from '../../../lib/crm'
 import { useAuth } from '../../../state/AuthContext'
+import { RecentViews, SearchBox } from '../../components/ListSearch'
+import { matches, normalize, useRecentViews } from '../../components/listSearchState'
 
-const FILTERS = [['', 'Tất cả'], ['mine', 'Của tôi'], ['open', 'Chưa xử lý'], ['high', 'Ưu tiên']] as const
+const FILTERS = [['', 'Tất cả'], ['mine', 'Của tôi'], ['open', 'Chưa xử lý'], ['high', 'Ưu tiên'], ['closed', 'Đã xử lý']] as const
 const STATUS_TONE: Record<string, 'primary' | 'info' | 'neutral'> = { open: 'primary', in_progress: 'info', closed: 'neutral' }
 const AVATAR_TONES = [
   'bg-primary-fixed text-on-primary-fixed',
@@ -48,13 +50,23 @@ function Avatar({ name, seed, size = 'md' }: { name: string | null; seed: string
   )
 }
 
-/** Hàng đợi hỗ trợ CSKH (p5-12→14, p5-17): ticket/chat, trả lời, ghi chú nội bộ, escalate. CS + admin. */
+/** Hàng đợi hỗ trợ CSKH (p5-12→14, p5-17): ticket/chat, trả lời, ghi chú nội bộ, phân công / chuyển nhân viên, đánh dấu đã xử lý. */
 export default function AdminSupportPage() {
   const { token } = useAuth()
   const [filter, setFilter] = useState('')
   const [items, setItems] = useState<ConversationSummary[] | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [query, setQuery] = useState('')
+  const viewed = useRecentViews('support')
+  const pushViewed = viewed.push
+
+  const open = useCallback((c: { id: string; code: string; customerName: string | null }) => {
+    setSelectedId(c.id)
+    pushViewed(c.id, `${c.code} · ${c.customerName ?? 'Khách'}`)
+  }, [pushViewed])
+
+  const shown = useMemo(() => items?.filter((c) => matches(query, c.code, c.customerName, c.preview, c.topicLabel, c.assigneeName, c.statusLabel)) ?? null, [items, query])
 
   const loadList = useCallback(() => {
     if (!token) return
@@ -71,7 +83,11 @@ export default function AdminSupportPage() {
 
   return (
     <div>
-      <h1 className="!mb-space-md">Hỗ trợ khách hàng</h1>
+      <div className={a.toolbar}>
+        <h1 className="!mb-0">Hỗ trợ khách hàng</h1>
+        <SearchBox page="support" placeholder="Tìm mã ticket, khách, nội dung..." value={query} onChange={setQuery} />
+      </div>
+      <RecentViews items={viewed.items} onClear={viewed.clear} onOpen={setSelectedId} />
       {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-sm">{error}</p>}
 
       <div className="grid h-[calc(100dvh-15.5rem)] min-h-[520px] lg:h-[calc(100dvh-10rem)] grid-cols-1 overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]">
@@ -86,12 +102,12 @@ export default function AdminSupportPage() {
             ))}
           </div>
 
-          {!items && <p className={a.empty}>Đang tải…</p>}
-          {items?.length === 0 && <p className={a.empty}>Không có hội thoại nào.</p>}
+          {!shown && <p className={a.empty}>Đang tải…</p>}
+          {shown?.length === 0 && <p className={a.empty}>{query ? 'Không có hội thoại nào khớp từ khoá.' : 'Không có hội thoại nào.'}</p>}
           <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto">
-            {items?.map((c) => (
+            {shown?.map((c) => (
               <li key={c.id}>
-                <button type="button" onClick={() => setSelectedId(c.id)} aria-current={c.id === selectedId ? 'true' : undefined}
+                <button type="button" onClick={() => open(c)} aria-current={c.id === selectedId ? 'true' : undefined}
                   className={cx('flex w-full cursor-pointer gap-space-sm border-l-[3px] px-space-md py-space-sm text-left transition-colors',
                     c.id === selectedId ? 'border-primary bg-primary-fixed/40' : 'border-transparent hover:bg-surface-container-low')}>
                   <Avatar name={c.customerName} seed={c.userId} />
@@ -225,15 +241,18 @@ function ConversationPanel({ token, id, onBack, onChanged, onError }: {
         <div className="flex flex-wrap items-center gap-space-xs">
           {detail.status === 'open' && <button type="button" className={buttonClass('primary', 'sm')} onClick={() => void apply(() => patchConversation(token, id, { status: 'in_progress' }), 'Không nhận xử lý được')}>Nhận xử lý</button>}
           {!closed && (
-            <select aria-label="Chuyển cho nhân viên" className={cx(a.input, '!w-auto !py-1 !font-label-md !text-label-md')} value="" onChange={(e) => e.target.value && void apply(() => escalateConversation(token, id, e.target.value), 'Không chuyển được')}>
-              <option value="">Chuyển cho nhân viên…</option>
-              {agents.filter((ag) => ag.userId !== detail.assigneeId).map((ag) => <option key={ag.userId} value={ag.userId}>{ag.fullName} ({ag.roleLabel})</option>)}
-            </select>
+            <AgentPicker agents={agents.filter((ag) => ag.userId !== detail.assigneeId)} label={detail.assigneeId ? 'Chuyển cho nhân viên khác' : 'Phân công nhân viên'}
+              onPick={(userId) => void apply(() => escalateConversation(token, id, userId), 'Không chuyển được')} />
           )}
           <button type="button" aria-pressed={high} className={buttonClass('outline', 'sm')} onClick={() => void apply(() => patchConversation(token, id, { priority: high ? 'normal' : 'high' }), 'Không đổi được ưu tiên')}>
             {high ? 'Bỏ ưu tiên' : 'Đánh dấu ưu tiên'}
           </button>
-          {!closed && <button type="button" className={cx(buttonClass('outline', 'sm'), 'sm:ml-auto')} title="Cần có người phụ trách và đã trả lời khách" onClick={() => void apply(() => patchConversation(token, id, { status: 'closed' }), 'Không đóng được')}>Đóng hội thoại</button>}
+          {!closed && (
+            <button type="button" className={cx(buttonClass('primary', 'sm'), 'sm:ml-auto inline-flex items-center gap-1')} title="Cần có người phụ trách và đã trả lời khách"
+              onClick={() => void apply(() => patchConversation(token, id, { status: 'closed' }), 'Không chuyển sang đã xử lý được')}>
+              <span className="material-symbols-outlined !text-base">task_alt</span>Đánh dấu đã xử lý
+            </button>
+          )}
         </div>
       </header>
 
@@ -256,7 +275,7 @@ function ConversationPanel({ token, id, onBack, onChanged, onError }: {
 
       {closed ? (
         <p className="flex-shrink-0 border-t border-line px-space-lg py-space-md text-center font-body-md text-body-md text-on-surface-variant">
-          Hội thoại đã đóng. Khách có thể mở yêu cầu mới nếu vẫn cần hỗ trợ.
+          Ticket đã xử lý xong. Khách có thể mở yêu cầu mới nếu vẫn cần hỗ trợ.
         </p>
       ) : (
         <form className={cx('flex-shrink-0 space-y-space-xs border-t border-line px-space-md py-space-sm transition-colors lg:px-space-lg', internal && 'bg-tertiary-fixed/40')} onSubmit={send}>
@@ -312,6 +331,51 @@ function MessageRow({ message: m, customerSeed }: { message: ConversationMessage
           {m.content}
         </p>
       </div>
+    </div>
+  )
+}
+
+/** Chọn nhân viên CSKH để phân công / chuyển ticket, có ô tìm theo tên. */
+function AgentPicker({ agents, label, onPick }: { agents: SupportAgent[]; label: string; onPick: (userId: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [term, setTerm] = useState('')
+  const boxRef = useRef<HTMLDivElement>(null)
+  const list = agents.filter((ag) => !term.trim() || normalize(`${ag.fullName} ${ag.roleLabel}`).includes(normalize(term)))
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (event: MouseEvent) => { if (boxRef.current && !boxRef.current.contains(event.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+
+  const pick = (userId: string) => { setOpen(false); setTerm(''); onPick(userId) }
+
+  return (
+    <div ref={boxRef} className="relative">
+      <button type="button" aria-haspopup="listbox" aria-expanded={open} className={cx(buttonClass('outline', 'sm'), 'inline-flex items-center gap-1')} onClick={() => setOpen((v) => !v)}>
+        <span className="material-symbols-outlined !text-base">person_add</span>{label}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1 w-72 rounded-xl border border-line bg-surface-container-lowest p-space-xs shadow-lg">
+          <input autoFocus type="search" aria-label="Tìm nhân viên" placeholder="Tìm nhân viên theo tên…" value={term}
+            onChange={(e) => setTerm(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); if (e.key === 'Enter' && list.length === 1) pick(list[0].userId) }}
+            className={cx(a.input, '!py-1.5 mb-1')} />
+          <ul role="listbox" aria-label="Nhân viên CSKH" className="max-h-60 overflow-y-auto">
+            {list.length === 0 && <li className="px-2 py-1.5 font-body-md text-body-md text-on-surface-variant">Không có nhân viên phù hợp.</li>}
+            {list.map((ag) => (
+              <li key={ag.userId}>
+                <button type="button" role="option" aria-selected={false} onClick={() => pick(ag.userId)}
+                  className="flex w-full cursor-pointer items-center justify-between gap-space-sm rounded-lg px-2 py-1.5 text-left font-body-md text-body-md text-on-surface hover:bg-surface-container-low">
+                  <span className="truncate">{ag.fullName}</span>
+                  <span className="flex-shrink-0 font-label-sm text-label-sm text-on-surface-variant">{ag.roleLabel}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

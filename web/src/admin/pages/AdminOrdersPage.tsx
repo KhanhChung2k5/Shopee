@@ -6,6 +6,8 @@ import { useAuth } from '../../state/AuthContext'
 import { a, chipClass, statusPillClass, pageButtonClass } from '../adminUi'
 import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE, awaitsTransfer, isStaleOrder, orderAgeDays, orderCode, paymentShort, type OrderStatus, type StaffOrderSummary } from '../orders'
 import OrderDetailPanel from '../components/OrderDetailPanel'
+import { RecentViews, SearchBox } from '../components/ListSearch'
+import { useRecentViews } from '../components/listSearchState'
 
 const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Tất cả' },
@@ -41,6 +43,7 @@ export default function AdminOrdersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const rowRefs = useRef(new Map<string, HTMLTableRowElement>())
+  const viewed = useRecentViews('orders')
 
   const loadOrders = useCallback(() => {
     if (!token) return
@@ -81,6 +84,13 @@ export default function AdminOrdersPage() {
   }, [navigate, panelOpen])
   const closePanel = useCallback(() => navigate('/admin/don-hang'), [navigate])
 
+  // "Đã xem gần đây": ghi lại đơn vừa mở.
+  const viewedPush = viewed.push
+  useEffect(() => {
+    const order = selectedId ? orders?.find((o) => o.id === selectedId) : undefined
+    if (order) viewedPush(order.id, `#${orderCode(order.id)} · ${order.customer?.fullName ?? 'Khách'}`)
+  }, [selectedId, orders, viewedPush])
+
   // Keep the open order on the visible page and in view (e.g. after ↑/↓ crosses a page boundary).
   useEffect(() => {
     if (selectedIndex < 0) return
@@ -113,13 +123,8 @@ export default function AdminOrdersPage() {
       <div className="min-w-0">
         <div className={a.toolbar}>
           <h1 className="!mb-0">Đơn hàng ({filtered.length})</h1>
-          <input
-            type="search"
-            placeholder="Tìm mã đơn, tên, email, SĐT..."
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-            className={`${a.input} max-w-[300px] !rounded-full`}
-          />
+          <SearchBox page="orders" placeholder="Tìm mã đơn, tên, email, SĐT..." value={searchQuery}
+            onChange={(v) => { setSearchQuery(v); setCurrentPage(1) }} />
         </div>
 
         <div className={`${a.filterBar} mb-space-md`}>
@@ -137,6 +142,7 @@ export default function AdminOrdersPage() {
           )}
         </div>
 
+        <RecentViews items={viewed.items} onOpen={openOrder} onClear={viewed.clear} />
         {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
 
         <div className={a.tableWrap}>

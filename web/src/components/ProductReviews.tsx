@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { apiFetch, ApiError } from '../lib/api'
 import { useAuth } from '../state/AuthContext'
 import { Card, CardTitle, inputClass } from './ui'
@@ -41,8 +42,9 @@ export default function ProductReviews({ productId }: { productId: string }) {
   const [star, setStar] = useState<number | null>(null)
   const [shown, setShown] = useState(PAGE)
   const { token, user } = useAuth()
+  const { hash } = useLocation()
   // Sales, CS and admin answer reviews here as on the admin page (PATCH /reviews/{id}/reply).
-  const canReply = user?.role === 'staff' && ['sales', 'cs', 'admin'].includes(user.department ?? '')
+  const canReply = user?.role === 'staff' && user.department === 'cs'
 
   const setReply = (id: string, replyText: string) =>
     setData((current) => current && { ...current, reviews: current.reviews.map((r) => (r.id === id ? { ...r, replyText } : r)) })
@@ -59,10 +61,15 @@ export default function ProductReviews({ productId }: { productId: string }) {
     return () => { active = false }
   }, [productId])
 
+  // Link from the homepage review showcase (…#danh-gia): scroll to the reviews once they are loaded.
+  useEffect(() => {
+    if (data && hash === '#danh-gia') document.getElementById('danh-gia')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [data, hash])
+
   const list = data ? data.reviews.filter((r) => star == null || r.rating === star) : []
 
   return (
-    <Card as="section" aria-labelledby="product-reviews-title">
+    <Card as="section" id="danh-gia" className="scroll-mt-24" aria-labelledby="product-reviews-title">
       <CardTitle icon="reviews"><span id="product-reviews-title">Đánh giá sản phẩm</span></CardTitle>
       {failed && <p className="font-body-md text-body-md text-on-surface-variant">Không tải được đánh giá.</p>}
       {!failed && !data && <p className="font-body-md text-body-md text-on-surface-variant">Đang tải đánh giá…</p>}

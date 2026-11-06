@@ -77,7 +77,7 @@ class OperationLogControllerTest {
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(post("/api/customers")
-                        .with(user(ADMIN_ID).authorities(new SimpleGrantedAuthority("DEPT_ADMIN")))
+                        .with(user(CS_ID).authorities(new SimpleGrantedAuthority("DEPT_CS")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(CREATE_BODY))
                 .andExpect(status().isCreated());
@@ -88,7 +88,7 @@ class OperationLogControllerTest {
                 .andExpect(jsonPath("$.pagination.totalItems").value(2))
                 .andExpect(jsonPath("$.data[0].action").value("Tạo khách hàng"))
                 .andExpect(jsonPath("$.data[0].outcome").value("success"))
-                .andExpect(jsonPath("$.data[0].actorLabel").value("Quản trị viên"))
+                .andExpect(jsonPath("$.data[0].actorLabel").value("CSKH"))
                 .andExpect(jsonPath("$.data[1].action").value("Tạo khách hàng"))
                 .andExpect(jsonPath("$.data[1].outcome").value("failed"))
                 .andExpect(jsonPath("$.data[1].actorLabel").value("NV Kinh doanh"))
@@ -122,7 +122,7 @@ class OperationLogControllerTest {
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(post("/api/customers")
-                        .with(user(ADMIN_ID).authorities(new SimpleGrantedAuthority("DEPT_ADMIN")))
+                        .with(user(CS_ID).authorities(new SimpleGrantedAuthority("DEPT_CS")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(CREATE_BODY))
                 .andExpect(status().isCreated());
@@ -143,9 +143,10 @@ class OperationLogControllerTest {
         mockMvc.perform(get("/api/crm/audit-logs/filters")
                         .with(user(ADMIN_ID).authorities(new SimpleGrantedAuthority("DEPT_ADMIN"))))
                 .andExpect(status().isOk())
-                // only people who actually appear in the log: sales acted above, cs never did
+                // only people who actually appear in the log: sales and cs acted above, admin never did
                 .andExpect(jsonPath("$.actors[*].login", hasItem("sales")))
-                .andExpect(jsonPath("$.actors[*].login", org.hamcrest.Matchers.not(hasItem("cs"))))
+                .andExpect(jsonPath("$.actors[*].login", hasItem("cs")))
+                .andExpect(jsonPath("$.actors[*].login", org.hamcrest.Matchers.not(hasItem("admin"))))
                 .andExpect(jsonPath("$.departments", hasItem("cs")))
                 .andExpect(jsonPath("$.actions", hasItem("Tạo khách hàng")));
     }

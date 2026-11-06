@@ -26,7 +26,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/segments")
-@PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_SALES', 'DEPT_CS')")
+@PreAuthorize("hasAnyAuthority('DEPT_SALES', 'DEPT_CS')")
 public class SegmentController {
 
     private final SegmentService segments;
@@ -48,7 +48,7 @@ public class SegmentController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_SALES')")
+    @PreAuthorize("hasAuthority('DEPT_SALES')")
     public ResponseEntity<SegmentResponse> create(@Valid @RequestBody UpsertSegmentRequest request) {
         SegmentResponse created = segments.create(
                 currentActor.requireUserId(),
@@ -58,7 +58,7 @@ public class SegmentController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_SALES')")
+    @PreAuthorize("hasAuthority('DEPT_SALES')")
     public SegmentResponse update(@PathVariable UUID id, @Valid @RequestBody UpsertSegmentRequest request) {
         return segments.update(
                 currentActor.requireUserId(),
@@ -68,14 +68,14 @@ public class SegmentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_SALES')")
+    @PreAuthorize("hasAuthority('DEPT_SALES')")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         segments.delete(currentActor.requireUserId(), id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/refresh")
-    @PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_SALES')")
+    @PreAuthorize("hasAuthority('DEPT_SALES')")
     public SegmentResponse refresh(@PathVariable UUID id) {
         return segments.refresh(currentActor.requireUserId(), id);
     }

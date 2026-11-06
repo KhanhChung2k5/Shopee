@@ -101,7 +101,7 @@ export function describeRule(rule: Record<string, unknown>): string {
   }
   if (presets.includes('category')) {
     const names = (Array.isArray(rule.categoryNames) ? rule.categoryNames : [rule.categoryName]).filter(Boolean) as string[]
-    parts.push(`Ngành hàng: ${names.join(', ') || 'đã chọn'}`)
+    parts.push(`Loại sản phẩm: ${names.join(', ') || 'đã chọn'}`)
   }
   return parts.join(' · ') || 'Không rõ'
 }
@@ -135,8 +135,14 @@ export interface CampaignFunnel {
 }
 
 export const fetchCampaigns = (token: string) => apiFetch<{ campaigns: Campaign[] }>('/api/campaigns', {}, token)
-export const createCampaign = (token: string, body: { name: string; segmentIds: string[]; content: string; surveyId?: string }) =>
+export const createCampaign = (token: string, body: { name: string; segmentIds: string[]; content: string; surveyId?: string; startAt?: string | null; draft?: boolean }) =>
   apiFetch<Campaign>('/api/campaigns', { method: 'POST', body: JSON.stringify(body) }, token)
+/** Sửa chiến dịch: tên, nội dung, lịch gửi (khi còn lên lịch / nháp); phân khúc chỉ đổi được ở bản nháp. */
+export const updateCampaign = (token: string, id: string, body: { name: string; content: string; startAt?: string | null; segmentIds?: string[] }) =>
+  apiFetch<Campaign>(`/api/campaigns/${id}`, { method: 'PUT', body: JSON.stringify(body) }, token)
+/** Gửi bản nháp: ngay, hoặc lên lịch nếu giờ hẹn còn ở tương lai. */
+export const sendDraftCampaign = (token: string, id: string) =>
+  apiFetch<Campaign>(`/api/campaigns/${id}/send`, { method: 'POST' }, token)
 export const deleteCampaign = (token: string, id: string) => apiFetch<void>(`/api/campaigns/${id}`, { method: 'DELETE' }, token)
 export const fetchCampaignFunnel = (token: string, id: string) =>
   apiFetch<CampaignFunnel>(`/api/crm/reports/campaigns/${id}/funnel`, {}, token)

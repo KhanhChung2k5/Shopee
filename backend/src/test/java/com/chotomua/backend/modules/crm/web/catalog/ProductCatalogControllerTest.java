@@ -68,7 +68,7 @@ class ProductCatalogControllerTest {
         identity.reset();
         products.reset();
         orders.reset();
-        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
+        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
         products.seed(new ProductView(
                 DUALSENSE, "Tay cầm DualSense", "Sony", "controller",
@@ -86,7 +86,7 @@ class ProductCatalogControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void searchDefaultsToPublishedAndFiltersByType() throws Exception {
         mockMvc.perform(get("/api/crm/products"))
                 .andExpect(status().isOk())
@@ -104,7 +104,7 @@ class ProductCatalogControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void lookupReturnsKnownProductsAndSkipsUnknownIds() throws Exception {
         mockMvc.perform(get("/api/crm/products/lookup")
                         .param("ids", FIFA + "," + UUID.randomUUID() + "," + DUALSENSE))
@@ -119,7 +119,7 @@ class ProductCatalogControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void facetsListOnlyPublishedValues() throws Exception {
         mockMvc.perform(get("/api/crm/products/facets"))
                 .andExpect(status().isOk())
@@ -130,7 +130,7 @@ class ProductCatalogControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void audiencePreviewCountsOnlyActiveBuyers() throws Exception {
         mockMvc.perform(post("/api/crm/products/audience-preview")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -148,7 +148,7 @@ class ProductCatalogControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void deliveredOrdersListProductIds() throws Exception {
         mockMvc.perform(get("/api/crm/customers/" + activeBuyer.id() + "/delivered-orders"))
                 .andExpect(status().isOk())

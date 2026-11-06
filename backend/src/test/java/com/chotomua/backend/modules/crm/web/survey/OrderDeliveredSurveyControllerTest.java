@@ -83,7 +83,7 @@ class OrderDeliveredSurveyControllerTest {
         targets.clear();
         notifications.clear();
         dispatchLog.clear();
-        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
+        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
         products.seed(new ProductView(
                 PRODUCT, "Tay cầm DualSense", "Sony", "controller",
@@ -91,7 +91,7 @@ class OrderDeliveredSurveyControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void hookSendsInAppSurveyAndDoesNotLoadMailSender() throws Exception {
         CustomerView customer = identity.seedCustomer(
                 "An", "male", LocalDate.of(1998, 5, 12), CustomerStatus.ACTIVE);

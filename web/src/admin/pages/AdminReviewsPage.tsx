@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { a } from '../adminUi'
 import { Badge, buttonClass, cx } from '../../components/ui'
 import { ApiError, apiFetch } from '../../lib/api'
 import { timeVi } from '../../lib/crm'
 import { useAuth } from '../../state/AuthContext'
+import { RecentViews, SearchBox, StatusFilter } from '../components/ListSearch'
+import { matches, useRecentViews } from '../components/listSearchState'
 
 interface StaffReview {
   id: string
@@ -13,11 +16,13 @@ interface StaffReview {
   createdAt: string
   buyerName: string | null
   productName: string | null
+  productId: string | null
   orderId: string
   repliedByName: string | null
 }
 
-type Filter = 'unreplied' | 'all'
+type Filter = 'unreplied' | 'replied' | 'all'
+const FILTERS = [['unreplied', 'Chờ phản hồi'], ['replied', 'Đã phản hồi'], ['all', 'Tất cả']] as const
 
 function Stars({ rating }: { rating: number }) {
   return (
@@ -27,7 +32,7 @@ function Stars({ rating }: { rating: number }) {
   )
 }
 
-/** Đánh giá sản phẩm (p4-14): sales / CSKH / admin xem đánh giá của khách và phản hồi. */
+/** Đánh giá sản phẩm (p4-14): CSKH xem đánh giá của khách, lọc theo sản phẩm / số sao và phản hồi. */
 export default function AdminReviewsPage() {
   const { token } = useAuth()
   const [filter, setFilter] = useState<Filter>('unreplied')
@@ -36,13 +41,42 @@ export default function AdminReviewsPage() {
   const [editing, setEditing] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
+  const [query, setQuery] = useState('')
+  const [productId, setProductId] = useState('')
+  const [star, setStar] = useState(0)
+  const viewed = useRecentViews('reviews')
 
   const load = useCallback(() => {
     if (!token) return
-    apiFetch<StaffReview[]>(`/reviews/manage?unreplied=${filter === 'unreplied'}`, {}, token)
+    apiFetch<StaffReview[]>('/reviews/manage', {}, token)
       .then((data) => { setReviews(data); setError('') })
       .catch((e) => setError(e instanceof ApiError ? e.message : 'Không tải được đánh giá'))
-  }, [token, filter])
+  }, [token])
+
+  /** Sản phẩm có đánh giá, kèm số đánh giá — cho ô lọc theo sản phẩm. */
+  const products = useMemo(() => {
+    const map = new Map<string, { name: string; count: number }>()
+    for (const r of reviews ?? []) {
+      if (!r.productId) continue
+      const entry = map.get(r.productId) ?? { name: r.productName ?? 'Sản phẩm', count: 0 }
+      entry.count += 1
+      map.set(r.productId, entry)
+    }
+    return [...map.entries()].sort((x, y) => x[1].name.localeCompare(y[1].name, 'vi'))
+  }, [reviews])
+
+  const counts = useMemo(() => ({
+    all: reviews?.length ?? 0,
+    unreplied: reviews?.filter((r) => !r.replyText).length ?? 0,
+    replied: reviews?.filter((r) => r.replyText).length ?? 0,
+  }), [reviews])
+
+  const shown = useMemo(() => reviews?.filter((r) =>
+    (filter === 'all' || (filter === 'unreplied' ? !r.replyText : !!r.replyText))
+    && (!productId || r.productId === productId)
+    && (!star || r.rating === star)
+    && matches(query, r.productName, r.buyerName, r.comment, r.replyText, r.orderId.slice(0, 8))) ?? null,
+  [reviews, filter, productId, star, query])
 
   useEffect(load, [load])
 
@@ -69,26 +103,41 @@ export default function AdminReviewsPage() {
   return (
     <div>
       <div className={a.toolbar}>
-        <h1 className="!mb-0">Đánh giá sản phẩm</h1>
+        <h1 className="!mb-0">Đánh giá sản phẩm ({shown?.length ?? 0})</h1>
+        <SearchBox page="reviews" placeholder="Tìm sản phẩm, khách, nội dung..." value={query} onChange={setQuery} />
       </div>
+      <StatusFilter options={FILTERS} value={filter} onChange={setFilter} counts={counts} className="!mb-space-sm" />
       <div className={cx(a.filterBar, 'mb-space-md')}>
-        {([['unreplied', 'Chưa phản hồi'], ['all', 'Tất cả']] as const).map(([key, label]) => (
-          <button key={key} type="button" className={buttonClass(filter === key ? 'primary' : 'outline', 'sm')} onClick={() => setFilter(key)}>{label}</button>
-        ))}
+        <select aria-label="Lọc theo sản phẩm" className={cx(a.input, '!w-auto max-w-[320px]')} value={productId} onChange={(e) => setProductId(e.target.value)}>
+          <option value="">Tất cả sản phẩm ({products.length})</option>
+          {products.map(([id, p]) => <option key={id} value={id}>{p.name} ({p.count})</option>)}
+        </select>
+        <select aria-label="Lọc theo số sao" className={cx(a.input, '!w-auto')} value={star} onChange={(e) => setStar(Number(e.target.value))}>
+          <option value={0}>Mọi số sao</option>
+          {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} sao</option>)}
+        </select>
+        {(productId || star > 0 || query) && <button type="button" className={buttonClass('outline', 'sm')} onClick={() => { setProductId(''); setStar(0); setQuery('') }}>Xoá bộ lọc</button>}
       </div>
+      <RecentViews items={viewed.items} onClear={viewed.clear} onOpen={(id) => window.open(`/san-pham/${id}`, '_blank', 'noopener')} />
       {error && <p className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
 
       {!reviews && <div className={a.empty}>Đang tải…</div>}
-      {reviews?.length === 0 && (
-        <div className={a.empty}>{filter === 'unreplied' ? 'Không còn đánh giá nào chờ phản hồi.' : 'Chưa có đánh giá nào.'}</div>
+      {shown?.length === 0 && (
+        <div className={a.empty}>{filter === 'unreplied' && !productId && !star && !query ? 'Không còn đánh giá nào chờ phản hồi.' : 'Không có đánh giá nào khớp bộ lọc.'}</div>
       )}
 
       <div className="space-y-space-md">
-        {reviews?.map((r) => (
+        {shown?.map((r) => (
           <div key={r.id} className={a.card}>
             <div className="flex flex-wrap items-start justify-between gap-space-sm">
               <div>
-                <div className="font-title-md text-title-md text-on-surface">{r.productName ?? 'Sản phẩm'}</div>
+                {r.productId ? (
+                  <Link to={`/san-pham/${r.productId}`} target="_blank" rel="noopener" title="Mở trang sản phẩm (tab mới)"
+                    onClick={() => viewed.push(r.productId!, r.productName ?? 'Sản phẩm')}
+                    className="inline-flex items-center gap-1 font-title-md text-title-md text-primary hover:underline">
+                    {r.productName ?? 'Sản phẩm'}<span className="material-symbols-outlined !text-base">open_in_new</span>
+                  </Link>
+                ) : <div className="font-title-md text-title-md text-on-surface">{r.productName ?? 'Sản phẩm'}</div>}
                 <div className="font-body-md text-body-md text-on-surface-variant">
                   {r.buyerName ?? 'Khách hàng'} · {timeVi(r.createdAt)} · Đơn #{r.orderId.slice(0, 8).toUpperCase()}
                 </div>

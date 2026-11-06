@@ -65,7 +65,7 @@ class SurveyTargetControllerTest {
         products.reset();
         surveys.clear();
         targets.clear();
-        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
+        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
         products.seed(new ProductView(
                 UUID.fromString(DUALSENSE), "Tay cầm DualSense", "Sony", "controller",
@@ -78,7 +78,7 @@ class SurveyTargetControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void putAndGetRoundTripOnCrmPath() throws Exception {
         String surveyId = createDraft();
         mockMvc.perform(put("/api/crm/surveys/" + surveyId + "/product-target")

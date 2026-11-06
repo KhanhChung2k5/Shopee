@@ -20,6 +20,8 @@ public record CreateCampaignRequest(
         Instant startAt,
         Instant endAt,
         List<UUID> productIds,
-        ProductFilter filter
+        ProductFilter filter,
+        /** true = chỉ lưu nháp, chưa gửi cho ai. */
+        Boolean draft
 ) {
 }

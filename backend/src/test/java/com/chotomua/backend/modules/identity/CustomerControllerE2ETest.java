@@ -54,14 +54,14 @@ class CustomerControllerE2ETest {
     }
 
     @Test
-    void adminCanListAndLockRealCustomerButBuyerCannot() throws Exception {
+    void customerCareCanListAndLockRealCustomerButBuyerCannot() throws Exception {
         String adminEmail = accounts.newEmail("e2e-admin-");
         String adminPassword = "admin1234";
         User adminUser = new User("staff", passwordEncoder.encode(adminPassword));
         adminUser.setEmail(adminEmail);
         adminUser.setFullName("E2E Admin");
         adminUser = userRepository.save(adminUser);
-        employeeRepository.save(new Employee(adminUser, "admin"));
+        employeeRepository.save(new Employee(adminUser, "cs"));
         String adminToken = login(adminEmail, adminPassword);
 
         String buyerEmail = accounts.newEmail("e2e-");
@@ -73,7 +73,7 @@ class CustomerControllerE2ETest {
         String buyerId = (String) json.readValue(registerResponse.body(), Map.class).get("userId");
         String buyerToken = login(buyerEmail, buyerPassword);
 
-        // A buyer may not browse the customer list — admin-only.
+        // A buyer may not browse the customer list — customer care only.
         HttpResponse<String> listAsBuyer = getJson("/customers", buyerToken);
         assertThat(listAsBuyer.statusCode()).isEqualTo(403);
 

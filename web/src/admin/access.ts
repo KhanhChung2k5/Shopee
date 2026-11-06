@@ -6,38 +6,39 @@ export type Department = 'sales' | 'warehouse' | 'admin' | 'cs'
  * each page) read from this same map — change access here once, both update
  * together. Never duplicate this list elsewhere.
  *
- * Mapping rationale (matches task descriptions already agreed for Phase 2-5):
- * - san-pham   : nhân viên bán hàng tạo/sửa sản phẩm (CRUD Product)
- * - kho        : nhân viên kho quản lý tồn kho + duyệt phiếu nhập (CRUD Warehouse/GoodsReceipt)
- * - don-hang   : cả sales (xử lý/xuất hoá đơn) lẫn warehouse (đóng gói/xuất kho) đều thao tác trên Order
- * - hoan-tien  : CSKH duyệt yêu cầu trả hàng và chuyển khoản hoàn tiền thủ công (khớp /refund-returns ở backend)
- * - marketing  : voucher/flash sale là quyết định kinh doanh của sales
- * - khach-hang : quản lý khách hàng (thêm/khoá/xoá mềm) thuộc CRM, do CS phụ trách
- * - bao-cao-quan-tri : báo cáo quản trị — doanh thu/lợi nhuận (sales, admin), nhập–xuất–tồn (warehouse, admin)
- * - bao-cao    : báo cáo khách hàng — admin + CS (CS chỉ xem, phục vụ chăm sóc khách hàng)
- * - nhan-vien  : chỉ admin — đã enforce ở backend (DEPT_ADMIN)
- *
- * "admin" luôn có mặt ở mọi mục — quản trị hệ thống có quyền cao nhất, xem được tất cả.
+ * Phân tách nhiệm vụ (docs/phan-quyen-he-thong.md): mỗi nghiệp vụ thuộc một bộ phận; "admin" là
+ * quản trị hệ thống — chỉ quản lý tài khoản nhân viên và xem nhật ký thao tác, không làm nghiệp vụ.
+ * - san-pham   : bán hàng tạo/sửa sản phẩm; kho chỉ xem (biết biến thể khi nhập hàng)
+ * - kho        : nhân viên kho quản lý tồn kho + duyệt phiếu nhập
+ * - don-hang   : bán hàng xác nhận / thanh toán / hoá đơn, kho đóng gói / giao, CSKH chỉ xem để tra cứu
+ * - hoan-tien  : CSKH duyệt yêu cầu trả hàng và chuyển khoản hoàn tiền
+ * - marketing  : voucher/flash sale là quyết định kinh doanh của bán hàng
+ * - khach-hang : quản lý khách hàng (thêm/khoá/xoá mềm/khôi phục) thuộc CRM, do CSKH phụ trách
+ * - bao-cao-quan-tri : doanh thu/lợi nhuận (bán hàng), nhập–xuất–tồn (kho)
+ * - bao-cao    : báo cáo khách hàng — CSKH
+ * - nhan-vien, nhat-ky : chỉ admin — enforce ở backend (DEPT_ADMIN)
  */
 export const ADMIN_SECTION_ACCESS: Record<string, Department[]> = {
   '/admin': ['sales', 'warehouse', 'admin', 'cs'],
-  '/admin/san-pham': ['sales', 'admin'],
-  '/admin/kho': ['warehouse', 'admin'],
-  '/admin/phieu-nhap': ['warehouse', 'admin'],
-  '/admin/don-hang': ['sales', 'warehouse', 'admin'],
-  '/admin/hoan-tien': ['cs', 'admin'],
-  '/admin/marketing': ['sales', 'admin'],
-  '/admin/khach-hang': ['cs', 'admin'],
-  '/admin/bao-cao-quan-tri': ['sales', 'warehouse', 'admin'],
-  '/admin/bao-cao': ['cs', 'admin'],
+  '/admin/san-pham': ['sales', 'warehouse'],
+  '/admin/kho': ['warehouse'],
+  '/admin/phieu-nhap': ['warehouse'],
+  '/admin/don-hang': ['sales', 'warehouse', 'cs'],
+  '/admin/hoan-tien': ['cs'],
+  '/admin/marketing': ['sales'],
+  '/admin/khach-hang': ['cs'],
+  '/admin/bao-cao-quan-tri': ['sales', 'warehouse'],
+  '/admin/bao-cao': ['cs'],
+  '/admin/bao-cao/khao-sat': ['cs'],
   // Phân hệ CRM — docs/phan-quyen-he-thong.md mục 2.1
-  '/admin/crm': ['cs', 'admin'],
-  '/admin/ho-tro': ['cs', 'admin'],
-  // Phản hồi đánh giá sản phẩm — khớp quyền PATCH /reviews/*/reply ở backend (sales/cs/admin)
-  '/admin/danh-gia': ['sales', 'cs', 'admin'],
-  '/admin/khao-sat': ['cs', 'admin'],
-  '/admin/phan-khuc': ['sales', 'cs', 'admin'],
-  '/admin/chien-dich': ['sales', 'admin'],
+  '/admin/crm': ['cs'],
+  '/admin/ho-tro': ['cs'],
+  // Phản hồi đánh giá sản phẩm — khớp quyền PATCH /reviews/*/reply ở backend (chỉ CSKH)
+  '/admin/danh-gia': ['cs'],
+  '/admin/khao-sat': ['cs'],
+  // Bán hàng tạo/sửa phân khúc; CSKH chỉ xem để chọn đối tượng gửi khảo sát
+  '/admin/phan-khuc': ['sales', 'cs'],
+  '/admin/chien-dich': ['sales'],
   '/admin/nhan-vien': ['admin'],
   // Nhật ký thao tác — API /api/crm/audit-logs chỉ cho DEPT_ADMIN
   '/admin/nhat-ky': ['admin'],
@@ -51,9 +52,9 @@ export function canAccessSection(path: string, department: Department | null): b
 
 /** Tabs of the management report page — matches /api/reports/* in SecurityConfig. */
 export function canSeeRevenueReport(department: Department | null): boolean {
-  return department === 'sales' || department === 'admin'
+  return department === 'sales'
 }
 
 export function canSeeInventoryReport(department: Department | null): boolean {
-  return department === 'warehouse' || department === 'admin'
+  return department === 'warehouse'
 }

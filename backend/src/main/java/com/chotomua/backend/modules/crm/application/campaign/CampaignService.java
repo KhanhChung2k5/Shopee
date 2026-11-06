@@ -59,6 +59,14 @@ public class CampaignService {
     public static final String STATUS_SCHEDULED = "scheduled";
     public static final String DELIVERY_SENT = "sent";
     public static final String DELIVERY_SCHEDULED = "scheduled";
+    /**
+     * Bản nháp: {@code campaigns.channel = 'draft'}, chưa sinh thư cho khách. Nội dung nháp nằm ở một dòng
+     * {@code notifications} trạng thái {@code draft} gửi cho chính nhân viên soạn — hộp thư, số chưa đọc,
+     * phễu và thống kê chỉ đếm {@code sent}/{@code read}/{@code scheduled} nên dòng này không lộ ra đâu cả.
+     */
+    public static final String CHANNEL_DRAFT = "draft";
+    public static final String STATUS_DRAFT = "draft";
+    public static final String DELIVERY_DRAFT = "draft";
 
     private final IdentityPort identity;
     private final OrderPort orders;
@@ -265,9 +273,23 @@ public class CampaignService {
 
     /** Sửa tên và nội dung thư đã nằm trong hộp thư. Không gửi thêm. */
     public CampaignResponse update(UUID actorId, UUID campaignId, String name, String content, Instant startAt) {
+        return update(actorId, campaignId, name, content, startAt, null);
+    }
+
+    /**
+     * Như trên; với bản nháp thì lưu lại cả lịch gửi dự kiến và phân khúc ({@code segmentIds} null = giữ nguyên).
+     */
+    public CampaignResponse update(UUID actorId, UUID campaignId, String name, String content, Instant startAt,
+                                   List<UUID> segmentIds) {
         dispatchDue();
         identity.requireMarketingStaff(actorId);
         Campaign current = require(campaignId);
+        if (isDraft(current)) {
+            List<UUID> segmentsToKeep = segmentIds != null
+                    ? segmentIds
+                    : campaigns.targetsOf(campaignId).stream().map(CampaignTarget::segmentId).toList();
+            return writeDraft(actorId, campaignId, name, segmentsToKeep, content, startAt);
+        }
         Instant nextStart = startAt == null ? current.startAt() : startAt;
         if (current.endAt() != null && current.endAt().isBefore(nextStart)) {
             throw new InvalidCampaignException("Thời điểm kết thúc phải sau thời điểm bắt đầu.");
@@ -291,6 +313,68 @@ public class CampaignService {
             dispatchDue();
         }
         return toResponse(renamed);
+    }
+
+    /**
+     * Lưu nháp chiến dịch: chưa gửi cho ai. Phân khúc có thể để trống; {@code startAt} là lịch gửi dự kiến
+     * (áp dụng khi bấm gửi nếu vẫn còn ở tương lai).
+     */
+    public CampaignResponse saveDraft(UUID actorId, String name, List<UUID> segmentIds, String content, Instant startAt) {
+        identity.requireMarketingStaff(actorId);
+        return writeDraft(actorId, UUID.randomUUID(), name, segmentIds, content, startAt);
+    }
+
+    /**
+     * Gửi một bản nháp: tạo chiến dịch thật (gửi ngay hoặc lên lịch nếu lịch dự kiến còn ở tương lai)
+     * rồi xóa bản nháp. Mọi kiểm tra của {@link #send} vẫn áp dụng.
+     */
+    public CampaignResponse sendDraft(UUID actorId, UUID draftId) {
+        identity.requireMarketingStaff(actorId);
+        Campaign draft = require(draftId);
+        if (!isDraft(draft)) {
+            throw new InvalidCampaignException("Chiến dịch này đã gửi hoặc đã lên lịch, không phải bản nháp.");
+        }
+        String content = notifications.contentOf(NotificationStore.SCOPE_CAMPAIGN, draftId);
+        if (content == null || content.isBlank()) {
+            throw new InvalidCampaignException("Bản nháp chưa có nội dung thông báo.");
+        }
+        List<UUID> segmentIds = campaigns.targetsOf(draftId).stream().map(CampaignTarget::segmentId).toList();
+        Instant planned = draft.startAt() != null && draft.startAt().isAfter(Instant.now(clock)) ? draft.startAt() : null;
+        CampaignResponse sent = send(actorId, draft.name(), segmentIds, content, null, planned, null, List.of(), null);
+        notifications.deleteByReference(NotificationStore.SCOPE_CAMPAIGN, draftId);
+        campaigns.delete(draftId);
+        return sent;
+    }
+
+    private CampaignResponse writeDraft(UUID actorId, UUID id, String name, List<UUID> segmentIds, String content, Instant startAt) {
+        if (name == null || name.isBlank()) {
+            throw new InvalidCampaignException("Bản nháp cần có tên chiến dịch.");
+        }
+        List<UUID> uniqueSegments = distinctSegments(segmentIds);
+        for (UUID segmentId : uniqueSegments) {
+            if (segments.find(segmentId).isEmpty()) {
+                throw new SegmentNotFoundException(segmentId);
+            }
+        }
+        Campaign draft = new Campaign(id, name.trim(), CHANNEL_DRAFT, startAt, null, null);
+        campaigns.save(draft, uniqueSegments.stream().map(segmentId -> new CampaignTarget(id, segmentId)).toList());
+        notifications.deleteByReference(NotificationStore.SCOPE_CAMPAIGN, id);
+        notifications.append(List.of(new AppNotification(
+                UUID.randomUUID(),
+                actorId,
+                REFERENCE_CAMPAIGN,
+                id,
+                CHANNEL_IN_APP,
+                content == null ? "" : content.trim(),
+                STATUS_DRAFT,
+                Instant.now(clock),
+                id,
+                null)));
+        return toResponse(draft);
+    }
+
+    private static boolean isDraft(Campaign campaign) {
+        return CHANNEL_DRAFT.equals(campaign.channel());
     }
 
     /** Xóa chiến dịch và thông báo in-app đã sinh cho lượt gửi đó. */
@@ -517,9 +601,11 @@ public class CampaignService {
                 stats.read(),
                 List.copyOf(skipped),
                 stats.content(),
-                stats.scheduled() > 0
-                        ? DELIVERY_SCHEDULED
-                        : DELIVERY_SENT,
+                isDraft(campaign)
+                        ? DELIVERY_DRAFT
+                        : stats.scheduled() > 0
+                                ? DELIVERY_SCHEDULED
+                                : DELIVERY_SENT,
                 productTarget == null ? List.of() : productTarget.productIds(),
                 productTarget == null ? null : productTarget.filter());
     }

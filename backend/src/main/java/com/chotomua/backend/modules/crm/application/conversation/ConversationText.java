@@ -106,7 +106,7 @@ public final class ConversationText {
         }
         return switch (status) {
             case STATUS_IN_PROGRESS -> "Đang xử lý";
-            case STATUS_CLOSED -> "Đã giải quyết";
+            case STATUS_CLOSED -> "Đã xử lý";
             default -> "Mở";
         };
     }

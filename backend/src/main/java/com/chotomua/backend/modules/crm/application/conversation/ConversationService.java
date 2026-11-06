@@ -437,7 +437,7 @@ public class ConversationService {
         return trimmed;
     }
 
-    /** Lọc hàng đợi nhân viên: {@code all}, {@code mine}, {@code open}, {@code high}. */
+    /** Lọc hàng đợi nhân viên: {@code all}, {@code mine}, {@code open}, {@code high}, {@code closed}. */
     private static boolean matches(ConversationSummaryResponse summary, String filter) {
         if (filter == null || filter.isBlank() || "all".equals(filter)) {
             return true;
@@ -447,7 +447,8 @@ public class ConversationService {
             case "open" -> ConversationText.STATUS_OPEN.equals(summary.status())
                     || ConversationText.STATUS_IN_PROGRESS.equals(summary.status());
             case "high" -> ConversationText.PRIORITY_HIGH.equals(summary.priority());
-            default -> throw new InvalidConversationException("Bộ lọc chỉ nhận mine, open hoặc high.");
+            case "closed" -> ConversationText.STATUS_CLOSED.equals(summary.status());
+            default -> throw new InvalidConversationException("Bộ lọc chỉ nhận mine, open, high hoặc closed.");
         };
     }
 

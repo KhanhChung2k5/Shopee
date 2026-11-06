@@ -266,7 +266,7 @@ public class OrderService {
             OrderStatusUpdateRequest request
     ) {
         Employee employee = requireEmployee(employeeUserId);
-        if (!employee.getDepartment().equals("sales") && !employee.getDepartment().equals("admin")) {
+        if (!employee.getDepartment().equals("sales")) {
             throw new AccessDeniedException("Bộ phận hiện tại không có quyền xác nhận hoặc hủy đơn hàng");
         }
         String requestedStatus = OrderStatus.normalize(request.status());
@@ -509,7 +509,7 @@ public class OrderService {
     private Employee requireOrderViewEmployee(UUID employeeUserId) {
         Employee employee = requireEmployee(employeeUserId);
         if (!employee.getDepartment().equals("sales") && !employee.getDepartment().equals("warehouse")
-                && !employee.getDepartment().equals("admin")) {
+                && !employee.getDepartment().equals("cs")) {
             throw new AccessDeniedException("Bộ phận hiện tại không có quyền xem đơn hàng");
         }
         return employee;
@@ -517,15 +517,14 @@ public class OrderService {
 
     private Employee requireShippingEmployee(UUID employeeUserId) {
         Employee employee = requireEmployee(employeeUserId);
-        if (!employee.getDepartment().equals("warehouse") && !employee.getDepartment().equals("admin")) {
+        if (!employee.getDepartment().equals("warehouse")) {
             throw new AccessDeniedException("Bộ phận hiện tại không có quyền cập nhật giao hàng");
         }
         return employee;
     }
 
     private void requireShippingOwnership(Order order, Employee employee) {
-        boolean admin = employee.getDepartment().equals("admin");
-        if (!admin && order.getEmployeeId() != null && !order.getEmployeeId().equals(employee.getId())) {
+        if (order.getEmployeeId() != null && !order.getEmployeeId().equals(employee.getId())) {
             throw new AccessDeniedException("Đơn hàng đang được nhân viên khác xử lý");
         }
     }
@@ -762,7 +761,7 @@ public class OrderService {
     @Transactional
     public OrderPaymentResponse confirmTransferReceived(UUID employeeUserId, UUID orderId) {
         Employee employee = requireEmployee(employeeUserId);
-        if (!employee.getDepartment().equals("sales") && !employee.getDepartment().equals("admin")) {
+        if (!employee.getDepartment().equals("sales")) {
             throw new AccessDeniedException("Bộ phận hiện tại không có quyền xác nhận thanh toán");
         }
         Order order = orderRepository.findById(orderId).orElseThrow(this::orderNotFound);

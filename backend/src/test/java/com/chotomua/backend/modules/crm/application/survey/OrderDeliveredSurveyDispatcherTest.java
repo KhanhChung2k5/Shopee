@@ -59,7 +59,7 @@ class OrderDeliveredSurveyDispatcherTest {
         targetService = new SurveyTargetService(identity, products, surveys, targets);
         dispatcher = new OrderDeliveredSurveyDispatcher(
                 identity, orders, surveys, targetService, notifications, new InMemorySurveyDispatchLog(), CLOCK);
-        identity.seedStaff(ADMIN, StaffDepartment.ADMIN);
+        identity.seedStaff(ADMIN, StaffDepartment.CS);
         products.seed(new ProductView(
                 PRODUCT, "Tay cầm DualSense", "Sony", "controller",
                 CAT, "Tay cầm", null, List.of("PS5"), new BigDecimal("1890000"), "published"));

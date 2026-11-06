@@ -4,6 +4,7 @@ import { useAuth } from '../../state/AuthContext'
 import { apiFetch } from '../../lib/api'
 import { fetchCustomerReport, type CustomerReport } from '../../lib/crm'
 import { a } from '../adminUi'
+import { CustomerReportTabs } from './AdminSurveyStatsPage'
 
 const AGE_BUCKETS: [string, (a: number) => boolean][] = [
   ['Dưới 18', (a) => a < 18],
@@ -61,7 +62,8 @@ export default function AdminDemographicsPage() {
 
   return (
     <div>
-      <h1>Báo cáo nhân khẩu học khách hàng</h1>
+      <h1>Báo cáo khách hàng</h1>
+      <CustomerReportTabs />
       <p className="font-body-md text-body-md text-on-surface-variant mb-space-xl">
         Tính trên {activeCustomers.length} khách hàng đang hoạt động/khoá (không tính tài khoản đã xoá mềm). Tuổi và giới tính có thể trống nếu khách chưa cập nhật hồ sơ.
       </p>

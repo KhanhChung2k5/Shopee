@@ -259,17 +259,9 @@ public class FakeIdentityPort implements IdentityPort {
     @Override
     public void requireCustomerAdmin(UUID actorId) {
         String department = requireKnownStaff(actorId);
-        if (!StaffDepartment.ADMIN.equals(department) && !StaffDepartment.CS.equals(department)) {
+        if (!StaffDepartment.CS.equals(department)) {
             throw new CrmForbiddenException(
-                    "Chỉ quản trị viên hoặc nhân viên CSKH được thực hiện thao tác này.");
-        }
-    }
-
-    @Override
-    public void requireAdmin(UUID actorId) {
-        String department = requireKnownStaff(actorId);
-        if (!StaffDepartment.ADMIN.equals(department)) {
-            throw new CrmForbiddenException("Chỉ quản trị viên được khôi phục khách hàng đã xóa.");
+                    "Chỉ nhân viên CSKH được thực hiện thao tác này.");
         }
     }
 
@@ -284,32 +276,30 @@ public class FakeIdentityPort implements IdentityPort {
     @Override
     public void requireMarketingStaff(UUID actorId) {
         String department = requireKnownStaff(actorId);
-        if (!StaffDepartment.ADMIN.equals(department) && !StaffDepartment.SALES.equals(department)) {
+        if (!StaffDepartment.SALES.equals(department)) {
             throw new CrmForbiddenException(
-                    "Chỉ quản trị viên hoặc nhân viên kinh doanh được quản lý phân khúc và chiến dịch.");
+                    "Chỉ nhân viên kinh doanh được quản lý phân khúc và chiến dịch.");
         }
     }
 
     @Override
     public void requireAudienceReader(UUID actorId) {
         String department = requireKnownStaff(actorId);
-        boolean allowed = StaffDepartment.ADMIN.equals(department)
-                || StaffDepartment.SALES.equals(department)
+        boolean allowed = StaffDepartment.SALES.equals(department)
                 || StaffDepartment.CS.equals(department);
         if (!allowed) {
             throw new CrmForbiddenException(
-                    "Chỉ quản trị viên, nhân viên kinh doanh hoặc CSKH được xem dữ liệu này.");
+                    "Chỉ nhân viên kinh doanh hoặc CSKH được xem dữ liệu này.");
         }
     }
 
     @Override
     public void requireCrmStaff(UUID actorId) {
         String department = requireKnownStaff(actorId);
-        boolean allowed = StaffDepartment.ADMIN.equals(department)
-                || StaffDepartment.CS.equals(department);
+        boolean allowed = StaffDepartment.CS.equals(department);
         if (!allowed) {
             throw new CrmForbiddenException(
-                    "Chỉ nhân viên CSKH hoặc quản trị viên được thực hiện thao tác này.");
+                    "Chỉ nhân viên CSKH được thực hiện thao tác này.");
         }
     }
 

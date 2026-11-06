@@ -66,7 +66,7 @@ class CampaignProductAudienceTest {
         campaigns = new CampaignService(
                 identity, orders, products, segments, campaignStore, productTargets,
                 notifications, new InMemorySurveyStore(), CLOCK);
-        identity.seedStaff(ADMIN, StaffDepartment.ADMIN);
+        identity.seedStaff(ADMIN, StaffDepartment.SALES);
         products.seed(new ProductView(
                 DUALSENSE, "Tay cầm DualSense", "Sony", "controller",
                 CAT, "Tay cầm", null, List.of("PS5"), new BigDecimal("1890000"), "published"));

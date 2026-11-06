@@ -8,7 +8,7 @@ public interface ReviewRepository extends JpaRepository<Review,UUID>{
 
     /** Every review left on any variant of one product, newest first (product page). */
     @Query(value = "SELECT r.id AS id, r.rating AS rating, r.comment AS comment, r.reply_text AS replyText, "
-        + "r.created_at AS createdAt, u.full_name AS buyerName, oi.product_name_snapshot AS productName "
+        + "r.created_at AS createdAt, u.full_name AS buyerName, oi.product_name_snapshot AS productName, pv.product_id AS productId "
         + "FROM reviews r "
         + "JOIN order_items oi ON oi.id = r.order_item_id "
         + "JOIN product_variants pv ON pv.id = oi.variant_id "
@@ -18,9 +18,10 @@ public interface ReviewRepository extends JpaRepository<Review,UUID>{
     List<ReviewShowcaseProjection> findForProduct(@Param("productId") UUID productId);
 
     @Query(value = "SELECT r.id AS id, r.rating AS rating, r.comment AS comment, r.reply_text AS replyText, "
-        + "r.created_at AS createdAt, u.full_name AS buyerName, oi.product_name_snapshot AS productName "
+        + "r.created_at AS createdAt, u.full_name AS buyerName, oi.product_name_snapshot AS productName, pv.product_id AS productId "
         + "FROM reviews r "
         + "JOIN order_items oi ON oi.id = r.order_item_id "
+        + "LEFT JOIN product_variants pv ON pv.id = oi.variant_id "
         + "JOIN users u ON u.id = r.user_id "
         + "WHERE r.rating >= 4 AND r.comment IS NOT NULL AND length(trim(r.comment)) > 0 "
         + "ORDER BY r.created_at DESC LIMIT :limit", nativeQuery = true)
@@ -29,9 +30,10 @@ public interface ReviewRepository extends JpaRepository<Review,UUID>{
     /** Staff moderation list: every review, newest first, optionally only those still waiting for a reply. */
     @Query(value = "SELECT r.id AS id, r.rating AS rating, r.comment AS comment, r.reply_text AS replyText, "
         + "r.created_at AS createdAt, u.full_name AS buyerName, oi.product_name_snapshot AS productName, "
-        + "oi.order_id AS orderId, ru.full_name AS repliedByName "
+        + "oi.order_id AS orderId, ru.full_name AS repliedByName, pv.product_id AS productId "
         + "FROM reviews r "
         + "JOIN order_items oi ON oi.id = r.order_item_id "
+        + "LEFT JOIN product_variants pv ON pv.id = oi.variant_id "
         + "JOIN users u ON u.id = r.user_id "
         + "LEFT JOIN employees e ON e.id = r.employee_reply_id "
         + "LEFT JOIN users ru ON ru.id = e.user_id "

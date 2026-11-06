@@ -43,7 +43,7 @@ public class CrmCustomerController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_CS')")
+    @PreAuthorize("hasAuthority('DEPT_CS')")
     public CustomerListResponse list(
             @RequestParam(defaultValue = "false") boolean includeDeleted,
             @RequestParam(required = false) String status,
@@ -60,7 +60,7 @@ public class CrmCustomerController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_CS')")
+    @PreAuthorize("hasAuthority('DEPT_CS')")
     public ResponseEntity<CustomerView> create(@Valid @RequestBody CreateCustomerRequest request) {
         CustomerView created = customers.create(currentActor.requireUserId(), request.toCommand());
         return ResponseEntity
@@ -69,7 +69,7 @@ public class CrmCustomerController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_CS')")
+    @PreAuthorize("hasAuthority('DEPT_CS')")
     public CustomerView update(
             @PathVariable UUID id,
             @Valid @RequestBody CreateCustomerRequest request
@@ -78,7 +78,7 @@ public class CrmCustomerController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_CS')")
+    @PreAuthorize("hasAuthority('DEPT_CS')")
     public CustomerView patch(
             @PathVariable UUID id,
             @Valid @RequestBody PatchCustomerRequest request
@@ -87,19 +87,19 @@ public class CrmCustomerController {
     }
 
     @PostMapping("/{id}/restore")
-    @PreAuthorize("hasAuthority('DEPT_ADMIN')")
+    @PreAuthorize("hasAuthority('DEPT_CS')")
     public CustomerView restore(@PathVariable UUID id) {
         return customers.restore(currentActor.requireUserId(), id);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_CS')")
+    @PreAuthorize("hasAuthority('DEPT_CS')")
     public CustomerDetailResponse detail(@PathVariable UUID id) {
         return customers.detail(currentActor.requireUserId(), id);
     }
 
     @PostMapping("/{id}/addresses")
-    @PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_CS')")
+    @PreAuthorize("hasAuthority('DEPT_CS')")
     public ResponseEntity<AddressView> createAddress(
             @PathVariable UUID id,
             @Valid @RequestBody UpsertAddressRequest request
@@ -114,7 +114,7 @@ public class CrmCustomerController {
     }
 
     @PutMapping("/{id}/addresses/{addressId}")
-    @PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_CS')")
+    @PreAuthorize("hasAuthority('DEPT_CS')")
     public AddressView updateAddress(
             @PathVariable UUID id,
             @PathVariable UUID addressId,

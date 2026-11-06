@@ -71,7 +71,7 @@ class RecommendationServiceTest {
         products = new FakeProductPort();
         notifications = new InMemoryNotificationStore();
         service = new RecommendationService(identity, orders, products, notifications, CLOCK);
-        identity.seedStaff(ADMIN, StaffDepartment.ADMIN);
+        identity.seedStaff(ADMIN, StaffDepartment.CS);
         identity.seedStaff(SALES, StaffDepartment.SALES);
         guest = identity.seedCustomer("An", "male", LocalDate.of(1998, 5, 12), CustomerStatus.ACTIVE);
         other = identity.seedCustomer("Binh", "female", LocalDate.of(2000, 1, 1), CustomerStatus.ACTIVE);

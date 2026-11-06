@@ -75,7 +75,7 @@ class RecommendationControllerTest {
         orders.reset();
         products.reset();
         notifications.clear();
-        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
+        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(CS_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
         identity.seedCustomer(
@@ -98,7 +98,7 @@ class RecommendationControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void adminGetsBestSellersForCustomerWithoutOrders() throws Exception {
         mockMvc.perform(get("/api/crm/customers/" + GUEST_ID + "/recommendations?limit=2"))
                 .andExpect(status().isOk())
@@ -152,7 +152,7 @@ class RecommendationControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void adminCanPushRecommendationToInbox() throws Exception {
         mockMvc.perform(post("/api/crm/customers/" + GUEST_ID + "/recommendations/notify?limit=2"))
                 .andExpect(status().isOk())
@@ -162,7 +162,7 @@ class RecommendationControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void adminCanPushSelectedProducts() throws Exception {
         mockMvc.perform(post("/api/crm/customers/" + GUEST_ID + "/recommendations/notify")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -172,7 +172,7 @@ class RecommendationControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void sameGenreRuleShowsOnRestAfterPurchase() throws Exception {
         CustomerView customer = identity.getCustomer(UUID.fromString(GUEST_ID));
         products.seed(new ProductView(

@@ -18,7 +18,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/crm/orders")
-@PreAuthorize("hasAnyAuthority('DEPT_ADMIN', 'DEPT_CS')")
+@PreAuthorize("hasAuthority('DEPT_CS')")
 public class OrderDeliveredHookController {
 
     private final OrderDeliveredSurveyDispatcher dispatcher;

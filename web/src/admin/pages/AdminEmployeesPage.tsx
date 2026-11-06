@@ -4,6 +4,8 @@ import { apiFetch, ApiError } from '../../lib/api'
 import { a, chipClass, statusPillClass } from '../adminUi'
 import { buttonClass } from '../../components/ui'
 import { useDialog } from '../../state/DialogContext'
+import { SearchBox, StatusFilter } from '../components/ListSearch'
+import { matches } from '../components/listSearchState'
 
 type Department = 'sales' | 'warehouse' | 'admin' | 'cs'
 
@@ -46,6 +48,8 @@ export default function AdminEmployeesPage() {
   const { token, user } = useAuth()
   const { confirm } = useDialog()
   const [deptFilter, setDeptFilter] = useState<Department | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<Employee['status'] | 'all'>('all')
+  const [query, setQuery] = useState('')
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -70,8 +74,9 @@ export default function AdminEmployeesPage() {
   }, [token])
 
   const filtered = useMemo(
-    () => employees.filter((e) => deptFilter === 'all' || e.department === deptFilter),
-    [employees, deptFilter],
+    () => employees.filter((e) => (deptFilter === 'all' || e.department === deptFilter)
+      && (statusFilter === 'all' || e.status === statusFilter) && matches(query, e.fullName, e.email, e.position)),
+    [employees, deptFilter, statusFilter, query],
   )
 
   const submitCreate = async (e: FormEvent) => {
@@ -142,6 +147,24 @@ export default function AdminEmployeesPage() {
     }
   }
 
+  const issueTemporaryPassword = async (employee: Employee) => {
+    const name = employee.fullName ?? employee.email
+    if (!(await confirm({ title: 'Cấp mật khẩu tạm', message: <>Cấp mật khẩu tạm cho <strong>{name}</strong>? Mật khẩu hiện tại của nhân viên sẽ không dùng được nữa.</>, confirmLabel: 'Cấp mật khẩu', tone: 'danger' }))) return
+    try {
+      const { temporaryPassword } = await apiFetch<{ temporaryPassword: string }>(`/employees/${employee.id}/temporary-password`, { method: 'POST' }, token)
+      setLoadError(null)
+      const copy = await confirm({
+        title: 'Mật khẩu tạm',
+        message: <>Mật khẩu của <strong>{name}</strong>: <code className="font-mono font-bold select-all">{temporaryPassword}</code>. Mật khẩu chỉ hiện một lần. Hãy nhắc nhân viên đăng nhập rồi đổi ngay trong trang tài khoản.</>,
+        confirmLabel: 'Sao chép và đóng',
+        cancelLabel: 'Đóng',
+      })
+      if (copy) await navigator.clipboard.writeText(temporaryPassword).catch(() => setLoadError('Không sao chép được mật khẩu'))
+    } catch (err) {
+      setLoadError(err instanceof ApiError ? err.message : 'Không cấp được mật khẩu tạm')
+    }
+  }
+
   // Access is already enforced by RequireDepartment at the route level
   // (App.tsx), which reads the allowed departments from admin/access.ts.
 
@@ -151,9 +174,12 @@ export default function AdminEmployeesPage() {
         <h1>
           Nhân viên ({filtered.length}/{employees.length})
         </h1>
-        <button type="button" className={buttonClass('primary')} onClick={() => setShowCreateForm((v) => !v)}>
-          {showCreateForm ? 'Đóng' : '+ Thêm nhân viên'}
-        </button>
+        <div className="flex flex-wrap items-start gap-2.5">
+          <SearchBox page="employees" placeholder="Tìm tên, email, chức danh..." value={query} onChange={setQuery} />
+          <button type="button" className={buttonClass('primary')} onClick={() => setShowCreateForm((v) => !v)}>
+            {showCreateForm ? 'Đóng' : '+ Thêm nhân viên'}
+          </button>
+        </div>
       </div>
 
       {loadError && <p className="font-body-md text-body-md text-error mb-space-md">{loadError}</p>}
@@ -222,7 +248,7 @@ export default function AdminEmployeesPage() {
         </form>
       )}
 
-      <div className={`${a.filterBar} mb-space-md`}>
+      <div className={`${a.filterBar} mb-space-sm`}>
         {DEPT_FILTERS.map((f) => (
           <button
             key={f.value}
@@ -234,6 +260,8 @@ export default function AdminEmployeesPage() {
           </button>
         ))}
       </div>
+      <StatusFilter options={[['all', 'Mọi trạng thái'], ['active', 'Hoạt động'], ['locked', 'Đã khoá']] as const} value={statusFilter === 'deleted' ? 'all' : statusFilter} onChange={setStatusFilter}
+        counts={{ active: employees.filter((e) => e.status === 'active').length, locked: employees.filter((e) => e.status === 'locked').length }} />
 
       <div className={a.tableWrap}>
         <table className={a.table}>
@@ -297,6 +325,11 @@ export default function AdminEmployeesPage() {
                       {emp.userId !== user?.id && emp.status !== 'deleted' && (
                         <button type="button" className={buttonClass('outline')} onClick={() => void toggleLock(emp)}>
                           {emp.status === 'locked' ? 'Mở khoá' : 'Khoá'}
+                        </button>
+                      )}
+                      {emp.userId !== user?.id && emp.status === 'active' && (
+                        <button type="button" className={buttonClass('outline')} onClick={() => void issueTemporaryPassword(emp)}>
+                          Cấp mật khẩu tạm
                         </button>
                       )}
                     </div>

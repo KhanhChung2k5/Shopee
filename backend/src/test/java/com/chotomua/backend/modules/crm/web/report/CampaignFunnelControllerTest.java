@@ -89,7 +89,7 @@ class CampaignFunnelControllerTest {
         orders.reset();
         products.reset();
         productTargets.clear();
-        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
+        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.SALES);
         identity.seedStaff(UUID.fromString(CS_LEAD_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(CS_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
@@ -100,7 +100,7 @@ class CampaignFunnelControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_SALES")
     void purchaseAfterStartAtAppearsInConvertedStage() throws Exception {
         CustomerView buyer = identity.seedCustomer(
                 "An", "male", LocalDate.now().minusYears(20), CustomerStatus.ACTIVE);
@@ -151,7 +151,7 @@ class CampaignFunnelControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_SALES")
     void unknownCampaignReturnsNotFound() throws Exception {
         mockMvc.perform(get("/api/crm/reports/campaigns/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/funnel"))
                 .andExpect(status().isNotFound())

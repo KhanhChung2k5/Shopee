@@ -5,6 +5,8 @@ import { useAuth } from '../../state/AuthContext'
 import { a, statusPillClass } from '../adminUi'
 import { buttonClass } from '../../components/ui'
 import { useDialog } from '../../state/DialogContext'
+import { RecentViews, SearchBox, StatusFilter } from '../components/ListSearch'
+import { matches, useRecentViews } from '../components/listSearchState'
 
 interface AdminProduct {
   id: string
@@ -65,12 +67,16 @@ const EMPTY_FORM = {
 }
 
 export default function AdminProductsPage() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
+  // Kho chỉ xem danh sách sản phẩm; tạo / sửa / xoá là việc của bán hàng.
+  const canEdit = user?.department === 'sales'
   const { confirm } = useDialog()
   const [products, setProducts] = useState<AdminProduct[]>([])
   const [variants, setVariants] = useState<AdminVariant[]>([])
   const [categories, setCategories] = useState<CatalogCategory[]>([])
   const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all')
+  const viewed = useRecentViews('products')
   const [form, setForm] = useState(EMPTY_FORM)
   const [editing, setEditing] = useState<AdminProduct | null>(null)
   const [editingVariant, setEditingVariant] = useState<AdminVariant | null>(null)
@@ -105,10 +111,16 @@ export default function AdminProductsPage() {
   useEffect(() => { void refresh() }, [refresh])
 
   const filtered = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase('vi')
-    return products.filter((product) => !term || product.name.toLocaleLowerCase('vi').includes(term)
-      || (product.brandName ?? '').toLocaleLowerCase('vi').includes(term))
-  }, [products, query])
+    return products.filter((product) => (statusFilter === 'all' || product.status === statusFilter)
+      && matches(query, product.name, product.brandName, variants.find((v) => v.productId === product.id)?.sku))
+  }, [products, variants, query, statusFilter])
+
+  /** Mở một sản phẩm: bán hàng mở form sửa, kho mở trang sản phẩm. */
+  const openProduct = (product: AdminProduct) => {
+    viewed.push(product.id, product.name)
+    if (canEdit) startEdit(product)
+    else window.open(`/san-pham/${product.id}`, '_blank', 'noopener')
+  }
 
   const startCreate = () => {
     setEditing(null)
@@ -206,10 +218,13 @@ export default function AdminProductsPage() {
     <div className={a.toolbar}>
       <h1 className="!mb-0">Sản phẩm ({filtered.length}/{products.length})</h1>
       <div className="flex flex-wrap items-center gap-2.5">
-        <input className={`${a.input} !w-72`} type="search" placeholder="Tìm tên hoặc thương hiệu..." value={query} onChange={(event) => setQuery(event.target.value)} />
-        <button type="button" className={buttonClass('primary')} onClick={startCreate}>+ Thêm sản phẩm</button>
+        <SearchBox page="products" placeholder="Tìm tên, thương hiệu hoặc SKU..." value={query} onChange={setQuery} />
+        {canEdit && <button type="button" className={buttonClass('primary')} onClick={startCreate}>+ Thêm sản phẩm</button>}
       </div>
     </div>
+    <StatusFilter options={[['all', 'Tất cả'], ['published', 'Đang bán'], ['draft', 'Bản nháp']] as const} value={statusFilter} onChange={setStatusFilter}
+      counts={{ all: products.length, published: products.filter((p) => p.status === 'published').length, draft: products.filter((p) => p.status === 'draft').length }} />
+    <RecentViews items={viewed.items} onClear={viewed.clear} onOpen={(id) => { const p = products.find((x) => x.id === id); if (p) openProduct(p) }} />
     {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
     {showForm && <form className={a.catalogForm} onSubmit={save}>
       <div className={a.formHeading}><h2>{editing ? 'Sửa sản phẩm' : 'Tạo sản phẩm'}</h2><button className={buttonClass('outline')} type="button" onClick={() => setShowForm(false)}>Đóng</button></div>
@@ -259,7 +274,7 @@ export default function AdminProductsPage() {
       <div className={a.formActions}><button className={buttonClass('primary')} disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu sản phẩm'}</button></div>
     </form>}
     {loading ? <p>Đang tải sản phẩm…</p> : <div className={a.tableWrap}><table className={a.table}>
-      <thead><tr><th>Ảnh</th><th>Tên</th><th>Danh mục</th><th>Thương hiệu / loại</th><th>SKU / giá</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+      <thead><tr><th>Ảnh</th><th>Tên</th><th>Danh mục</th><th>Thương hiệu / loại</th><th>SKU / giá</th><th>Trạng thái</th>{canEdit && <th>Thao tác</th>}</tr></thead>
       <tbody>{filtered.map((product) => {
         const variant = variants.find((item) => item.productId === product.id)
         const categoryName = categories.find((item) => item.id === product.categoryId)?.name ?? '—'
@@ -267,10 +282,10 @@ export default function AdminProductsPage() {
           <td>{product.imageUrls?.[0]
             ? <img src={resolveCatalogImageUrl(product.imageUrls[0])} alt="" className="w-14 h-14 rounded-lg object-cover bg-surface-container-low" loading="lazy" />
             : <span className="block w-14 h-14 rounded-lg bg-surface-container-low" />}</td>
-          <td>{product.name}</td><td>{categoryName}</td><td>{product.brandName ?? '—'} · {typeLabel[product.productType] ?? product.productType}</td>
+          <td><button type="button" className={`${a.linkButton} text-left`} title={canEdit ? 'Mở để sửa' : 'Xem trang sản phẩm'} onClick={() => openProduct(product)}>{product.name}</button></td><td>{categoryName}</td><td>{product.brandName ?? '—'} · {typeLabel[product.productType] ?? product.productType}</td>
           <td>{variant ? <>{variant.sku}<br />{formatVnd(variant.price)}</> : 'Chưa có biến thể'}</td>
           <td><span className={statusPillClass(product.status === 'published' ? 'active' : 'locked')}>{product.status === 'published' ? 'Đang bán' : 'Bản nháp'}</span></td>
-          <td><div className={a.rowActions}><button type="button" className={buttonClass('outline')} onClick={() => startEdit(product)}>Sửa</button><button type="button" className={buttonClass('outline')} onClick={() => void remove(product)}>Xoá</button></div></td>
+          {canEdit && <td><div className={a.rowActions}><button type="button" className={buttonClass('outline')} onClick={() => openProduct(product)}>Sửa</button><button type="button" className={buttonClass('outline')} onClick={() => void remove(product)}>Xoá</button></div></td>}
         </tr>
       })}</tbody>
     </table></div>}

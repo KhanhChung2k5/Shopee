@@ -59,7 +59,7 @@ class CustomerReportControllerTest {
     void setUp() {
         identity.reset();
         orders.reset();
-        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.ADMIN);
+        identity.seedStaff(UUID.fromString(ADMIN_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(CS_LEAD_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(CS_ID), StaffDepartment.CS);
         identity.seedStaff(UUID.fromString(SALES_ID), StaffDepartment.SALES);
@@ -67,7 +67,7 @@ class CustomerReportControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void threeCustomersProduceExpectedAgePercents() throws Exception {
         mockMvc.perform(get("/api/crm/reports/customers"))
                 .andExpect(status().isOk())
@@ -96,7 +96,7 @@ class CustomerReportControllerTest {
     }
 
     @Test
-    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_ADMIN")
+    @WithMockUser(username = ADMIN_ID, authorities = "DEPT_CS")
     void adminCanGetCustomerReport() throws Exception {
         mockMvc.perform(get("/api/crm/reports/customers"))
                 .andExpect(status().isOk())

@@ -6,10 +6,10 @@ import java.util.UUID;
 
 public record ReviewShowcaseResponse(
         UUID id, int rating, String comment, String replyText,
-        Instant createdAt, String buyerName, String productName
+        Instant createdAt, String buyerName, String productName, UUID productId
 ) {
     public static ReviewShowcaseResponse from(ReviewShowcaseProjection p) {
         return new ReviewShowcaseResponse(p.getId(), p.getRating(), p.getComment(), p.getReplyText(),
-                p.getCreatedAt(), p.getBuyerName(), p.getProductName());
+                p.getCreatedAt(), p.getBuyerName(), p.getProductName(), p.getProductId());
     }
 }

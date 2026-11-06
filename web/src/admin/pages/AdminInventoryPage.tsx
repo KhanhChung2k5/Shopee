@@ -5,9 +5,16 @@ import { useAuth } from '../../state/AuthContext'
 import { a, chipClass } from '../adminUi'
 import { buttonClass } from '../../components/ui'
 import { useDialog } from '../../state/DialogContext'
+import { RecentViews, SearchBox, StatusFilter } from '../components/ListSearch'
+import { matches, useRecentViews } from '../components/listSearchState'
 
 interface Warehouse { id: string; name: string; address: string | null }
 const movementLabel: Record<InventoryMovement['type'], string> = { import: 'Nhập hàng', export: 'Xuất hàng', adjust: 'Điều chỉnh' }
+
+/** Mức tồn: hết hàng (0 khả dụng), sắp hết (< 30), còn hàng. */
+function levelOf(stock: { availableQuantity: number }): 'ok' | 'low' | 'out' {
+  return stock.availableQuantity <= 0 ? 'out' : stock.availableQuantity < 30 ? 'low' : 'ok'
+}
 
 export default function AdminInventoryPage() {
   const { token } = useAuth()
@@ -16,6 +23,9 @@ export default function AdminInventoryPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [warehouseId, setWarehouseId] = useState('')
   const [query, setQuery] = useState('')
+  const [level, setLevel] = useState<'all' | 'ok' | 'low' | 'out'>('all')
+  const viewed = useRecentViews('inventory')
+  const openStock = (stock: InventoryStock) => { setSelected(stock); viewed.push(stock.id, `${stock.productName} · ${stock.warehouseName}`) }
   const [selected, setSelected] = useState<InventoryStock | null>(null)
   const [movements, setMovements] = useState<InventoryMovement[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,11 +63,14 @@ export default function AdminInventoryPage() {
   }, [token, selected])
 
   const filtered = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase('vi')
-    return stocks.filter((stock) => !term || stock.sku.toLocaleLowerCase('vi').includes(term)
-      || stock.productName.toLocaleLowerCase('vi').includes(term)
-      || stock.warehouseName.toLocaleLowerCase('vi').includes(term))
-  }, [stocks, query])
+    return stocks.filter((stock) => (level === 'all' || levelOf(stock) === level)
+      && matches(query, stock.sku, stock.productName, stock.warehouseName))
+  }, [stocks, query, level])
+  const levelCounts = useMemo(() => {
+    const counts = { all: stocks.length, ok: 0, low: 0, out: 0 }
+    for (const stock of stocks) counts[levelOf(stock)] += 1
+    return counts
+  }, [stocks])
   const lowStock = filtered.filter((stock) => stock.availableQuantity < 30).length
 
   const adjust = async (stock: InventoryStock) => {
@@ -110,12 +123,14 @@ export default function AdminInventoryPage() {
     <div className={a.toolbar}>
       <h1 className="!mb-0">Tồn kho ({filtered.length})</h1>
       <div className="flex flex-wrap items-center gap-2.5">
-        <input className={`${a.input} !w-64`} type="search" placeholder="Tìm sản phẩm, SKU hoặc kho..." value={query} onChange={(e) => setQuery(e.target.value)} />
+        <SearchBox page="inventory" placeholder="Tìm sản phẩm, SKU hoặc kho..." value={query} onChange={setQuery} />
         <select className={chipClass(false)} aria-label="Lọc theo kho" value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)}>
           <option value="">Tất cả kho</option>{warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
         </select>
       </div>
     </div>
+    <StatusFilter options={[['all', 'Tất cả'], ['ok', 'Còn hàng'], ['low', 'Sắp hết'], ['out', 'Hết hàng']] as const} value={level} onChange={setLevel} counts={levelCounts} />
+    <RecentViews items={viewed.items} onClear={viewed.clear} onOpen={(id) => { const s = stocks.find((x) => x.id === id); if (s) openStock(s) }} />
     {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
     {lowStock > 0 && <div className={`${a.bulkBar} !bg-error-container !border-error !text-on-error-container`}>⚠ {lowStock} biến thể sắp hết hàng (khả dụng dưới 30)</div>}
     {loading ? <p>Đang tải tồn kho…</p> : <div className={a.tableWrap}><table className={a.table}>
@@ -127,7 +142,7 @@ export default function AdminInventoryPage() {
               ? <img src={resolveCatalogImageUrl(stock.imageUrl)} alt="" className="w-12 h-12 rounded-lg object-cover bg-surface-container-low flex-shrink-0" loading="lazy" />
               : <span className="w-12 h-12 rounded-lg bg-surface-container-low flex-shrink-0" />}
             <div className="min-w-0">
-              <button className={`${a.linkButton} text-left`} type="button" onClick={() => setSelected(stock)}>{stock.productName}</button>
+              <button className={`${a.linkButton} text-left`} type="button" onClick={() => openStock(stock)}>{stock.productName}</button>
               <div className="font-label-md text-label-md text-on-surface-variant">
                 SKU {stock.sku}{describeAttributes(stock.attributes) ? ` · ${describeAttributes(stock.attributes)}` : ''}
               </div>
