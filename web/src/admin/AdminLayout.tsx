@@ -50,6 +50,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: 'CRM',
     items: [
+      { to: '/admin/dieu-hanh', label: 'Tổng quan điều hành', icon: <path d="M4 4h7v7H4V4Zm9 0h7v4h-7V4ZM4 13h7v7H4v-7Zm9-3h7v10h-7V10Z" /> },
       { to: '/admin/khach-hang', label: 'Khách hàng', icon: <path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM20 19v-1.2a3 3 0 0 0-2.2-2.9M15 4.2a3 3 0 0 1 0 5.8" /> },
       { to: '/admin/bao-cao', end: true, label: 'Báo cáo nhân khẩu học', icon: <path d="M4 20V10M10 20V4M16 20v-7M4 20h16" /> },
       { to: '/admin/bao-cao/khao-sat', label: 'Thống kê khảo sát', icon: <path d="M5 4h14v16H5zM8 15v2M12 11v6M16 8v9" /> },
@@ -82,6 +83,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/bao-cao-quan-tri': 'Báo cáo quản trị',
   '/admin/bao-cao': 'Báo cáo nhân khẩu học',
   '/admin/bao-cao/khao-sat': 'Thống kê khảo sát',
+  '/admin/dieu-hanh': 'Tổng quan điều hành CRM',
   '/admin/crm': 'Hồ sơ & RFM khách hàng',
   '/admin/ho-tro': 'Hỗ trợ khách hàng',
   '/admin/danh-gia': 'Đánh giá sản phẩm',

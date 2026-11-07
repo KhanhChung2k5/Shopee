@@ -25,6 +25,7 @@ import AdminOrdersPage from './admin/pages/AdminOrdersPage'
 import AdminRefundsPage from './admin/pages/AdminRefundsPage'
 import AdminMarketingPage from './admin/pages/AdminMarketingPage'
 import AdminEmployeesPage from './admin/pages/AdminEmployeesPage'
+import AdminCrmHomePage from './admin/pages/crm/AdminCrmHomePage'
 import AdminCrmProfilesPage from './admin/pages/crm/AdminCrmProfilesPage'
 import AdminSupportPage from './admin/pages/crm/AdminSupportPage'
 import AdminReviewsPage from './admin/pages/AdminReviewsPage'
@@ -108,6 +109,7 @@ function App() {
           <Route path="bao-cao/khao-sat" element={<RequireDepartment><AdminSurveyStatsPage /></RequireDepartment>} />
           <Route path="nhan-vien" element={<RequireDepartment><AdminEmployeesPage /></RequireDepartment>} />
           <Route path="nhat-ky" element={<RequireDepartment><AdminAuditLogPage /></RequireDepartment>} />
+          <Route path="dieu-hanh" element={<RequireDepartment><AdminCrmHomePage /></RequireDepartment>} />
           <Route path="crm" element={<RequireDepartment><AdminCrmProfilesPage /></RequireDepartment>} />
           <Route path="ho-tro" element={<RequireDepartment><AdminSupportPage /></RequireDepartment>} />
           <Route path="danh-gia" element={<RequireDepartment><AdminReviewsPage /></RequireDepartment>} />

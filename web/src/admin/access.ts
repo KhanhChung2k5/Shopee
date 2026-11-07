@@ -31,6 +31,7 @@ export const ADMIN_SECTION_ACCESS: Record<string, Department[]> = {
   '/admin/bao-cao': ['cs'],
   '/admin/bao-cao/khao-sat': ['cs'],
   // Phân hệ CRM — docs/phan-quyen-he-thong.md mục 2.1
+  '/admin/dieu-hanh': ['cs', 'sales'],
   '/admin/crm': ['cs'],
   '/admin/ho-tro': ['cs'],
   // Phản hồi đánh giá sản phẩm — khớp quyền PATCH /reviews/*/reply ở backend (chỉ CSKH)

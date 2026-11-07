@@ -85,10 +85,12 @@ export interface Segment {
 export const fetchSegments = (token: string) => apiFetch<{ segments: Segment[] }>('/api/segments', {}, token)
 export const createSegment = (token: string, name: string, ruleDefinition: Record<string, unknown>) =>
   apiFetch<Segment>('/api/segments', { method: 'POST', body: JSON.stringify({ name, ruleDefinition }) }, token)
+export const updateSegment = (token: string, id: string, name: string, ruleDefinition: Record<string, unknown>) =>
+  apiFetch<Segment>(`/api/segments/${id}`, { method: 'PUT', body: JSON.stringify({ name, ruleDefinition }) }, token)
 export const deleteSegment = (token: string, id: string) => apiFetch<void>(`/api/segments/${id}`, { method: 'DELETE' }, token)
 export const refreshSegment = (token: string, id: string) => apiFetch<Segment>(`/api/segments/${id}/refresh`, { method: 'POST' }, token)
 
-export function describeRule(rule: Record<string, unknown>): string {
+export function describeRuleParts(rule: Record<string, unknown>): string[] {
   const presets = (Array.isArray(rule.presets) ? rule.presets : [rule.preset]).filter(Boolean) as string[]
   const parts: string[] = []
   if (presets.includes('age')) {
@@ -103,7 +105,11 @@ export function describeRule(rule: Record<string, unknown>): string {
     const names = (Array.isArray(rule.categoryNames) ? rule.categoryNames : [rule.categoryName]).filter(Boolean) as string[]
     parts.push(`Loại sản phẩm: ${names.join(', ') || 'đã chọn'}`)
   }
-  return parts.join(' · ') || 'Không rõ'
+  return parts.length ? parts : ['Không rõ']
+}
+
+export function describeRule(rule: Record<string, unknown>): string {
+  return describeRuleParts(rule).join(' · ')
 }
 
 // ---------------------------------------------------------------- campaigns
