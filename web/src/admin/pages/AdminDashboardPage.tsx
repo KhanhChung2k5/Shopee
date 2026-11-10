@@ -36,7 +36,7 @@ const ORDER_STATUS_COLOR: Record<OrderStatus, string> = {
 }
 
 const QUICK_LINKS = [
-  { to: '/admin/khach-hang', title: 'Quản lý khách hàng', hint: 'Thêm mới, khoá/mở, xoá mềm tài khoản' },
+  { to: '/admin/khach-hang', title: 'Quản lý khách hàng', hint: 'Thêm mới, khoá/mở, xoá tài khoản' },
   { to: '/admin/bao-cao-quan-tri', title: 'Báo cáo quản trị', hint: 'Doanh thu, lợi nhuận gộp, nhập – xuất – tồn' },
   { to: '/admin/bao-cao', title: 'Báo cáo nhân khẩu học', hint: 'Phân bố tuổi, giới tính, ngành hàng ưa thích' },
   { to: '/admin/san-pham', title: 'Sản phẩm', hint: 'Danh sách catalog, trạng thái đang bán/ẩn' },
@@ -176,7 +176,7 @@ export default function AdminDashboardPage() {
             <div className={`${a.statValue} !text-secondary`}>{active}</div>
           </div>
           <div className={`${a.card} flex-1 flex flex-col justify-center`}>
-            <div className={a.statLabel}>Đã khoá / xoá mềm</div>
+            <div className={a.statLabel}>Đã khoá / đã xoá</div>
             <div className={`${a.statValue} !text-[#ca8a04]`}>
               {locked} <span className="font-title-lg text-title-lg text-error">/ {deleted}</span>
             </div>
@@ -249,7 +249,7 @@ export default function AdminDashboardPage() {
             segments={[
               { label: 'Hoạt động', value: active, color: 'var(--st-secondary)' },
               { label: 'Đã khoá', value: locked, color: '#EAB308' },
-              { label: 'Đã xoá mềm', value: deleted, color: 'var(--st-error)' },
+              { label: 'Đã xoá', value: deleted, color: 'var(--st-error)' },
             ]}
           />
         </div>

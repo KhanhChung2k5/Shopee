@@ -115,7 +115,7 @@ export default function LoginPage() {
 
             {mode === 'login' && (
               <p className="font-body-md text-body-md text-on-surface-variant">
-                Quên mật khẩu? Hãy liên hệ bộ phận CSKH để được xác minh và cấp mật khẩu tạm.
+                Quên mật khẩu? Hãy liên hệ bộ phận CSKH để được hỗ trợ.
               </p>
             )}
 

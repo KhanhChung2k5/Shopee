@@ -51,7 +51,7 @@ public interface IdentityPort {
     /** Cập nhật địa chỉ thuộc khách. Không sửa khi khách đã xóa. */
     AddressView updateAddress(UUID customerId, UUID addressId, UpsertAddressCommand command);
 
-    /** Quản lý tài khoản khách (thêm, khoá, xoá mềm, khôi phục, mật khẩu tạm): chỉ CSKH. */
+    /** Quản lý tài khoản khách (thêm, khoá, xoá, khôi phục): chỉ CSKH. */
     void requireCustomerAdmin(UUID actorId);
 
     /** Nhật ký thao tác: chỉ quản trị viên hệ thống. */

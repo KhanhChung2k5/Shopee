@@ -13,7 +13,7 @@ export type Department = 'sales' | 'warehouse' | 'admin' | 'cs'
  * - don-hang   : bán hàng xác nhận / thanh toán / hoá đơn, kho đóng gói / giao, CSKH chỉ xem để tra cứu
  * - hoan-tien  : CSKH duyệt yêu cầu trả hàng và chuyển khoản hoàn tiền
  * - marketing  : voucher/flash sale là quyết định kinh doanh của bán hàng
- * - khach-hang : quản lý khách hàng (thêm/khoá/xoá mềm/khôi phục) thuộc CRM, do CSKH phụ trách
+ * - khach-hang : quản lý khách hàng (thêm/khoá/xoá/khôi phục) thuộc CRM, do CSKH phụ trách
  * - bao-cao-quan-tri : doanh thu/lợi nhuận (bán hàng), nhập–xuất–tồn (kho)
  * - bao-cao    : báo cáo khách hàng — CSKH
  * - nhan-vien, nhat-ky : chỉ admin — enforce ở backend (DEPT_ADMIN)

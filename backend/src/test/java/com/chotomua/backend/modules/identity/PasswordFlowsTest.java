@@ -5,9 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.chotomua.backend.modules.crm.port.OrderPort;
 import com.chotomua.backend.modules.identity.dto.ChangePasswordRequest;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,35 +50,6 @@ class PasswordFlowsTest {
     @Test
     void changePasswordRefusesTheSamePassword() {
         assertThatThrownBy(() -> change("Oldpass123", "Oldpass123")).hasMessageContaining("phải khác");
-    }
-
-    private CustomerController customers() {
-        return new CustomerController(users, mock(OrderPort.class), encoder);
-    }
-
-    @Test
-    void temporaryPasswordLogsInAndOnlyItsHashIsStored() {
-        String password = customers().issueTemporaryPassword(id).temporaryPassword();
-
-        assertThat(encoder.matches(password, user.getPasswordHash())).isTrue();
-        assertThat(user.getPasswordHash()).isNotEqualTo(password);
-        assertThat(encoder.matches("Oldpass123", user.getPasswordHash())).isFalse();
-    }
-
-    @Test
-    void temporaryPasswordIsRefusedForAnAccountThatIsNotActive() {
-        user.setStatus("locked");
-
-        assertThatThrownBy(() -> customers().issueTemporaryPassword(id)).isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
-    void temporaryPasswordIsNotIssuedForStaff() {
-        User staff = new User("staff", encoder.encode("Oldpass123"));
-        when(users.findById(id)).thenReturn(Optional.of(staff));
-
-        assertThatThrownBy(() -> customers().issueTemporaryPassword(id)).isInstanceOf(NoSuchElementException.class);
-        assertThat(encoder.matches("Oldpass123", staff.getPasswordHash())).isTrue();
     }
 
     @RepeatedTest(50)
