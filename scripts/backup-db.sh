@@ -1,42 +1,44 @@
 #!/usr/bin/env bash
-# Logical backup of the Chợ Tốt Mua Postgres database, via pg_dump inside
-# the running Docker container (no local psql/pg_dump install required).
+# Logical backup of the Chợ Tốt Mua database (pg_dump, custom format).
 #
 # Usage:
-#   ./scripts/backup-db.sh
+#   ./scripts/backup-db.sh            # the database the backend uses (backend/.env, Supabase)
+#   ./scripts/backup-db.sh --local    # the local Docker Compose database (localhost:5434/chotomua)
 #
-# Output: backups/chotomua_YYYY-MM-DD_HHMMSS.dump (custom format, restore
-# with pg_restore — see scripts/restore-db.sh).
+# Output: backups/chotomua_YYYY-MM-DD_HHMMSS.dump — schema "public" only (all application tables and
+# flyway_schema_history; Supabase's own auth/storage schemas are not part of the application).
+# pg_dump only reads: it takes shared locks and never changes data.
 #
-# Retention: keeps the 7 most recent backups, deletes older ones. Schedule
-# this script daily (cron / Windows Task Scheduler) for a simple 7-day
-# rolling backup; schema itself is always reproducible from scratch via the
-# Flyway migrations in backend/src/main/resources/db/migration.
+# Retention: keeps the 7 most recent backups. Schedule daily with cron / Windows Task Scheduler.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/db-lib.sh"
 
-CONTAINER="shopee-postgres-1"
-DB_NAME="chotomua"
-DB_USER="chotomua"
-BACKUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/backups"
+BACKUP_DIR="${BACKUP_DIR:-$ROOT/backups}"
+KEEP="${KEEP:-7}"
 TIMESTAMP="$(date +%Y-%m-%d_%H%M%S)"
 FILE="$BACKUP_DIR/chotomua_${TIMESTAMP}.dump"
 
+if [ "${1:-}" = "--local" ]; then
+  HOST="$LOCAL_HOST" PORT="$LOCAL_PORT" NAME="chotomua" USER_="$LOCAL_USER" PASS="$LOCAL_PASSWORD" SSL="disable"
+  LABEL="CSDL local (Docker Compose)"
+else
+  load_source_db
+  HOST="$SRC_HOST" PORT="$SRC_PORT" NAME="$SRC_NAME" USER_="$SRC_USER" PASS="$SRC_PASSWORD" SSL="$SRC_SSLMODE"
+  LABEL="CSDL của backend (backend/.env)"
+fi
+
 mkdir -p "$BACKUP_DIR"
+echo "Sao lưu $LABEL -> $FILE"
+if ! pg_tool pg_dump "$HOST" "$PORT" "$USER_" "$PASS" "$SSL" -d "$NAME" \
+      --schema=public --format=custom --no-owner --no-privileges > "$FILE.part"; then
+  rm -f "$FILE.part"
+  echo "Sao lưu thất bại." >&2
+  exit 1
+fi
+mv "$FILE.part" "$FILE"
+echo "Đã ghi: $FILE ($(du -h "$FILE" | cut -f1))"
 
-echo "Backing up '$DB_NAME' from container '$CONTAINER' -> $FILE"
-# MSYS_NO_PATHCONV scoped to just this call: Windows Git Bash otherwise
-# rewrites the /tmp/... (container-internal) path into a host Windows path.
-# docker cp below must NOT have it set, since its destination IS a real host
-# path that needs the normal conversion.
-MSYS_NO_PATHCONV=1 docker exec "$CONTAINER" pg_dump -U "$DB_USER" -d "$DB_NAME" -F c -f "/tmp/backup.dump"
-docker cp "$CONTAINER:/tmp/backup.dump" "$FILE"
-MSYS_NO_PATHCONV=1 docker exec "$CONTAINER" rm -f /tmp/backup.dump
-
-echo "Backup written: $FILE ($(du -h "$FILE" | cut -f1))"
-
-# Retention: keep the 7 most recent .dump files, delete the rest.
-KEEP=7
 ls -1t "$BACKUP_DIR"/chotomua_*.dump 2>/dev/null | tail -n +$((KEEP + 1)) | while read -r old; do
-  echo "Removing old backup: $old"
+  echo "Xoá bản cũ: $old"
   rm -f "$old"
 done

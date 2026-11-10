@@ -117,7 +117,7 @@ public class JdbcIdentityPort implements IdentityPort {
     public void restoreCustomer(UUID customerId) {
         CustomerView current = getCustomer(customerId);
         if (!CustomerStatus.DELETED.equals(current.status())) {
-            throw new InvalidCustomerStatusException("Chỉ khôi phục được khách hàng đã xóa mềm.");
+            throw new InvalidCustomerStatusException("Chỉ khôi phục được khách hàng đã bị xoá.");
         }
         setStatus(customerId, CustomerStatus.ACTIVE);
     }

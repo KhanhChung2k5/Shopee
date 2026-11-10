@@ -117,11 +117,15 @@ export default function AdminCrmHomePage() {
   const [report, setReport] = useState<CustomerReport | null>(null)
   const [surveys, setSurveys] = useState<SentSurvey[] | null>(null)
   const [surveyDenied, setSurveyDenied] = useState(false)
+  const [ticketDenied, setTicketDenied] = useState(false)
+  const [reportDenied, setReportDenied] = useState(false)
 
   useEffect(() => {
     if (!token) return
-    fetchConversations(token).then((data) => { setItems(data.items); setLive(data.agentOnline) }).catch(() => setItems([]))
-    fetchCustomerReport(token).then(setReport).catch(() => setReport(null))
+    fetchConversations(token).then((data) => { setItems(data.items); setLive(data.agentOnline) })
+      .catch((error) => { setItems([]); setTicketDenied(error instanceof ApiError && error.status === 403) })
+    fetchCustomerReport(token).then(setReport)
+      .catch((error) => { setReport(null); setReportDenied(error instanceof ApiError && error.status === 403) })
     fetchCampaigns(token)
       .then((data) => setCampaigns(data.campaigns))
       .catch((error) => { setCampaigns([]); setCampaignDenied(error instanceof ApiError && error.status === 403) })
@@ -211,6 +215,9 @@ export default function AdminCrmHomePage() {
           </div>
           {link('/admin/ho-tro', 'Mở hàng đợi')}
         </div>
+        {ticketDenied ? (
+          <div className={`${a.card} rounded-2xl font-body-md text-body-md text-on-surface-variant`}>Ticket và hàng đợi hỗ trợ do bộ phận CSKH xử lý.</div>
+        ) : (<>
         <div className="grid grid-cols-1 gap-space-md lg:grid-cols-3">
           <div className="overflow-hidden rounded-2xl bg-[#2f6bff] p-space-lg text-white">
             <div className="flex items-center gap-space-sm">
@@ -300,6 +307,7 @@ export default function AdminCrmHomePage() {
             ))}
           </ul>
         </div>
+        </>)}
       </section>
 
       <section className="space-y-space-md">
@@ -405,6 +413,7 @@ export default function AdminCrmHomePage() {
 
           <div className={`${a.card} rounded-2xl`}>
             <div className="mb-space-sm flex items-center justify-between"><span className="font-title-md text-title-md">Hồ sơ CRM</span>{link('/admin/crm', 'Đi tới →')}</div>
+            {reportDenied ? <p className="mt-space-md font-body-md text-body-md text-on-surface-variant">Hồ sơ khách do bộ phận CSKH theo dõi.</p> : (<>
             <div className="mb-space-md grid grid-cols-3 gap-space-sm">
               {[['Khách', report?.totalCustomers ?? '…'], ['Champions', rfm.champions ?? 0], ['At Risk', rfm.at_risk ?? 0]].map(([label, value]) => (
                 <div key={label as string} className="rounded-xl bg-[#f6f1ea] px-space-sm py-space-sm">
@@ -422,6 +431,7 @@ export default function AdminCrmHomePage() {
               ))}
               {report && report.customers.length === 0 && <li className="font-body-md text-body-md text-on-surface-variant">Chưa có hồ sơ khách.</li>}
             </ul>
+            </>)}
           </div>
         </div>
       </section>

@@ -16,6 +16,7 @@ public final class OperationActionCatalog {
 
     private static final List<Rule> RULES = List.of(
             rule("PATCH", "/customers/" + ID + "/status", "Đổi trạng thái khách hàng"),
+            // Tính năng đã gỡ; giữ nhãn để nhật ký cũ vẫn lọc được theo thao tác này.
             rule("POST", "/customers/" + ID + "/temporary-password", "Cấp mật khẩu tạm cho khách hàng"),
             rule("POST", "/users/me/password", "Đổi mật khẩu"),
             rule("PATCH", "/orders/" + ID + "/status", "Đổi trạng thái đơn hàng"),

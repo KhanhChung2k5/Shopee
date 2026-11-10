@@ -65,7 +65,7 @@ export default function AdminDemographicsPage() {
       <h1>Báo cáo khách hàng</h1>
       <CustomerReportTabs />
       <p className="font-body-md text-body-md text-on-surface-variant mb-space-xl">
-        Tính trên {activeCustomers.length} khách hàng đang hoạt động/khoá (không tính tài khoản đã xoá mềm). Tuổi và giới tính có thể trống nếu khách chưa cập nhật hồ sơ.
+        Tính trên {activeCustomers.length} khách hàng đang hoạt động/khoá (không tính tài khoản đã xoá). Tuổi và giới tính có thể trống nếu khách chưa cập nhật hồ sơ.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md mb-space-lg">

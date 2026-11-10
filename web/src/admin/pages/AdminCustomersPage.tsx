@@ -14,14 +14,14 @@ import { matches, useRecentViews } from '../components/listSearchState'
 const STATUS_LABEL: Record<CustomerStatus, string> = {
   active: 'Hoạt động',
   locked: 'Đã khoá',
-  deleted: 'Đã xoá mềm',
+  deleted: 'Đã xoá',
 }
 
 const STATUS_FILTERS = [
   ['all', 'Tất cả'],
   ['active', 'Hoạt động'],
   ['locked', 'Đã khoá'],
-  ['deleted', 'Đã xoá mềm'],
+  ['deleted', 'Đã xoá'],
 ] as const
 
 type SortKey = 'fullName' | 'age' | 'totalOrders' | 'ltv'
@@ -114,30 +114,14 @@ export default function AdminCustomersPage() {
   const softDelete = async (id: string) => {
     const c = customers.find((x) => x.id === id)
     if (!c) return
-    if (!(await confirm({ title: 'Xoá mềm khách hàng', message: <>Xoá mềm <strong>{c.fullName}</strong>? Tài khoản bị ẩn khỏi hệ thống nhưng dữ liệu và lịch sử đơn hàng vẫn được giữ nguyên.</>, confirmLabel: 'Xoá mềm', tone: 'danger' }))) return
+    if (!(await confirm({ title: 'Xoá khách hàng', message: <>Xoá <strong>{c.fullName}</strong>? Khách sẽ không đăng nhập được nữa. Lịch sử đơn hàng vẫn được giữ và có thể khôi phục tài khoản khi cần.</>, confirmLabel: 'Xoá', tone: 'danger' }))) return
     if (!(await setStatus(id, 'deleted'))) return
     setSelected((prev) => {
       const next = new Set(prev)
       next.delete(id)
       return next
     })
-    toast.show(`Đã xoá mềm "${c.fullName}"`)
-  }
-
-  const issueTemporaryPassword = async (c: Customer) => {
-    if (!(await confirm({ title: 'Cấp mật khẩu tạm', message: <>Cấp mật khẩu tạm cho <strong>{c.fullName}</strong>? Mật khẩu hiện tại của khách sẽ không dùng được nữa. Chỉ làm sau khi đã xác minh đúng là chủ tài khoản.</>, confirmLabel: 'Cấp mật khẩu', tone: 'danger' }))) return
-    try {
-      const { temporaryPassword } = await apiFetch<{ temporaryPassword: string }>(`/customers/${c.id}/temporary-password`, { method: 'POST' }, token)
-      const copy = await confirm({
-        title: 'Mật khẩu tạm',
-        message: <>Mật khẩu của <strong>{c.fullName}</strong>: <code className="font-mono font-bold select-all">{temporaryPassword}</code>. Mật khẩu chỉ hiện một lần. Hãy nhắc khách đăng nhập rồi đổi ngay trong trang tài khoản.</>,
-        confirmLabel: 'Sao chép và đóng',
-        cancelLabel: 'Đóng',
-      })
-      if (copy) await navigator.clipboard.writeText(temporaryPassword).catch(() => toast.show('Không sao chép được mật khẩu'))
-    } catch (err) {
-      toast.show(err instanceof ApiError ? err.message : 'Không cấp được mật khẩu tạm')
-    }
+    toast.show(`Đã xoá "${c.fullName}"`)
   }
 
   const restore = async (id: string) => {
@@ -173,8 +157,8 @@ export default function AdminCustomersPage() {
 
   const bulkSoftDelete = async () => {
     const ids = selectedNotDeleted()
-    if (!(await confirm({ title: 'Xoá mềm nhiều khách hàng', message: <>Xoá mềm <strong>{ids.length}</strong> khách hàng đã chọn? Dữ liệu và lịch sử đơn hàng vẫn được giữ nguyên.</>, confirmLabel: 'Xoá mềm', tone: 'danger' }))) return
-    await bulkStatus(ids, 'deleted', 'xoá mềm')
+    if (!(await confirm({ title: 'Xoá nhiều khách hàng', message: <>Xoá <strong>{ids.length}</strong> khách hàng đã chọn? Lịch sử đơn hàng vẫn được giữ và có thể khôi phục tài khoản khi cần.</>, confirmLabel: 'Xoá', tone: 'danger' }))) return
+    await bulkStatus(ids, 'deleted', 'xoá')
   }
 
   const toggleSelectAll = () => {
@@ -220,7 +204,7 @@ export default function AdminCustomersPage() {
         <div className={a.bulkBar}>
           <span>{selected.size} đã chọn</span>
           <button className={buttonClass('outline', 'sm')} type="button" onClick={bulkLock}>Khoá đã chọn</button>
-          <button className={buttonClass('outline', 'sm')} type="button" onClick={bulkSoftDelete}>Xoá mềm đã chọn</button>
+          <button className={buttonClass('outline', 'sm')} type="button" onClick={bulkSoftDelete}>Xoá đã chọn</button>
           <button className={buttonClass('outline', 'sm')} type="button" onClick={() => setSelected(new Set())}>Bỏ chọn</button>
         </div>
       )}
@@ -296,7 +280,7 @@ export default function AdminCustomersPage() {
                           Khôi phục
                         </button>
                       ) : (
-                        <span className="text-on-surface-variant">Chỉ quản trị viên được khôi phục</span>
+                        <span className="text-on-surface-variant">Chỉ CSKH được khôi phục</span>
                       )
                     ) : (
                       <>
@@ -307,21 +291,12 @@ export default function AdminCustomersPage() {
                         >
                           {c.status === 'locked' ? 'Mở khoá' : 'Khoá'}
                         </button>
-                        {c.status === 'active' && (
-                          <button
-                            className={buttonClass('outline', 'sm', 'mr-1.5')}
-                            type="button"
-                            onClick={() => void issueTemporaryPassword(c)}
-                          >
-                            Cấp mật khẩu tạm
-                          </button>
-                        )}
                         <button
                           className={buttonClass('outline', 'sm')}
                           type="button"
                           onClick={() => softDelete(c.id)}
                         >
-                          Xoá mềm
+                          Xoá
                         </button>
                       </>
                     )}
