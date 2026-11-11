@@ -440,14 +440,20 @@ class CampaignControllerTest {
 
     @Test
     @WithMockUser(username = CS_ID, authorities = "DEPT_CS")
-    void customerServiceStaffCannotSend() throws Exception {
+    void customerServiceStaffCanListAndSendACampaign() throws Exception {
+        identity.seedCustomer(
+                UUID.fromString(ACTIVE_ID), "An", "an@seed.local", "0901111111", "male",
+                LocalDate.now().minusYears(20), CustomerStatus.ACTIVE);
+        segmentId = createAgeSegment();
+
+        mockMvc.perform(get("/api/campaigns"))
+                .andExpect(status().isOk());
         mockMvc.perform(post("/api/campaigns")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"Sale","segmentIds":["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],"content":"Không"}
-                                """))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.message", containsString("quyền")));
+                        .content(campaignBody(segmentId, null, "Thư chăm sóc")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.sentCount").value(1))
+                .andExpect(jsonPath("$.readCount").value(0));
     }
 
     private UUID createAgeSegment() throws Exception {

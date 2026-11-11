@@ -106,6 +106,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/reports/revenue").hasAuthority("DEPT_SALES")
                 .requestMatchers(HttpMethod.GET, "/api/reports/inventory").hasAuthority("DEPT_WAREHOUSE")
                 .requestMatchers("/api/reports/**").denyAll()
+                // Dashboard vận hành (doanh thu đơn, khuyến mãi, hành vi mua) — CSKH và bán hàng.
+                .requestMatchers(HttpMethod.GET, "/api/dashboards/**").hasAnyAuthority("DEPT_CS", "DEPT_SALES")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

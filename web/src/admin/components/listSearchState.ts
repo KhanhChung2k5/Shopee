@@ -69,6 +69,25 @@ export function useSavedSearches(page: string) {
   return { recent, pinned, remember, togglePin, forget }
 }
 
+export type ViewMode = 'list' | 'grid'
+
+/** Kiểu Danh sách / Lưới của một trang, nhớ trong trình duyệt. */
+export function useViewMode(page: string) {
+  const key = `chotomua_layout_${page}`
+  const [mode, setMode] = useState<ViewMode>(() => {
+    try {
+      return localStorage.getItem(key) === 'grid' ? 'grid' : 'list'
+    } catch {
+      return 'list'
+    }
+  })
+  const choose = useCallback((next: ViewMode) => {
+    setMode(next)
+    try { localStorage.setItem(key, next) } catch { /* trình duyệt chặn lưu trữ */ }
+  }, [key])
+  return [mode, choose] as const
+}
+
 export interface ViewedItem { id: string; label: string }
 
 /** Bản ghi đã mở gần đây (khách hàng, đơn hàng, ticket…). */

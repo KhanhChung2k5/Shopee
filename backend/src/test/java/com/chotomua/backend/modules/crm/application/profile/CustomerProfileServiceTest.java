@@ -79,8 +79,8 @@ class CustomerProfileServiceTest {
 
         assertThat(first.totalOrders()).isEqualTo(2);
         assertThat(first.totalSpent()).isEqualByComparingTo("250000");
-        // AOV 125,000 × 2 orders/year × 3-year lifespan
-        assertThat(first.ltv()).isEqualByComparingTo("750000.00");
+        // AOV 125,000 × 2 orders/year × 2-year lifespan
+        assertThat(first.ltv()).isEqualByComparingTo("500000.00");
         assertThat(first.rfmSegment()).isEqualTo(RfmClassifier.POTENTIAL);
         assertThat(first.lastPurchaseAt()).isEqualTo(Instant.parse("2026-08-20T10:00:00Z"));
         assertThat(second.rfmSegment()).isEqualTo(first.rfmSegment());
@@ -108,12 +108,12 @@ class CustomerProfileServiceTest {
         assertThat(lockedProfile.status()).isEqualTo(CustomerStatus.LOCKED);
         assertThat(lockedProfile.totalOrders()).isEqualTo(1);
         assertThat(lockedProfile.totalSpent()).isEqualByComparingTo("80000");
-        assertThat(lockedProfile.ltv()).isEqualByComparingTo("240000");
+        assertThat(lockedProfile.ltv()).isEqualByComparingTo("160000");
         assertThat(lockedProfile.rfmSegment()).isEqualTo(RfmClassifier.POTENTIAL);
         assertThat(deletedProfile.status()).isEqualTo(CustomerStatus.DELETED);
         assertThat(deletedProfile.totalOrders()).isEqualTo(1);
         assertThat(deletedProfile.totalSpent()).isEqualByComparingTo("120000");
-        assertThat(deletedProfile.ltv()).isEqualByComparingTo("360000");
+        assertThat(deletedProfile.ltv()).isEqualByComparingTo("240000");
         assertThat(store.find(locked.id())).isPresent();
         assertThat(store.find(deleted.id())).isPresent();
     }
@@ -154,6 +154,20 @@ class CustomerProfileServiceTest {
         assertThat(store.find(locked.id())).isPresent();
         assertThat(store.find(deleted.id())).isPresent();
         assertThat(store.find(active.id()).orElseThrow().calculatedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void ordersOlderThanAYearKeepLifetimeSpendButNotTheRfmScore() {
+        CustomerView customer = identity.seedCustomer(
+                "Cu", "male", LocalDate.of(1992, 2, 2), CustomerStatus.ACTIVE);
+        seedDelivered(customer.id(), "8000000", "2024-01-01T10:00:00Z");
+        seedDelivered(customer.id(), "100000", "2026-09-01T10:00:00Z");
+
+        CustomerProfileResponse profile = profiles.recalculate(ACTOR, customer.id());
+
+        assertThat(profile.totalOrders()).isEqualTo(2);
+        assertThat(profile.totalSpent()).isEqualByComparingTo("8100000");
+        assertThat(profile.rfmSegment()).isEqualTo(RfmClassifier.POTENTIAL);
     }
 
     @Test

@@ -6,25 +6,9 @@ import { ORDER_STATUS_LABEL, staleOrderGroups, type OrderStatus, type StaffOrder
 import { formatVnd } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
 import { apiFetch } from '../../lib/api'
-import LineChart from '../components/LineChart'
 import DonutChart from '../components/DonutChart'
 import { a } from '../adminUi'
-import { canAccessSection, canSeeRevenueReport, type Department } from '../access'
-import { isoDay, type RevenueReport } from '../reports'
-
-/** Last 7 days of revenue recognised at delivery (net of refunds), plus the change against the 7 days before. */
-function revenueTrend(report: RevenueReport | null) {
-  const days = report?.days ?? []
-  const thisWeekDays = days.slice(-7)
-  const previousWeek = days.slice(0, -7).reduce((sum, d) => sum + d.netRevenue, 0)
-  const thisWeek = thisWeekDays.reduce((sum, d) => sum + d.netRevenue, 0)
-  return {
-    labels: thisWeekDays.map((d) => { const [, m, day] = d.day.split('-'); return `${Number(day)}/${Number(m)}` }),
-    values: thisWeekDays.map((d) => Math.round(d.netRevenue / 10_000) / 100), // triệu đồng
-    thisWeek,
-    deltaPct: previousWeek > 0 ? Math.round(((thisWeek - previousWeek) / previousWeek) * 1000) / 10 : null,
-  }
-}
+import { canAccessSection, type Department } from '../access'
 
 const ORDER_STATUS_COLOR: Record<OrderStatus, string> = {
   pending: '#EAB308',
@@ -36,7 +20,7 @@ const ORDER_STATUS_COLOR: Record<OrderStatus, string> = {
 }
 
 const QUICK_LINKS = [
-  { to: '/admin/khach-hang', title: 'Quản lý khách hàng', hint: 'Thêm mới, khoá/mở, xoá mềm tài khoản' },
+  { to: '/admin/khach-hang', title: 'Quản lý khách hàng', hint: 'Thêm mới, khoá/mở, xoá tài khoản' },
   { to: '/admin/bao-cao-quan-tri', title: 'Báo cáo quản trị', hint: 'Doanh thu, lợi nhuận gộp, nhập – xuất – tồn' },
   { to: '/admin/bao-cao', title: 'Báo cáo nhân khẩu học', hint: 'Phân bố tuổi, giới tính, ngành hàng ưa thích' },
   { to: '/admin/san-pham', title: 'Sản phẩm', hint: 'Danh sách catalog, trạng thái đang bán/ẩn' },
@@ -58,20 +42,9 @@ export default function AdminDashboardPage() {
   // GET /orders is for sales / warehouse / cs only.
   const canSeeOrders = canAccessSection('/admin/don-hang', department)
   const [orders, setOrders] = useState<StaffOrderSummary[]>([])
-  // Revenue comes from the report API (recognised on delivery) — sales only.
   // Quản trị hệ thống chỉ thấy số liệu tài khoản nhân viên (GET /employees chỉ cho admin).
   const canSeeStaff = canAccessSection('/admin/nhan-vien', department)
   const [staff, setStaff] = useState<StaffAccount[]>([])
-  const canSeeRevenue = canSeeRevenueReport(department)
-  const [revenue, setRevenue] = useState<RevenueReport | null>(null)
-
-  useEffect(() => {
-    if (!token || !canSeeRevenue) return
-    const to = new Date()
-    const from = new Date(to.getTime() - 13 * 86_400_000)
-    apiFetch<RevenueReport>(`/api/reports/revenue?from=${isoDay(from)}&to=${isoDay(to)}`, {}, token)
-      .then(setRevenue).catch(() => setRevenue(null))
-  }, [token, canSeeRevenue])
 
   useEffect(() => {
     if (!token || !canSeeOrders) return
@@ -92,14 +65,11 @@ export default function AdminDashboardPage() {
   const active = customers.filter((c) => c.status === 'active').length
   const locked = customers.filter((c) => c.status === 'locked').length
   const deleted = customers.filter((c) => c.status === 'deleted').length
-  const totalLtv = customers.reduce((sum, c) => sum + c.ltv, 0)
 
   const topCustomers = [...customers]
     .filter((c) => c.status !== 'deleted' && c.ltv > 0)
     .sort((a, b) => b.ltv - a.ltv)
     .slice(0, 5)
-
-  const trend = revenueTrend(revenue)
 
   const staleGroups = staleOrderGroups(orders)
   const staleTotal = staleGroups.reduce((sum, g) => sum + g.count, 0)
@@ -145,41 +115,18 @@ export default function AdminDashboardPage() {
 
       {canSeeCustomers && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-space-md mb-space-lg">
-        <div className={`${a.card} lg:col-span-2 flex flex-col`}>
-          <div className="flex flex-wrap items-center justify-between gap-space-md">
-            <div className={a.statLabel}>Tổng LTV dự báo của khách hàng</div>
-            {revenue && trend.deltaPct != null && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-md text-label-md whitespace-nowrap">
-                <span className="material-symbols-outlined text-sm">{trend.deltaPct >= 0 ? 'trending_up' : 'trending_down'}</span>
-                Doanh thu 7 ngày {trend.deltaPct >= 0 ? '+' : ''}{trend.deltaPct}% so với tuần trước
-              </span>
-            )}
-          </div>
-          <div className="font-headline-xl text-headline-xl text-primary my-space-sm">{formatVnd(totalLtv)}</div>
-          {revenue && (
-            <>
-              <div className="font-label-md text-label-md text-on-surface-variant mb-1">
-                Doanh thu thuần 7 ngày gần nhất: {formatVnd(trend.thisWeek)} (ghi nhận khi đơn đã giao, trừ tiền hoàn; biểu đồ theo triệu đồng)
-              </div>
-              <LineChart values={trend.values} labels={trend.labels} color="var(--st-primary)" height={180} />
-            </>
-          )}
+        <div className={`${a.card} flex flex-col justify-center`}>
+          <div className={a.statLabel}>Tổng khách hàng</div>
+          <div className={a.statValue}>{total}</div>
         </div>
-
-        <div className="flex flex-col gap-space-md">
-          <div className={`${a.card} flex-1 flex flex-col justify-center`}>
-            <div className={a.statLabel}>Tổng khách hàng</div>
-            <div className={a.statValue}>{total}</div>
-          </div>
-          <div className={`${a.card} flex-1 flex flex-col justify-center`}>
-            <div className={a.statLabel}>Đang hoạt động</div>
-            <div className={`${a.statValue} !text-secondary`}>{active}</div>
-          </div>
-          <div className={`${a.card} flex-1 flex flex-col justify-center`}>
-            <div className={a.statLabel}>Đã khoá / xoá mềm</div>
-            <div className={`${a.statValue} !text-[#ca8a04]`}>
-              {locked} <span className="font-title-lg text-title-lg text-error">/ {deleted}</span>
-            </div>
+        <div className={`${a.card} flex flex-col justify-center`}>
+          <div className={a.statLabel}>Đang hoạt động</div>
+          <div className={`${a.statValue} !text-secondary`}>{active}</div>
+        </div>
+        <div className={`${a.card} flex flex-col justify-center`}>
+          <div className={a.statLabel}>Đã khoá / xoá</div>
+          <div className={`${a.statValue} !text-[#ca8a04]`}>
+            {locked} <span className="font-title-lg text-title-lg text-error">/ {deleted}</span>
           </div>
         </div>
       </div>
@@ -249,7 +196,7 @@ export default function AdminDashboardPage() {
             segments={[
               { label: 'Hoạt động', value: active, color: 'var(--st-secondary)' },
               { label: 'Đã khoá', value: locked, color: '#EAB308' },
-              { label: 'Đã xoá mềm', value: deleted, color: 'var(--st-error)' },
+              { label: 'Đã xoá', value: deleted, color: 'var(--st-error)' },
             ]}
           />
         </div>

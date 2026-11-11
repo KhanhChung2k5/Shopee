@@ -135,7 +135,7 @@ public class FakeIdentityPort implements IdentityPort {
     public void restoreCustomer(UUID customerId) {
         CustomerView current = getCustomer(customerId);
         if (!CustomerStatus.DELETED.equals(current.status())) {
-            throw new InvalidCustomerStatusException("Chỉ khôi phục được khách hàng đã xóa mềm.");
+            throw new InvalidCustomerStatusException("Chỉ khôi phục được khách hàng đã xóa.");
         }
         replace(current, CustomerStatus.ACTIVE);
     }
@@ -276,9 +276,11 @@ public class FakeIdentityPort implements IdentityPort {
     @Override
     public void requireMarketingStaff(UUID actorId) {
         String department = requireKnownStaff(actorId);
-        if (!StaffDepartment.SALES.equals(department)) {
+        boolean allowed = StaffDepartment.SALES.equals(department)
+                || StaffDepartment.CS.equals(department);
+        if (!allowed) {
             throw new CrmForbiddenException(
-                    "Chỉ nhân viên kinh doanh được quản lý phân khúc và chiến dịch.");
+                    "Chỉ nhân viên kinh doanh hoặc CSKH được quản lý phân khúc và chiến dịch.");
         }
     }
 

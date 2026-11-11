@@ -56,9 +56,9 @@
 | Hội thoại / ticket, assign, escalate | ❌ | ❌ | ✅ | ❌ | Chỉ nhân viên CSKH được nhận ticket |
 | Khảo sát: tạo, gửi, xem kết quả | ❌ | ❌ | ✅ | ❌ | |
 | Gợi ý sản phẩm cho khách | ❌ | ❌ | ✅ | ❌ | Khách xem gợi ý của chính mình |
-| Phân khúc khách hàng: tạo, sửa, xoá | ✅ | ❌ | ❌ | ❌ | Quyết định kinh doanh |
-| Phân khúc khách hàng: xem | ✅ | ❌ | 👁 | ❌ | CSKH cần chọn phân khúc để gửi khảo sát |
-| Chiến dịch, phễu chuyển đổi chiến dịch | ✅ | ❌ | ❌ | ❌ | Quyết định kinh doanh |
+| Phân khúc khách hàng: tạo, sửa, xoá | ✅ | ❌ | ✅ | ❌ | CSKH và bán hàng cùng chọn đối tượng gửi khảo sát và chiến dịch |
+| Phân khúc khách hàng: xem | ✅ | ❌ | ✅ | ❌ | |
+| Chiến dịch, phễu chuyển đổi, tỷ lệ mở thư | ✅ | ❌ | ✅ | ❌ | CSKH theo dõi và vận hành chiến dịch chăm sóc |
 | Xem hộp thư của khách | ❌ | ❌ | ✅ | ❌ | Ai cũng đọc được hộp thư của chính mình |
 | Báo cáo khách hàng | ❌ | ❌ | ✅ | ❌ | |
 | Nhật ký thao tác (audit log) | ❌ | ❌ | ❌ | 👁 | Chỉ quản trị hệ thống |

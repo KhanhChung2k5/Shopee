@@ -4,7 +4,8 @@ import java.util.UUID;
 
 /**
  * Một dòng để lọc chéo dashboard: nhân khẩu của khách gắn với một dòng đơn đã giao.
- * Khách chưa có đơn thì category và genre để trống.
+ * Khách chưa có đơn thì category, genre và sản phẩm để trống.
+ * {@code quantity} là số lượng trên dòng; khách chưa mua thì bằng 0.
  */
 public record ReportFact(
         UUID customerId,
@@ -14,6 +15,9 @@ public record ReportFact(
         String genderLabel,
         UUID categoryId,
         String categoryName,
-        String genre
+        String genre,
+        UUID productId,
+        String productName,
+        int quantity
 ) {
 }

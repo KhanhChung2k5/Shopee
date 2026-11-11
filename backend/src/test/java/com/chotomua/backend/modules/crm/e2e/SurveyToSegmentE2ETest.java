@@ -88,12 +88,8 @@ class SurveyToSegmentE2ETest {
 
     @Test
     void surveySentToSegmentIsAnsweredAndStatsMatchTheAnswers() throws Exception {
-        // 1. Sales builds the "18–24" segment; CS may read it but not create one.
-        mockMvc.perform(post("/api/segments").with(staff(CS, "DEPT_CS"))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(segmentBody()))
-                .andExpect(status().isForbidden());
-        String segment = mockMvc.perform(post("/api/segments").with(staff(SALES, "DEPT_SALES"))
+        // 1. CS builds the "18–24" segment; sales can do the same.
+        String segment = mockMvc.perform(post("/api/segments").with(staff(CS, "DEPT_CS"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(segmentBody()))
                 .andExpect(status().isCreated())

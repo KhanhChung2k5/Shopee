@@ -108,7 +108,7 @@ public class CustomerController {
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy khách hàng"));
         // A soft-deleted account only comes back through POST /api/customers/{id}/restore (admin only, audited)
         if ("deleted".equals(user.getStatus()) && !"deleted".equals(request.status())) {
-            throw new IllegalStateException("Khách hàng đã xoá mềm. Chỉ quản trị viên được khôi phục bằng chức năng Khôi phục.");
+            throw new IllegalStateException("Khách hàng đã xoá. Chỉ quản trị viên được khôi phục bằng chức năng Khôi phục.");
         }
         // Locking or deleting a buyer mid-order would strand the delivery or the money still owed to them
         if (("locked".equals(request.status()) || "deleted".equals(request.status())) && !request.status().equals(user.getStatus())) {

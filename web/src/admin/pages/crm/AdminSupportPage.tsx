@@ -1,17 +1,49 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { a } from '../../adminUi'
 import { Badge, buttonClass, cx } from '../../../components/ui'
 import { ApiError } from '../../../lib/api'
 import { formatVnd } from '../../../lib/catalog'
 import {
-  RFM_LABEL, escalateConversation, fetchConversation, fetchConversations, fetchSupportAgents, patchConversation, sendConversationMessage,
-  type ConversationDetail, type ConversationMessage, type ConversationSummary, type SupportAgent,
+  PRIORITY_OPTIONS, SLA_HOURS, escalateConversation, fetchConversation, fetchConversations, fetchSupportAgents, patchConversation, priorityOf, sendConversationMessage, slaLabel, timeVi,
+  type ConversationDetail, type ConversationMessage, type ConversationSummary, type Priority, type SupportAgent,
 } from '../../../lib/crm'
 import { useAuth } from '../../../state/AuthContext'
 import { RecentViews, SearchBox } from '../../components/ListSearch'
 import { matches, normalize, useRecentViews } from '../../components/listSearchState'
 
 const FILTERS = [['', 'Tất cả'], ['mine', 'Của tôi'], ['open', 'Chưa xử lý'], ['high', 'Ưu tiên'], ['closed', 'Đã xử lý']] as const
+
+function priorityTone(priority: string): 'danger' | 'info' | 'neutral' {
+  if (priority === 'high') return 'danger'
+  if (priority === 'low') return 'info'
+  return 'neutral'
+}
+
+function slaTone(state: string | null | undefined): 'danger' | 'info' | 'success' | 'neutral' {
+  if (state === 'breached') return 'danger'
+  if (state === 'due') return 'info'
+  if (state === 'done') return 'neutral'
+  return 'success'
+}
+
+/** Còn / trễ so với hạn server đã tính theo mức ưu tiên. */
+function remainingText(dueAt: string | null | undefined, state: string | null | undefined) {
+  if (state === 'done' || !dueAt) return null
+  const diff = new Date(dueAt).getTime() - Date.now()
+  if (!Number.isFinite(diff)) return null
+  const late = diff < 0
+  const minutes = Math.floor(Math.abs(diff) / 60_000)
+  if (minutes < 1) return late ? 'vừa quá hạn' : 'còn dưới 1 phút'
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  const span = hours >= 24
+    ? `${Math.floor(hours / 24)} ngày${hours % 24 ? ` ${hours % 24} giờ` : ''}`
+    : hours > 0
+      ? `${hours} giờ${rest ? ` ${rest} phút` : ''}`
+      : `${minutes} phút`
+  return late ? `trễ ${span}` : `còn ${span}`
+}
 const STATUS_TONE: Record<string, 'primary' | 'info' | 'neutral'> = { open: 'primary', in_progress: 'info', closed: 'neutral' }
 const AVATAR_TONES = [
   'bg-primary-fixed text-on-primary-fixed',
@@ -53,18 +85,24 @@ function Avatar({ name, seed, size = 'md' }: { name: string | null; seed: string
 /** Hàng đợi hỗ trợ CSKH (p5-12→14, p5-17): ticket/chat, trả lời, ghi chú nội bộ, phân công / chuyển nhân viên, đánh dấu đã xử lý. */
 export default function AdminSupportPage() {
   const { token } = useAuth()
+  const [params, setParams] = useSearchParams()
+  const requestedId = params.get('id')
   const [filter, setFilter] = useState('')
   const [items, setItems] = useState<ConversationSummary[] | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(requestedId)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const viewed = useRecentViews('support')
   const pushViewed = viewed.push
 
+  useEffect(() => {
+    setSelectedId(requestedId)
+  }, [requestedId])
+
   const open = useCallback((c: { id: string; code: string; customerName: string | null }) => {
-    setSelectedId(c.id)
+    setParams({ id: c.id })
     pushViewed(c.id, `${c.code} · ${c.customerName ?? 'Khách'}`)
-  }, [pushViewed])
+  }, [pushViewed, setParams])
 
   const shown = useMemo(() => items?.filter((c) => matches(query, c.code, c.customerName, c.preview, c.topicLabel, c.assigneeName, c.statusLabel)) ?? null, [items, query])
 
@@ -87,7 +125,7 @@ export default function AdminSupportPage() {
         <h1 className="!mb-0">Hỗ trợ khách hàng</h1>
         <SearchBox page="support" placeholder="Tìm mã ticket, khách, nội dung..." value={query} onChange={setQuery} />
       </div>
-      <RecentViews items={viewed.items} onClear={viewed.clear} onOpen={setSelectedId} />
+      <RecentViews items={viewed.items} onClear={viewed.clear} onOpen={(id) => setParams({ id })} />
       {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-sm">{error}</p>}
 
       <div className="grid h-[calc(100dvh-15.5rem)] min-h-[520px] lg:h-[calc(100dvh-10rem)] grid-cols-1 overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]">
@@ -119,7 +157,8 @@ export default function AdminSupportPage() {
                     {c.preview && <span className="block truncate font-body-md text-body-md text-on-surface-variant">{c.preview}</span>}
                     <span className="flex flex-wrap items-center gap-x-space-xs gap-y-1 pt-0.5">
                       <Badge tone={STATUS_TONE[c.status] ?? 'neutral'}>{c.statusLabel}</Badge>
-                      {c.priority === 'high' && <Badge tone="danger">Ưu tiên</Badge>}
+                      <Badge tone={priorityTone(priorityOf(c.priority))}>{PRIORITY_OPTIONS.find((item) => item.value === priorityOf(c.priority))?.label}</Badge>
+                      {(c.slaState === 'breached' || c.slaState === 'due') && <Badge tone={slaTone(c.slaState)}>{slaLabel(c.slaState)}</Badge>}
                       <span className="font-label-sm text-label-sm text-on-surface-variant">{c.topicLabel}</span>
                     </span>
                   </span>
@@ -131,7 +170,7 @@ export default function AdminSupportPage() {
 
         <section aria-label="Hội thoại" className={cx('min-h-0 min-w-0', !selectedId && 'hidden lg:block')}>
           {selectedId && token
-            ? <ConversationPanel key={selectedId} token={token} id={selectedId} onBack={() => setSelectedId(null)} onChanged={loadList} onError={setError} />
+            ? <ConversationPanel key={selectedId} token={token} id={selectedId} onBack={() => setParams({}, { replace: true })} onChanged={loadList} onError={setError} />
             : (
               <div className="flex h-full flex-col items-center justify-center gap-space-xs bg-surface-container-low p-space-lg text-center">
                 <span className="material-symbols-outlined text-5xl text-on-surface-variant">forum</span>
@@ -202,7 +241,8 @@ function ConversationPanel({ token, id, onBack, onChanged, onError }: {
 
   if (!detail) return <div className={cx(a.empty, 'h-full justify-center')}>Đang tải hội thoại…</div>
   const closed = detail.status === 'closed'
-  const high = detail.priority === 'high'
+  const priority = priorityOf(detail.priority)
+  const remaining = remainingText(detail.slaDueAt, detail.slaState)
   const customer = detail.customer
   const facts = [
     detail.code,
@@ -223,7 +263,8 @@ function ConversationPanel({ token, id, onBack, onChanged, onError }: {
             <div className="flex flex-wrap items-center gap-x-space-sm gap-y-0.5">
               <h2 className="truncate font-title-lg text-title-lg text-on-surface">{detail.customerName ?? 'Khách hàng'}</h2>
               <Badge tone={STATUS_TONE[detail.status] ?? 'neutral'}>{detail.statusLabel}</Badge>
-              {high && <Badge tone="danger">Ưu tiên</Badge>}
+              <Badge tone={priorityTone(priority)}>{PRIORITY_OPTIONS.find((item) => item.value === priority)?.label}</Badge>
+              <Badge tone={slaTone(detail.slaState)}>{slaLabel(detail.slaState)}{remaining ? ` · ${remaining}` : ''}</Badge>
             </div>
             <p className="font-label-md text-label-md font-normal text-on-surface-variant">{facts.join(' · ')}</p>
           </div>
@@ -231,7 +272,7 @@ function ConversationPanel({ token, id, onBack, onChanged, onError }: {
 
         {customer && (
           <dl className="flex flex-wrap gap-x-space-lg gap-y-0.5 font-label-md text-label-md">
-            {customer.tierLabel && <Fact label="Nhóm khách" value={customer.tierLabel === 'Other' ? 'Chưa phân nhóm' : RFM_LABEL[customer.tierLabel] ?? customer.tierLabel} />}
+            {customer.tierLabel && <Fact label="Nhóm khách" value={customer.tierLabel} />}
             <Fact label="Đơn hàng" value={String(customer.totalOrders)} />
             {customer.totalSpend != null && <Fact label="Đã chi" value={formatVnd(Number(customer.totalSpend))} />}
             {detail.assigneeName && <Fact label="Phụ trách" value={detail.assigneeName} />}
@@ -244,9 +285,26 @@ function ConversationPanel({ token, id, onBack, onChanged, onError }: {
             <AgentPicker agents={agents.filter((ag) => ag.userId !== detail.assigneeId)} label={detail.assigneeId ? 'Chuyển cho nhân viên khác' : 'Phân công nhân viên'}
               onPick={(userId) => void apply(() => escalateConversation(token, id, userId), 'Không chuyển được')} />
           )}
-          <button type="button" aria-pressed={high} className={buttonClass('outline', 'sm')} onClick={() => void apply(() => patchConversation(token, id, { priority: high ? 'normal' : 'high' }), 'Không đổi được ưu tiên')}>
-            {high ? 'Bỏ ưu tiên' : 'Đánh dấu ưu tiên'}
-          </button>
+          <label className="inline-flex items-center gap-space-xs font-label-md text-label-md text-on-surface-variant">
+            Ưu tiên
+            <select
+              aria-label="Mức ưu tiên"
+              className={cx(buttonClass('outline', 'sm'), 'cursor-pointer')}
+              value={priority}
+              onChange={(event) => {
+                const next = event.target.value as Priority
+                if (next === priority) return
+                void apply(() => patchConversation(token, id, { priority: next }), 'Không đổi được ưu tiên')
+              }}
+            >
+              {PRIORITY_OPTIONS.map((item) => (
+                <option key={item.value} value={item.value}>{item.label} · {SLA_HOURS[item.value]} giờ</option>
+              ))}
+            </select>
+          </label>
+          {detail.slaDueAt && !closed && (
+            <span className="font-label-md text-label-md text-on-surface-variant">Hạn {timeVi(detail.slaDueAt)}</span>
+          )}
           {!closed && (
             <button type="button" className={cx(buttonClass('primary', 'sm'), 'sm:ml-auto inline-flex items-center gap-1')} title="Cần có người phụ trách và đã trả lời khách"
               onClick={() => void apply(() => patchConversation(token, id, { status: 'closed' }), 'Không chuyển sang đã xử lý được')}>

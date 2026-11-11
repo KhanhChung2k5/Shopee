@@ -199,7 +199,9 @@ public class JdbcOrderPort implements OrderPort {
         }
         String sql = """
                 SELECT oi.order_id, p.id AS product_id, c.id AS category_id, c.name AS category_name,
-                       oi.line_total, p.genre
+                       oi.line_total, p.genre,
+                       COALESCE(NULLIF(BTRIM(oi.product_name_snapshot), ''), p.name) AS product_name,
+                       oi.quantity
                 FROM order_items oi
                 JOIN product_variants v ON v.id = oi.variant_id
                 JOIN products p ON p.id = v.product_id
@@ -210,12 +212,18 @@ public class JdbcOrderPort implements OrderPort {
         Map<UUID, List<DeliveredOrderLine>> grouped = new LinkedHashMap<>();
         jdbc.query(sql, (rs, rowNum) -> {
             UUID orderId = rs.getObject("order_id", UUID.class);
+            int quantity = rs.getInt("quantity");
+            if (rs.wasNull() || quantity < 1) {
+                quantity = 1;
+            }
             grouped.computeIfAbsent(orderId, key -> new ArrayList<>()).add(new DeliveredOrderLine(
                     rs.getObject("product_id", UUID.class),
                     rs.getObject("category_id", UUID.class),
                     rs.getString("category_name"),
                     rs.getObject("line_total", BigDecimal.class),
-                    rs.getString("genre")));
+                    rs.getString("genre"),
+                    rs.getString("product_name"),
+                    quantity));
             return orderId;
         }, orderIds.toArray());
         return grouped;

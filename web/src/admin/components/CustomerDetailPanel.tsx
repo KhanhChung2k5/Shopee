@@ -22,7 +22,7 @@ interface CustomerDetail {
   orders: StaffOrderSummary[]
 }
 
-const STATUS_LABEL: Record<string, string> = { active: 'Hoạt động', locked: 'Đã khoá', deleted: 'Đã xoá mềm' }
+const STATUS_LABEL: Record<string, string> = { active: 'Hoạt động', locked: 'Đã khoá', deleted: 'Đã xoá' }
 const TIER_LABEL: Record<string, string> = { bronze: 'Đồng', silver: 'Bạc', gold: 'Vàng', diamond: 'Kim cương' }
 const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' }
 const dateVi = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('vi-VN') : '—')
@@ -157,7 +157,7 @@ export default function CustomerDetailPanel({ customerId, onClose, onEdit }: { c
                           <td>{o.itemCount}</td>
                           <td className="whitespace-nowrap">
                             {formatVnd(o.totalAmount)}
-                            {o.refundedAmount > 0 && <div className="font-label-sm text-label-sm text-on-surface-variant">Đã hoàn {formatVnd(o.refundedAmount)}</div>}
+                            {o.refundedAmount > 0 && <div className="font-label-sm text-label-sm text-error">Đã hoàn {formatVnd(o.refundedAmount)}</div>}
                           </td>
                           <td className="whitespace-nowrap">{paymentShort(o)}</td>
                           <td><span className={statusPillClass(ORDER_STATUS_TONE[o.status])}>{ORDER_STATUS_LABEL[o.status] ?? o.status}</span></td>

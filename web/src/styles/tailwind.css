@@ -310,6 +310,25 @@ main > :last-child { margin-bottom: 0 !important; }
   font-feature-settings: 'liga';
 }
 
+/* Cây mua kèm tràn ngang: hiện thanh cuộn riêng, vì scrollbar toàn trang đang bị ẩn. */
+.basket-scroll {
+  overflow-x: scroll;
+  scrollbar-width: thin;
+  scrollbar-color: #64748b #e2e8f0;
+}
+.basket-scroll::-webkit-scrollbar {
+  display: block;
+  height: 12px;
+}
+.basket-scroll::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 999px;
+}
+.basket-scroll::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border-radius: 999px;
+}
+
 /* Dark mode: useTheme toggles html.dark; the palette variables above do the rest. */
 html.dark { color-scheme: dark; }
 html.dark header.fixed { background-color: var(--st-surface-container-low); border-bottom: 1px solid rgb(255 255 255 / 0.08); }

@@ -6,10 +6,12 @@ import java.util.UUID;
 
 public record ReviewManageResponse(
         UUID id, int rating, String comment, String replyText, Instant createdAt,
-        String buyerName, String productName, UUID orderId, String repliedByName, UUID productId
+        String buyerName, String productName, UUID orderId, String repliedByName, UUID productId,
+        UUID categoryId, String categoryName
 ) {
     public static ReviewManageResponse from(ReviewManageProjection p) {
         return new ReviewManageResponse(p.getId(), p.getRating(), p.getComment(), p.getReplyText(), p.getCreatedAt(),
-                p.getBuyerName(), p.getProductName(), p.getOrderId(), p.getRepliedByName(), p.getProductId());
+                p.getBuyerName(), p.getProductName(), p.getOrderId(), p.getRepliedByName(), p.getProductId(),
+                p.getCategoryId(), p.getCategoryName());
     }
 }

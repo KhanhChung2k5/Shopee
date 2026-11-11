@@ -32,14 +32,18 @@ export const ADMIN_SECTION_ACCESS: Record<string, Department[]> = {
   '/admin/bao-cao/khao-sat': ['cs'],
   // Phân hệ CRM — docs/phan-quyen-he-thong.md mục 2.1
   '/admin/dieu-hanh': ['cs', 'sales'],
+  // Dashboard vận hành đặt sau Tổng quan điều hành — CSKH và bán hàng.
+  '/admin/doanh-thu-van-hanh': ['cs', 'sales'],
+  '/admin/hieu-qua-khuyen-mai': ['cs', 'sales'],
+  '/admin/hanh-vi-mua': ['cs', 'sales'],
   '/admin/crm': ['cs'],
   '/admin/ho-tro': ['cs'],
   // Phản hồi đánh giá sản phẩm — khớp quyền PATCH /reviews/*/reply ở backend (chỉ CSKH)
   '/admin/danh-gia': ['cs'],
   '/admin/khao-sat': ['cs'],
-  // Bán hàng tạo/sửa phân khúc; CSKH chỉ xem để chọn đối tượng gửi khảo sát
+  // Bán hàng và CSKH cùng tạo/sửa phân khúc và vận hành chiến dịch chăm sóc
   '/admin/phan-khuc': ['sales', 'cs'],
-  '/admin/chien-dich': ['sales'],
+  '/admin/chien-dich': ['sales', 'cs'],
   '/admin/nhan-vien': ['admin'],
   // Nhật ký thao tác — API /api/crm/audit-logs chỉ cho DEPT_ADMIN
   '/admin/nhat-ky': ['admin'],

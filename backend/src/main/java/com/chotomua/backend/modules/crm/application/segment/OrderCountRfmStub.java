@@ -2,6 +2,7 @@ package com.chotomua.backend.modules.crm.application.segment;
 
 import com.chotomua.backend.modules.crm.application.profile.ProfileStore;
 import com.chotomua.backend.modules.crm.domain.profile.CustomerProfileCRM;
+import com.chotomua.backend.modules.crm.domain.profile.LifetimeValue;
 import com.chotomua.backend.modules.crm.domain.profile.RfmClassifier;
 import com.chotomua.backend.modules.crm.port.OrderPort;
 import com.chotomua.backend.modules.crm.port.dto.DeliveredOrderView;
@@ -54,26 +55,16 @@ public class OrderCountRfmStub implements RfmSegmentSource {
         return classify(orders.listDeliveredOrders(userId));
     }
 
-    /** Recency / frequency / monetary từ đơn {@code delivered}. */
+    /** Recency từ lần giao cuối; frequency và monetary chỉ trong 365 ngày gần nhất. */
     private String classify(List<DeliveredOrderView> delivered) {
         if (delivered == null || delivered.isEmpty()) {
             return RfmClassifier.segment(null, 0, BigDecimal.ZERO);
         }
-        BigDecimal monetary = BigDecimal.ZERO;
-        Instant lastPurchaseAt = null;
-        for (DeliveredOrderView order : delivered) {
-            if (order.totalAmount() != null) {
-                monetary = monetary.add(order.totalAmount());
-            }
-            Instant deliveredAt = order.deliveredAt();
-            if (deliveredAt != null && (lastPurchaseAt == null || deliveredAt.isAfter(lastPurchaseAt))) {
-                lastPurchaseAt = deliveredAt;
-            }
-        }
+        LifetimeValue.Snapshot value = LifetimeValue.snapshot(delivered, clock);
         Integer days = null;
-        if (lastPurchaseAt != null) {
-            days = (int) Math.max(ChronoUnit.DAYS.between(lastPurchaseAt, Instant.now(clock)), 0);
+        if (value.lastPurchaseAt() != null) {
+            days = (int) Math.max(ChronoUnit.DAYS.between(value.lastPurchaseAt(), Instant.now(clock)), 0);
         }
-        return RfmClassifier.segment(days, delivered.size(), monetary);
+        return RfmClassifier.segment(days, value.windowOrderCount(), value.windowSpend());
     }
 }

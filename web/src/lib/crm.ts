@@ -6,12 +6,13 @@ export type RfmSegment = 'champions' | 'loyal' | 'potential' | 'at_risk' | 'lost
 
 export const RFM_LABEL: Record<string, string> = {
   champions: 'Champions',
-  loyal: 'Trung thành',
-  potential: 'Tiềm năng',
-  at_risk: 'Có nguy cơ rời bỏ',
-  lost: 'Đã rời bỏ',
-  other: 'Khác',
-  new: 'Chưa mua hàng',
+  loyal: 'Loyal',
+  potential: 'Potential',
+  at_risk: 'At Risk',
+  lost: 'Lost',
+  other: 'Other',
+  new: 'New',
+  unknown: 'Unassigned',
 }
 
 export const RFM_TONE: Record<string, 'success' | 'info' | 'primary' | 'danger' | 'neutral'> = {
@@ -43,6 +44,21 @@ export interface ReportCustomer {
   totalOrders: number
   rfmSegment: string | null
 }
+/** Một dòng đơn đã giao, gắn nhân khẩu khách — dùng lọc chéo và popup sản phẩm. */
+export interface ReportFact {
+  customerId: string
+  age: string
+  ageLabel: string
+  gender: string
+  genderLabel: string
+  categoryId: string | null
+  categoryName: string | null
+  genre: string | null
+  productId?: string | null
+  productName?: string | null
+  /** Số lượng trên dòng. Khách chưa mua thì 0 hoặc không có. */
+  quantity?: number
+}
 export interface CustomerReport {
   totalCustomers: number
   age: ReportBucket[]
@@ -50,6 +66,8 @@ export interface CustomerReport {
   interests: { categoryId: string | null; categoryName: string; count: number; percent: number }[]
   /** Game genres from delivered game discs. */
   genres: ReportBucket[]
+  /** Có trên API mới; bản cũ có thể thiếu. */
+  facts?: ReportFact[]
   customers: ReportCustomer[]
 }
 export interface CustomerProfile {
@@ -267,10 +285,34 @@ export interface ConversationSummary {
   priority: string
   preview: string | null
   lastMessageAt: string
+  slaDueAt: string | null
   slaState: string | null
   assigneeName: string | null
   mine: boolean
 }
+
+/** Cao 1 giờ, thường hoặc thiếu ưu tiên 4 giờ, thấp 24 giờ. Đồng hồ chạy từ lúc mở. */
+export const SLA_HOURS = { high: 1, normal: 4, low: 24 } as const
+export type Priority = keyof typeof SLA_HOURS
+export const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
+  { value: 'high', label: 'Cao' },
+  { value: 'normal', label: 'Thường' },
+  { value: 'low', label: 'Thấp' },
+]
+
+export function priorityOf(priority: string | null | undefined): Priority {
+  return priority === 'high' || priority === 'low' ? priority : 'normal'
+}
+
+export function slaLabel(state: string | null | undefined) {
+  switch (state) {
+    case 'breached': return 'Vượt SLA'
+    case 'due': return 'Sắp hết hạn'
+    case 'done': return 'Đã xong'
+    default: return 'Còn hạn'
+  }
+}
+
 export interface ConversationDetail extends Omit<ConversationSummary, 'preview' | 'mine'> {
   topic: string
   orderId: string | null

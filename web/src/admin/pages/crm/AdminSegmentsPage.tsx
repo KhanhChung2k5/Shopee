@@ -286,7 +286,7 @@ function SegmentDetailPanel({ segment, categories, canEdit, token, onClose, onSa
   }
 
   const mutable = canEdit && !segment.locked
-  const actionHint = !canEdit ? 'Chỉ bộ phận Kinh doanh được sửa hoặc xoá' : segment.locked ? 'Phân khúc mặc định không sửa hoặc xoá được' : undefined
+  const actionHint = !canEdit ? 'Chỉ bộ phận Kinh doanh và CSKH được sửa hoặc xoá' : segment.locked ? 'Phân khúc mặc định không sửa hoặc xoá được' : undefined
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
@@ -355,12 +355,12 @@ function SegmentDetailPanel({ segment, categories, canEdit, token, onClose, onSa
 }
 
 /**
- * Phân khúc khách hàng (p5-02/p5-10). Kinh doanh tạo/sửa; CSKH chỉ xem để chọn khi gửi khảo sát.
+ * Phân khúc khách hàng (p5-02/p5-10). Bán hàng và CSKH cùng tạo/sửa để chọn đối tượng gửi khảo sát và chiến dịch.
  * Một phân khúc kết hợp tuỳ ý 3 preset: nhóm tuổi, RFM, loại sản phẩm đã mua (mỗi preset chọn được nhiều giá trị).
  */
 export default function AdminSegmentsPage() {
   const { token, user } = useAuth()
-  const canEdit = user?.department === 'sales'
+  const canEdit = user?.department === 'sales' || user?.department === 'cs'
   const [segments, setSegments] = useState<Segment[] | null>(null)
   const [categories, setCategories] = useState<CatalogCategory[]>([])
   const [error, setError] = useState('')
@@ -454,7 +454,7 @@ export default function AdminSegmentsPage() {
           </button>
         )}
       </div>
-      {!canEdit && <p className="font-body-md text-body-md text-on-surface-variant mb-space-md">Bạn đang xem ở chế độ chỉ đọc. Phân khúc do bộ phận Kinh doanh quản lý; CSKH dùng để chọn đối tượng khi gửi khảo sát.</p>}
+      {!canEdit && <p className="font-body-md text-body-md text-on-surface-variant mb-space-md">Bạn đang xem ở chế độ chỉ đọc. Phân khúc do bộ phận Kinh doanh và CSKH quản lý.</p>}
       {error && <p className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
       <div className="flex flex-wrap items-start justify-between gap-space-sm">
         <StatusFilter options={[['all', 'Tất cả'], ['default', 'Mặc định (RFM)'], ['custom', 'Tự tạo']] as const} value={kind} onChange={setKind}

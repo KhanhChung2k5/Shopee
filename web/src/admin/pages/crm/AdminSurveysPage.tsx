@@ -85,7 +85,7 @@ export default function AdminSurveysPage() {
       {notice && <p className="font-body-md text-body-md text-secondary mb-space-md">{notice}</p>}
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-space-md items-start">
-        <div className="xl:col-span-2 space-y-space-md">
+        <div className="xl:col-span-2 space-y-space-md xl:sticky xl:top-20 xl:max-h-[calc(100dvh-6.5rem)] xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
           <form className={cx(a.formGrid, a.card, '!mb-0')} onSubmit={create}>
             <label className="col-span-full">Tên khảo sát<input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="VD: Đánh giá trải nghiệm giao hàng" /></label>
             <label className="col-span-full">Mô tả<input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Hiển thị cho khách ở đầu khảo sát" /></label>

@@ -21,8 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 /**
- * REST phân khúc preset — đầu vào campaign in-app.
- * Quản trị, quản lý CRM và CSKH. NV Kinh doanh và khách bị 403.
+ * REST phân khúc preset — đầu vào campaign in-app và khảo sát.
+ * Bán hàng và CSKH cùng tạo, sửa, xoá. Kho, quản trị hệ thống và khách bị 403.
  */
 @RestController
 @RequestMapping("/api/segments")
@@ -48,7 +48,7 @@ public class SegmentController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('DEPT_SALES')")
+    @PreAuthorize("hasAnyAuthority('DEPT_SALES', 'DEPT_CS')")
     public ResponseEntity<SegmentResponse> create(@Valid @RequestBody UpsertSegmentRequest request) {
         SegmentResponse created = segments.create(
                 currentActor.requireUserId(),
@@ -58,7 +58,7 @@ public class SegmentController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('DEPT_SALES')")
+    @PreAuthorize("hasAnyAuthority('DEPT_SALES', 'DEPT_CS')")
     public SegmentResponse update(@PathVariable UUID id, @Valid @RequestBody UpsertSegmentRequest request) {
         return segments.update(
                 currentActor.requireUserId(),
@@ -68,14 +68,14 @@ public class SegmentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('DEPT_SALES')")
+    @PreAuthorize("hasAnyAuthority('DEPT_SALES', 'DEPT_CS')")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         segments.delete(currentActor.requireUserId(), id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/refresh")
-    @PreAuthorize("hasAuthority('DEPT_SALES')")
+    @PreAuthorize("hasAnyAuthority('DEPT_SALES', 'DEPT_CS')")
     public SegmentResponse refresh(@PathVariable UUID id) {
         return segments.refresh(currentActor.requireUserId(), id);
     }

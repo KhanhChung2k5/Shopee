@@ -8,6 +8,8 @@ import java.util.Set;
  * Champions được xét trước; nhóm sau loại phần đã khớp nhóm trước.
  * Bộ điểm không rơi vào năm nhóm thì nhận {@code other}.
  * Khách chưa có đơn giao thành công nào nhận {@code new} — chưa mua thì không thể "rời bỏ".
+ * {@code orderCount} và {@code monetary} là số trong 365 ngày gần nhất. Đơn cũ hơn để ngày mua cuối
+ * khác null, nên khách im hơn một năm được chấm điểm (thường là đã rời bỏ), không bị gán chưa mua.
  */
 public final class RfmClassifier {
 
@@ -25,12 +27,12 @@ public final class RfmClassifier {
     }
 
     /**
-     * @param daysSinceLastPurchase số ngày từ lần giao gần nhất; {@code null} nếu chưa có đơn
-     * @param orderCount số đơn đã giao
-     * @param monetary tổng tiền các đơn đã giao (không dùng LTV dự báo)
+     * @param daysSinceLastPurchase số ngày từ lần giao gần nhất, kể cả đơn cũ hơn cửa sổ; {@code null} nếu chưa có đơn
+     * @param orderCount số đơn đã giao trong 365 ngày gần nhất
+     * @param monetary tiền thực giữ lại của các đơn trong cửa sổ đó (không dùng LTV, không dùng tổng cả đời)
      */
     public static String segment(Integer daysSinceLastPurchase, int orderCount, BigDecimal monetary) {
-        if (orderCount <= 0) {
+        if (orderCount <= 0 && daysSinceLastPurchase == null) {
             return NEW;
         }
         int recency = recencyScore(daysSinceLastPurchase);
