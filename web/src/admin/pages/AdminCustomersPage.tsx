@@ -6,6 +6,7 @@ import { apiFetch, ApiError } from '../../lib/api'
 import { a, statusPillClass } from '../adminUi'
 import { buttonClass, cx } from '../../components/ui'
 import { useDialog } from '../../state/DialogContext'
+import CustomerCreateDialog from '../components/CustomerCreateDialog'
 import CustomerDetailPanel from '../components/CustomerDetailPanel'
 import CustomerEditDialog from '../components/CustomerEditDialog'
 import { RecentViews, SearchBox, StatusFilter } from '../components/ListSearch'
@@ -50,6 +51,7 @@ export default function AdminCustomersPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Customer | null>(null)
   const [detailVersion, setDetailVersion] = useState(0)
   const viewed = useRecentViews('customers')
@@ -126,6 +128,38 @@ export default function AdminCustomersPage() {
     toast.show(`Đã xoá "${c.fullName}"`)
   }
 
+  const showTemporaryPassword = async (name: string, password: string) => {
+    const copy = await confirm({
+      title: 'Mật khẩu tạm',
+      message: <>Mật khẩu của <strong>{name}</strong>: <code className="font-mono font-bold select-all">{password}</code>. Mật khẩu chỉ hiện một lần. Khách đăng nhập bằng email rồi đổi mật khẩu ở trang hồ sơ.</>,
+      confirmLabel: 'Sao chép và đóng',
+      cancelLabel: 'Đóng',
+    })
+    if (copy) await navigator.clipboard.writeText(password).catch(() => toast.show('Không sao chép được mật khẩu'))
+  }
+
+  const issueTemporaryPassword = async (c: Customer) => {
+    const name = c.fullName ?? c.email ?? 'khách hàng'
+    if (!(await confirm({ title: 'Cấp mật khẩu tạm', message: <>Cấp mật khẩu tạm cho <strong>{name}</strong>? Mật khẩu hiện tại sẽ không dùng được nữa.</>, confirmLabel: 'Cấp mật khẩu', tone: 'danger' }))) return
+    try {
+      const { temporaryPassword } = await apiFetch<{ temporaryPassword: string }>(`/customers/${c.id}/temporary-password`, { method: 'POST' }, token)
+      await showTemporaryPassword(name, temporaryPassword)
+    } catch (err) {
+      toast.show(err instanceof ApiError ? err.message : 'Không cấp được mật khẩu tạm')
+    }
+  }
+
+  const onCustomerCreated = async (created: { id: string; fullName: string }) => {
+    setCreating(false)
+    refresh()
+    try {
+      const { temporaryPassword } = await apiFetch<{ temporaryPassword: string }>(`/customers/${created.id}/temporary-password`, { method: 'POST' }, token)
+      await showTemporaryPassword(created.fullName, temporaryPassword)
+    } catch (err) {
+      toast.show(err instanceof ApiError ? `Đã thêm "${created.fullName}" nhưng chưa cấp được mật khẩu tạm: ${err.message}` : `Đã thêm "${created.fullName}". Hãy cấp mật khẩu tạm để khách đăng nhập.`)
+    }
+  }
+
   const restore = async (id: string) => {
     const c = customers.find((x) => x.id === id)
     if (!c) return
@@ -193,6 +227,9 @@ export default function AdminCustomersPage() {
       {c.status !== 'deleted' && (
         <button className={buttonClass('outline', 'sm')} type="button" onClick={() => setEditing(c)}>Sửa</button>
       )}
+      {c.status === 'active' && (
+        <button className={buttonClass('outline', 'sm')} type="button" onClick={() => void issueTemporaryPassword(c)}>Mật khẩu tạm</button>
+      )}
       {c.status === 'deleted' ? (
         canRestore ? (
           <button className={buttonClass('outline', 'sm')} type="button" onClick={() => restore(c.id)}>Khôi phục</button>
@@ -223,6 +260,7 @@ export default function AdminCustomersPage() {
     <div>
       <div className={a.toolbar}>
         <h1 className="!mb-0">Khách hàng ({filtered.length}/{customers.length})</h1>
+        <button type="button" className={buttonClass('primary')} onClick={() => setCreating(true)}>+ Thêm khách hàng</button>
       </div>
 
       {loadError && <p className="font-body-md text-body-md text-error mb-space-md">{loadError}</p>}
@@ -350,12 +388,15 @@ export default function AdminCustomersPage() {
       <p className="mt-space-md font-body-md text-body-md text-on-surface-variant">
         "Đơn hàng" là số đơn đã giao; "LTV dự báo" do CRM tính lại khi đơn được giao hoặc hoàn tiền (xem trang Hồ sơ & RFM).
         Không khóa hoặc xóa được khách còn đơn chưa hoàn tất hay yêu cầu hoàn tiền chưa xử lý xong.
-        Khách hàng tự đăng ký qua app — admin không tạo tài khoản khách hàng trực tiếp.
+        CSKH thêm khách thủ công tại đây; tài khoản mới nhận mật khẩu tạm để đăng nhập, rồi khách tự đổi ở trang hồ sơ.
       </p>
 
       {detailId && (
         <CustomerDetailPanel key={`${detailId}-${detailVersion}`} customerId={detailId} onClose={() => setDetailId(null)}
           onEdit={(c) => setEditing(c)} />
+      )}
+      {creating && (
+        <CustomerCreateDialog onClose={() => setCreating(false)} onCreated={(created) => void onCustomerCreated(created)} />
       )}
       {editing && (
         <CustomerEditDialog customer={editing} onClose={() => setEditing(null)}

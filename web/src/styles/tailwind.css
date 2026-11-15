@@ -329,6 +329,32 @@ main > :last-child { margin-bottom: 0 !important; }
   border-radius: 999px;
 }
 
+/* Danh sách khách / RFM / đánh giá: hiện thanh cuộn dọc bên phải. */
+.admin-y-scroll {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #64748b #e2e8f0;
+}
+.admin-y-scroll * {
+  scrollbar-width: none;
+}
+.admin-y-scroll::-webkit-scrollbar {
+  display: block;
+  width: 12px;
+}
+.admin-y-scroll::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 999px;
+}
+.admin-y-scroll::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border-radius: 999px;
+}
+.admin-y-scroll::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
 /* Dark mode: useTheme toggles html.dark; the palette variables above do the rest. */
 html.dark { color-scheme: dark; }
 html.dark header.fixed { background-color: var(--st-surface-container-low); border-bottom: 1px solid rgb(255 255 255 / 0.08); }

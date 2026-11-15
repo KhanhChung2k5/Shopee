@@ -104,7 +104,11 @@ export default function AdminSupportPage() {
     pushViewed(c.id, `${c.code} · ${c.customerName ?? 'Khách'}`)
   }, [pushViewed, setParams])
 
-  const shown = useMemo(() => items?.filter((c) => matches(query, c.code, c.customerName, c.preview, c.topicLabel, c.assigneeName, c.statusLabel)) ?? null, [items, query])
+  const shown = useMemo(() => {
+    const filtered = items?.filter((c) => matches(query, c.code, c.customerName, c.preview, c.topicLabel, c.assigneeName, c.statusLabel))
+    if (!filtered) return null
+    return [...filtered].sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? ''))
+  }, [items, query])
 
   const loadList = useCallback(() => {
     if (!token) return

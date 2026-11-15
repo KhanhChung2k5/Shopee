@@ -107,6 +107,9 @@ const DEPARTMENT_LABEL: Record<Department, string> = {
   cs: 'Chăm sóc khách hàng',
 }
 
+/** Các trang lưới/danh sách dài: hiện thanh cuộn dọc bên phải cột nội dung. */
+const PAGE_Y_SCROLL = new Set(['/admin/crm', '/admin/khach-hang', '/admin/danh-gia'])
+
 export default function AdminLayout() {
   const location = useLocation()
   const { user } = useAuth()
@@ -129,6 +132,7 @@ export default function AdminLayout() {
   }, [location.pathname])
   const pageTitle = PAGE_TITLES[location.pathname]
     ?? (location.pathname.startsWith('/admin/don-hang/') ? 'Đơn hàng' : 'Quản trị')
+  const showPageScrollbar = PAGE_Y_SCROLL.has(location.pathname)
 
   const visibleGroups = NAV_GROUPS.map((group) => ({
     ...group,
@@ -136,8 +140,8 @@ export default function AdminLayout() {
   })).filter((group) => group.items.length > 0)
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-surface text-on-surface">
-      <aside className="md:sticky md:top-0 md:h-screen md:w-60 flex-shrink-0 flex flex-col items-stretch gap-space-xs md:gap-0 bg-[#14161a] text-[#e4e6eb] px-space-md py-space-sm md:py-space-lg">
+    <div className="flex h-dvh flex-col overflow-hidden bg-surface text-on-surface md:flex-row">
+      <aside className="md:h-full md:w-60 flex-shrink-0 flex flex-col items-stretch gap-space-xs md:gap-0 bg-[#14161a] text-[#e4e6eb] px-space-md py-space-sm md:py-space-lg">
         <div className="font-headline-md text-headline-md text-white md:mb-space-xl md:px-space-sm whitespace-nowrap">
           Chợ Tốt <span className="text-[#ffb4a2]">Mua</span>
           <span className="hidden md:block font-label-md text-label-md text-[#9aa0ac] font-medium">Trang quản trị</span>
@@ -180,12 +184,12 @@ export default function AdminLayout() {
           <span className="material-symbols-outlined text-base">arrow_back</span> Về trang khách hàng
         </Link>
       </aside>
-      <div className="flex-1 min-w-0 flex flex-col">
-        <header className="sticky top-0 z-10 flex items-center justify-between px-space-lg md:px-space-xl py-space-md bg-surface-container-lowest border-b border-line">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="z-10 flex shrink-0 items-center justify-between px-space-lg md:px-space-xl py-space-md bg-surface-container-lowest border-b border-line">
           <h2 className="font-title-lg text-title-lg text-on-surface">{pageTitle}</h2>
           <Link className="md:hidden font-label-md text-label-md text-primary" to="/">Về cửa hàng</Link>
         </header>
-        <main className="flex-1 min-w-0 px-space-lg md:px-space-xl py-space-xl [&_h1]:font-headline-lg [&_h1]:text-headline-lg [&_h1]:text-on-surface [&_h1]:mb-space-lg">
+        <main className={`min-h-0 min-w-0 flex-1 overflow-y-auto px-space-lg py-space-xl md:px-space-xl [&_h1]:font-headline-lg [&_h1]:text-headline-lg [&_h1]:text-on-surface [&_h1]:mb-space-lg${showPageScrollbar ? ' admin-y-scroll' : ''}`}>
           <Outlet />
         </main>
       </div>

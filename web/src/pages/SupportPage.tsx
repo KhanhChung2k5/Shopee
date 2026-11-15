@@ -20,7 +20,11 @@ export default function SupportPage() {
   const loadList = useCallback(() => {
     if (!token) return
     fetchConversations(token)
-      .then((d) => { setItems(d.items); if (!selectedId && d.items[0] && !params.get('order')) setSelectedId(d.items[0].id) })
+      .then((d) => {
+        const sorted = [...d.items].sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? ''))
+        setItems(sorted)
+        if (!selectedId && sorted[0] && !params.get('order')) setSelectedId(sorted[0].id)
+      })
       .catch((e) => setError(e instanceof ApiError ? e.message : 'Không tải được yêu cầu hỗ trợ'))
   }, [token, selectedId, params])
 
