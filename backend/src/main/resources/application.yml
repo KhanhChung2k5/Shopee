@@ -48,6 +48,9 @@ spring:
     locations: classpath:db/migration
 
 jwt:
-  # Dev-only default secret — override via JWT_SECRET env var in production.
-  secret: ${JWT_SECRET:dev-only-secret-change-me-in-production-please-1234567890}
+  # No default in the repo: a secret committed here would let anyone who reads the repo sign their own
+  # tokens (e.g. as admin) on any server started without JWT_SECRET. When it is unset (local dev, tests),
+  # JwtService signs with a random key for this run only, so logins don't survive a backend restart.
+  # Set JWT_SECRET (at least 32 bytes) in backend/.env to keep them; the prod profile requires it.
+  secret: ${JWT_SECRET:}
   expiration-minutes: ${JWT_EXPIRATION_MINUTES:1440}

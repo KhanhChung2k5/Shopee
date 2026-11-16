@@ -29,34 +29,50 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    /** A locked / soft-deleted account loses its still-valid token within this long. */
-    private static final long STATUS_CACHE_MS = 30_000;
+    /**
+     * A locked / soft-deleted account loses its still-valid token, and a staff member moved to another
+     * department loses the old department's rights, within this long.
+     */
+    private static final long ACCESS_CACHE_MS = 30_000;
+
+    private static final Access NO_ACCESS = new Access(false, null, null);
 
     private final JwtService jwtService;
     private final UserRepository users;
-    private final Map<String, CachedStatus> statusCache = new ConcurrentHashMap<>();
+    private final Map<String, CachedAccess> accessCache = new ConcurrentHashMap<>();
 
     public JwtAuthenticationFilter(JwtService jwtService, UserRepository users) {
         this.jwtService = jwtService;
         this.users = users;
     }
 
-    private record CachedStatus(boolean active, long expiresAt) {
+    private record Access(boolean active, String role, String department) {
     }
 
-    /** Login already refuses inactive accounts; this also stops tokens issued before the account was locked. */
-    private boolean isActive(String userId) {
+    private record CachedAccess(Access access, long expiresAt) {
+    }
+
+    /**
+     * The account's status, role and department as stored now, not as written into the token at login:
+     * a token stays valid for hours, so trusting its claims would let a locked account keep working, or a
+     * staff member moved out of admin keep admin rights (e.g. issuing anyone a temporary password).
+     */
+    private Access currentAccess(Claims claims) {
+        String userId = claims.getSubject();
         long now = System.currentTimeMillis();
-        CachedStatus cached = statusCache.get(userId);
-        if (cached != null && cached.expiresAt() > now) return cached.active();
-        boolean active;
+        CachedAccess cached = accessCache.get(userId);
+        if (cached != null && cached.expiresAt() > now) return cached.access();
+        Access access;
         try {
-            active = users.findStatusById(UUID.fromString(userId)).map("active"::equals).orElse(false);
+            access = users.findAccessById(UUID.fromString(userId))
+                    .map(view -> new Access("active".equals(view.getStatus()), view.getRole(), view.getDepartment()))
+                    .orElse(NO_ACCESS);
         } catch (IllegalArgumentException notAUuid) {
-            active = true; // test/demo principals that are not user ids are left to the authorization rules
+            // test/demo principals that are not user ids keep their token's claims; the authorization rules decide
+            access = new Access(true, claims.get("role", String.class), claims.get("department", String.class));
         }
-        statusCache.put(userId, new CachedStatus(active, now + STATUS_CACHE_MS));
-        return active;
+        accessCache.put(userId, new CachedAccess(access, now + ACCESS_CACHE_MS));
+        return access;
     }
 
     @Override
@@ -68,15 +84,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             Claims claims = jwtService.parseClaims(header.substring(7));
-            if (claims != null && isActive(claims.getSubject())) {
+            Access access = claims == null ? NO_ACCESS : currentAccess(claims);
+            if (access.active() && access.role() != null) {
                 String userId = claims.getSubject();
-                String role = claims.get("role", String.class);
-                String department = claims.get("department", String.class);
 
                 List<GrantedAuthority> authorities = new ArrayList<>();
-                authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
-                if (department != null) {
-                    authorities.add(new SimpleGrantedAuthority("DEPT_" + department.toUpperCase()));
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + access.role().toUpperCase()));
+                if (access.department() != null) {
+                    authorities.add(new SimpleGrantedAuthority("DEPT_" + access.department().toUpperCase()));
                 }
 
                 var authentication = new UsernamePasswordAuthenticationToken(userId, null, authorities);

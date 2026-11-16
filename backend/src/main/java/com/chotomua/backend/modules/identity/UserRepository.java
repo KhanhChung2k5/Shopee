@@ -25,7 +25,19 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("select u from User u where u.id = :id")
     Optional<User> findByIdForUpdate(@Param("id") UUID id);
 
-    /** Just the account status — checked on every authenticated request (see JwtAuthenticationFilter). */
-    @Query("select u.status from User u where u.id = :id")
-    Optional<String> findStatusById(@Param("id") UUID id);
+    /**
+     * Status, role and (for staff) department as stored now — what JwtAuthenticationFilter authorizes each
+     * request with, so a lock or a department change applies without waiting for the token to expire.
+     */
+    @Query("select u.status as status, u.role as role, e.department as department "
+            + "from User u left join Employee e on e.user = u where u.id = :id")
+    Optional<AccessView> findAccessById(@Param("id") UUID id);
+
+    interface AccessView {
+        String getStatus();
+
+        String getRole();
+
+        String getDepartment();
+    }
 }

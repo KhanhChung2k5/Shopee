@@ -19,6 +19,19 @@ const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'cancelled', label: 'Đã huỷ' },
 ]
 
+// "Đơn gần đây": only orders placed in the last N days (null = any time).
+const RECENT_RANGES: { days: number | null; label: string }[] = [
+  { days: null, label: 'Mọi thời gian' },
+  { days: 7, label: '7 ngày' },
+  { days: 15, label: '15 ngày' },
+  { days: 30, label: '30 ngày' },
+]
+const DAY_MS = 24 * 60 * 60 * 1000
+function recentRangeDays(value: string | null): number | null {
+  const days = Number(value)
+  return RECENT_RANGES.some((r) => r.days === days) ? days : null
+}
+
 const PAGE_SIZE = 10
 const dateTime = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
 
@@ -34,12 +47,26 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<StaffOrderSummary[] | null>(null)
   const [error, setError] = useState('')
   // ?trangthai=pending&treo=1 — the dashboard's stale-order warning links here.
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>(() => {
     const status = searchParams.get('trangthai')
     return status && status in ORDER_STATUS_LABEL ? (status as OrderStatus) : 'all'
   })
   const [staleOnly, setStaleOnly] = useState(() => searchParams.get('treo') === '1')
+  // ?ngay=7|15|30 keeps the time range across reloads and shared links. "Last N days" is counted back from when
+  // the orders were loaded, so the list matches the data on screen and doesn't shift while you work through it.
+  const [recentDays, setRecentDays] = useState<number | null>(() => recentRangeDays(searchParams.get('ngay')))
+  const [loadedAt, setLoadedAt] = useState(0)
+  const rangeQuery = recentDays === null ? '' : `?ngay=${recentDays}`
+  const pickRange = (days: number | null) => {
+    setRecentDays(days)
+    setCurrentPage(1)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (days === null) next.delete('ngay'); else next.set('ngay', String(days))
+      return next
+    }, { replace: true })
+  }
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const rowRefs = useRef(new Map<string, HTMLTableRowElement>())
@@ -48,29 +75,36 @@ export default function AdminOrdersPage() {
   const loadOrders = useCallback(() => {
     if (!token) return
     apiFetch<StaffOrderSummary[]>('/orders', {}, token)
-      .then((data) => { setOrders(data); setError('') })
+      .then((data) => { setOrders(data); setLoadedAt(Date.now()); setError('') })
       .catch((e) => setError(e instanceof ApiError ? e.message : 'Không tải được đơn hàng'))
   }, [token])
 
   useEffect(loadOrders, [loadOrders])
 
+  // Orders inside the chosen time range; the status counts and the list below are both based on it.
+  const inRange = useMemo(() => {
+    if (!orders || recentDays === null) return orders ?? []
+    const since = loadedAt - recentDays * DAY_MS
+    return orders.filter((o) => new Date(o.createdAt).getTime() >= since)
+  }, [orders, recentDays, loadedAt])
+
   const counts = useMemo(() => {
     const result: Partial<Record<OrderStatus, number>> = {}
-    for (const order of orders ?? []) result[order.status] = (result[order.status] ?? 0) + 1
+    for (const order of inRange) result[order.status] = (result[order.status] ?? 0) + 1
     return result
-  }, [orders])
+  }, [inRange])
 
   const filtered = useMemo(() => {
     const term = searchQuery.trim().toLocaleLowerCase('vi')
-    return (orders ?? []).filter((o) => {
+    return inRange.filter((o) => {
       const matchStatus = (statusFilter === 'all' || o.status === statusFilter) && (!staleOnly || isStaleOrder(o))
       const haystack = [orderCode(o.id), o.id, o.customer?.fullName, o.customer?.email, o.customer?.phone,
         o.customer?.recipientName, o.customer?.recipientPhone].filter(Boolean).join(' ').toLocaleLowerCase('vi')
       return matchStatus && (!term || haystack.includes(term))
     })
-  }, [orders, statusFilter, staleOnly, searchQuery])
+  }, [inRange, statusFilter, staleOnly, searchQuery])
 
-  const staleCount = useMemo(() => (orders ?? []).filter((o) => isStaleOrder(o)).length, [orders])
+  const staleCount = useMemo(() => inRange.filter((o) => isStaleOrder(o)).length, [inRange])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const page = Math.min(currentPage, totalPages)
@@ -80,9 +114,9 @@ export default function AdminOrdersPage() {
 
   // Opening the first order adds a history entry; moving between orders replaces it, so Back closes the panel.
   const openOrder = useCallback((orderId: string) => {
-    navigate(`/admin/don-hang/${orderId}`, { replace: panelOpen })
-  }, [navigate, panelOpen])
-  const closePanel = useCallback(() => navigate('/admin/don-hang'), [navigate])
+    navigate(`/admin/don-hang/${orderId}${rangeQuery}`, { replace: panelOpen })
+  }, [navigate, panelOpen, rangeQuery])
+  const closePanel = useCallback(() => navigate(`/admin/don-hang${rangeQuery}`), [navigate, rangeQuery])
 
   // "Đã xem gần đây": ghi lại đơn vừa mở.
   const viewedPush = viewed.push
@@ -119,15 +153,16 @@ export default function AdminOrdersPage() {
   const col = (always: boolean) => (always || !panelOpen ? '' : 'hidden')
 
   return (
-    <div className={panelOpen ? 'xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(460px,42%)] xl:gap-space-lg xl:items-start' : ''}>
-      <div className="min-w-0">
-        <div className={a.toolbar}>
+    <div>
+      {/* Header spans the full width, so the list and the detail panel both start below it. */}
+      <section className="mb-space-xl space-y-space-md">
+        <div className="flex flex-wrap items-center justify-between gap-space-md">
           <h1 className="!mb-0">Đơn hàng ({filtered.length})</h1>
           <SearchBox page="orders" placeholder="Tìm mã đơn, tên, email, SĐT..." value={searchQuery}
             onChange={(v) => { setSearchQuery(v); setCurrentPage(1) }} />
         </div>
 
-        <div className={`${a.filterBar} mb-space-md`}>
+        <div className={a.filterBar}>
           {STATUS_FILTERS.map((f) => (
             <button key={f.value} type="button" className={chipClass(statusFilter === f.value)}
               onClick={() => { setStatusFilter(f.value); setCurrentPage(1) }}>
@@ -142,9 +177,24 @@ export default function AdminOrdersPage() {
           )}
         </div>
 
-        <RecentViews items={viewed.items} onOpen={openOrder} onClear={viewed.clear} />
-        {error && <p role="alert" className="font-body-md text-body-md text-error mb-space-md">{error}</p>}
+        <div className={a.filterBar} role="group" aria-label="Đơn hàng gần đây">
+          <span className="flex items-center gap-0.5 mr-1 font-label-md text-label-md text-on-surface-variant">
+            <span className="material-symbols-outlined !text-base">calendar_month</span>Đơn gần đây:
+          </span>
+          {RECENT_RANGES.map((r) => (
+            <button key={r.label} type="button" className={chipClass(recentDays === r.days)} aria-pressed={recentDays === r.days}
+              onClick={() => pickRange(r.days)}>
+              {r.label}
+            </button>
+          ))}
+        </div>
 
+        <RecentViews items={viewed.items} onOpen={openOrder} onClear={viewed.clear} />
+        {error && <p role="alert" className="font-body-md text-body-md text-error">{error}</p>}
+      </section>
+
+      <div className={panelOpen ? 'xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(460px,42%)] xl:gap-space-lg xl:items-start' : ''}>
+      <div className="min-w-0">
         <div className={a.tableWrap}>
           <table className={`${a.table} ${panelOpen ? '!min-w-0' : ''}`}>
             <thead>
@@ -225,6 +275,7 @@ export default function AdminOrdersPage() {
           </aside>
         </>
       )}
+      </div>
     </div>
   )
 }
