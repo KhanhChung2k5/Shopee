@@ -66,9 +66,9 @@ public class CustomerAccountService {
     }
 
     /** Câu chuyện 1: thêm khách. Chỉ quản trị / quản lý CRM. */
-    public CustomerView create(UUID actorId, CreateCustomerCommand command) {
+    public CustomerView create(UUID actorId, CreateCustomerCommand command, String password) {
         identity.requireCustomerAdmin(actorId);
-        return identity.createCustomer(command);
+        return identity.createCustomer(command, password);
     }
 
     /** Sửa hồ sơ (tên, email, SĐT, giới tính, ngày sinh). Admin và quản lý CRM. */

@@ -94,7 +94,8 @@ public class FakeIdentityPort implements IdentityPort {
     }
 
     @Override
-    public CustomerView createCustomer(CreateCustomerCommand command) {
+    public CustomerView createCustomer(CreateCustomerCommand command, String password) {
+        // The in-memory fake has no login, so the password is not stored.
         UUID id = UUID.randomUUID();
         CustomerView created = new CustomerView(
                 id,
@@ -135,7 +136,7 @@ public class FakeIdentityPort implements IdentityPort {
     public void restoreCustomer(UUID customerId) {
         CustomerView current = getCustomer(customerId);
         if (!CustomerStatus.DELETED.equals(current.status())) {
-            throw new InvalidCustomerStatusException("Chỉ khôi phục được khách hàng đã bị xoá.");
+            throw new InvalidCustomerStatusException("Chỉ khôi phục được khách hàng đã xóa.");
         }
         replace(current, CustomerStatus.ACTIVE);
     }
@@ -156,7 +157,7 @@ public class FakeIdentityPort implements IdentityPort {
     @Override
     public void unlock(UUID customerId) {
         CustomerView current = getCustomer(customerId);
-        assertNotDeleted(current, "Không thể mở khóa khách hàng đã xóa. Dùng khôi phục (chỉ quản trị viên).");
+        assertNotDeleted(current, "Không thể mở khóa khách hàng đã xóa. Dùng chức năng Khôi phục (CSKH).");
         if (!CustomerStatus.LOCKED.equals(current.status())) {
             throw new InvalidCustomerStatusException("Chỉ mở khóa được tài khoản đang bị khóa.");
         }
@@ -276,9 +277,11 @@ public class FakeIdentityPort implements IdentityPort {
     @Override
     public void requireMarketingStaff(UUID actorId) {
         String department = requireKnownStaff(actorId);
-        if (!StaffDepartment.SALES.equals(department)) {
+        boolean allowed = StaffDepartment.SALES.equals(department)
+                || StaffDepartment.CS.equals(department);
+        if (!allowed) {
             throw new CrmForbiddenException(
-                    "Chỉ nhân viên kinh doanh được quản lý phân khúc và chiến dịch.");
+                    "Chỉ nhân viên kinh doanh hoặc CSKH được quản lý phân khúc và chiến dịch.");
         }
     }
 

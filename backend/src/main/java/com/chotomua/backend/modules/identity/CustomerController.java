@@ -3,6 +3,9 @@ package com.chotomua.backend.modules.identity;
 import com.chotomua.backend.modules.crm.port.OrderPort;
 import com.chotomua.backend.modules.identity.dto.CustomerResponse;
 import com.chotomua.backend.modules.identity.dto.CustomerStatusUpdateRequest;
+import com.chotomua.backend.modules.identity.dto.TemporaryPasswordResponse;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.PostMapping;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -25,10 +28,32 @@ public class CustomerController {
     private final OrderPort orders;
     // Keeps CRM segments in step with the new status (optional so slim test contexts still start)
     private com.chotomua.backend.modules.crm.application.CrmOrderEvents crmEvents;
+    // Hashes the temporary password CS hands to a customer
+    private final PasswordEncoder passwordEncoder;
     // Constructor for CustomerController
-    public CustomerController(UserRepository userRepository, OrderPort orders) {
+    public CustomerController(UserRepository userRepository, OrderPort orders, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.orders = orders;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    /**
+     * A customer who cannot log in gets a temporary password from CS (DEPT_CS only, see SecurityConfig): an account
+     * CS just created has no usable password yet, and one who forgot theirs has no email or SMS reset to fall back on.
+     * It replaces the old password, is returned this one time only, and the customer changes it on the profile page.
+     */
+    @PostMapping("/{id}/temporary-password")
+    @Transactional
+    public TemporaryPasswordResponse issueTemporaryPassword(@PathVariable UUID id) {
+        User user = userRepository.findById(id)
+                .filter(u -> "buyer".equals(u.getRole()))
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy khách hàng"));
+        if (!"active".equals(user.getStatus())) {
+            throw new IllegalStateException("Chỉ cấp mật khẩu tạm cho tài khoản đang hoạt động.");
+        }
+        String password = TemporaryPasswords.generate();
+        user.setPasswordHash(passwordEncoder.encode(password));
+        return new TemporaryPasswordResponse(password);
     }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -81,7 +106,7 @@ public class CustomerController {
                 .filter(u -> "buyer".equals(u.getRole()))
                 // If the user is not a buyer, throw an exception
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy khách hàng"));
-        // A soft-deleted account only comes back through POST /api/customers/{id}/restore (admin only, audited)
+        // A soft-deleted account only comes back through POST /api/customers/{id}/restore (CSKH only, audited)
         if ("deleted".equals(user.getStatus()) && !"deleted".equals(request.status())) {
             throw new IllegalStateException("Khách hàng đã bị xoá. Dùng chức năng Khôi phục để mở lại tài khoản.");
         }

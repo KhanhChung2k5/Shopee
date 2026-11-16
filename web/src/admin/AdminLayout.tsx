@@ -51,9 +51,12 @@ const NAV_GROUPS: NavGroup[] = [
     title: 'CRM',
     items: [
       { to: '/admin/dieu-hanh', label: 'Tổng quan điều hành', icon: <path d="M4 4h7v7H4V4Zm9 0h7v4h-7V4ZM4 13h7v7H4v-7Zm9-3h7v10h-7V10Z" /> },
-      { to: '/admin/khach-hang', label: 'Khách hàng', icon: <path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM20 19v-1.2a3 3 0 0 0-2.2-2.9M15 4.2a3 3 0 0 1 0 5.8" /> },
+      { to: '/admin/doanh-thu-van-hanh', label: 'Doanh thu & vận hành', icon: <path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-3" /> },
+      { to: '/admin/hieu-qua-khuyen-mai', label: 'Hiệu quả khuyến mãi', icon: <path d="M4 12h4l2-6 4 12 2-6h4" /> },
+      { to: '/admin/hanh-vi-mua', label: 'Hành vi khách hàng', icon: <path d="M12 3v6M12 9l7 4M12 9 5 13M12 13v8M8 21h8" /> },
       { to: '/admin/bao-cao', end: true, label: 'Báo cáo nhân khẩu học', icon: <path d="M4 20V10M10 20V4M16 20v-7M4 20h16" /> },
       { to: '/admin/bao-cao/khao-sat', label: 'Thống kê khảo sát', icon: <path d="M5 4h14v16H5zM8 15v2M12 11v6M16 8v9" /> },
+      { to: '/admin/khach-hang', label: 'Khách hàng', icon: <path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM20 19v-1.2a3 3 0 0 0-2.2-2.9M15 4.2a3 3 0 0 1 0 5.8" /> },
       { to: '/admin/crm', label: 'Hồ sơ & RFM', icon: <path d="M12 3 4 7v6c0 4 3.4 7.4 8 8 4.6-.6 8-4 8-8V7l-8-4ZM9 12l2 2 4-4" /> },
       { to: '/admin/ho-tro', label: 'Hỗ trợ khách hàng', icon: <path d="M4 5h16v11H8l-4 4V5ZM8 9h8M8 12h5" /> },
       { to: '/admin/danh-gia', label: 'Đánh giá sản phẩm', icon: <path d="m12 3 2.7 5.5 6 .9-4.4 4.2 1 6L12 16.8 6.6 19.6l1-6L3.3 9.4l6-.9L12 3Z" /> },
@@ -84,6 +87,9 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/bao-cao': 'Báo cáo nhân khẩu học',
   '/admin/bao-cao/khao-sat': 'Thống kê khảo sát',
   '/admin/dieu-hanh': 'Tổng quan điều hành CRM',
+  '/admin/doanh-thu-van-hanh': 'Doanh thu & vận hành đơn hàng',
+  '/admin/hieu-qua-khuyen-mai': 'Hiệu quả marketing & khuyến mãi',
+  '/admin/hanh-vi-mua': 'Hành vi khách hàng',
   '/admin/crm': 'Hồ sơ & RFM khách hàng',
   '/admin/ho-tro': 'Hỗ trợ khách hàng',
   '/admin/danh-gia': 'Đánh giá sản phẩm',
@@ -100,6 +106,9 @@ const DEPARTMENT_LABEL: Record<Department, string> = {
   admin: 'Quản trị viên',
   cs: 'Chăm sóc khách hàng',
 }
+
+/** Các trang lưới/danh sách dài: hiện thanh cuộn dọc bên phải cột nội dung. */
+const PAGE_Y_SCROLL = new Set(['/admin/crm', '/admin/khach-hang', '/admin/danh-gia'])
 
 export default function AdminLayout() {
   const location = useLocation()
@@ -123,6 +132,7 @@ export default function AdminLayout() {
   }, [location.pathname])
   const pageTitle = PAGE_TITLES[location.pathname]
     ?? (location.pathname.startsWith('/admin/don-hang/') ? 'Đơn hàng' : 'Quản trị')
+  const showPageScrollbar = PAGE_Y_SCROLL.has(location.pathname)
 
   const visibleGroups = NAV_GROUPS.map((group) => ({
     ...group,
@@ -130,8 +140,8 @@ export default function AdminLayout() {
   })).filter((group) => group.items.length > 0)
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-surface text-on-surface">
-      <aside className="md:sticky md:top-0 md:h-screen md:w-60 flex-shrink-0 flex flex-col items-stretch gap-space-xs md:gap-0 bg-[#14161a] text-[#e4e6eb] px-space-md py-space-sm md:py-space-lg">
+    <div className="flex h-dvh flex-col overflow-hidden bg-surface text-on-surface md:flex-row">
+      <aside className="md:h-full md:w-60 flex-shrink-0 flex flex-col items-stretch gap-space-xs md:gap-0 bg-[#14161a] text-[#e4e6eb] px-space-md py-space-sm md:py-space-lg">
         <div className="font-headline-md text-headline-md text-white md:mb-space-xl md:px-space-sm whitespace-nowrap">
           Chợ Tốt <span className="text-[#ffb4a2]">Mua</span>
           <span className="hidden md:block font-label-md text-label-md text-[#9aa0ac] font-medium">Trang quản trị</span>
@@ -174,12 +184,12 @@ export default function AdminLayout() {
           <span className="material-symbols-outlined text-base">arrow_back</span> Về trang khách hàng
         </Link>
       </aside>
-      <div className="flex-1 min-w-0 flex flex-col">
-        <header className="sticky top-0 z-10 flex items-center justify-between px-space-lg md:px-space-xl py-space-md bg-surface-container-lowest border-b border-line">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="z-10 flex shrink-0 items-center justify-between px-space-lg md:px-space-xl py-space-md bg-surface-container-lowest border-b border-line">
           <h2 className="font-title-lg text-title-lg text-on-surface">{pageTitle}</h2>
           <Link className="md:hidden font-label-md text-label-md text-primary" to="/">Về cửa hàng</Link>
         </header>
-        <main className="flex-1 min-w-0 px-space-lg md:px-space-xl py-space-xl [&_h1]:font-headline-lg [&_h1]:text-headline-lg [&_h1]:text-on-surface [&_h1]:mb-space-lg">
+        <main className={`min-h-0 min-w-0 flex-1 overflow-y-auto px-space-lg py-space-xl md:px-space-xl [&_h1]:font-headline-lg [&_h1]:text-headline-lg [&_h1]:text-on-surface [&_h1]:mb-space-lg${showPageScrollbar ? ' admin-y-scroll' : ''}`}>
           <Outlet />
         </main>
       </div>

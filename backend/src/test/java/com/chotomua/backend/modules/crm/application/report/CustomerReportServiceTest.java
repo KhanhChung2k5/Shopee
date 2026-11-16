@@ -167,7 +167,7 @@ class CustomerReportServiceTest {
                 .containsExactly("Mua Nhieu", "Im Lang");
         ReportCustomer valued = report.customers().get(0);
         assertThat(valued.customerId()).isEqualTo(buyer.id());
-        assertThat(valued.ltv()).isEqualByComparingTo("30"); // one order of 10 projected over the 3-year lifespan
+        assertThat(valued.ltv()).isEqualByComparingTo("20"); // one order of 10 projected over the 2-year lifespan
         assertThat(valued.totalOrders()).isEqualTo(1);
         assertThat(valued.rfmSegment()).isEqualTo(RfmClassifier.POTENTIAL);
         ReportCustomer idle = report.customers().get(1);
@@ -175,6 +175,33 @@ class CustomerReportServiceTest {
         assertThat(idle.ltv()).isEqualByComparingTo("0");
         assertThat(idle.totalOrders()).isZero();
         assertThat(idle.rfmSegment()).isEqualTo(RfmClassifier.NEW);
+    }
+
+    @Test
+    void factsCarryProductNameAndQuantity() {
+        CustomerView buyer = identity.seedCustomer(
+                "Mua Dia", "male", TODAY.minusYears(22), CustomerStatus.ACTIVE);
+        UUID product = UUID.randomUUID();
+        orders.seedDeliveredOrder(new DeliveredOrderView(
+                UUID.randomUUID(),
+                buyer.id(),
+                new BigDecimal("30"),
+                Instant.parse("2026-08-01T10:00:00Z"),
+                List.of(new DeliveredOrderLine(
+                        product, DISC, "Đĩa game", new BigDecimal("30"), "Hành động", "God of War", 2))));
+
+        CustomerReportResponse report = reports.build(ACTOR);
+
+        assertThat(report.facts())
+                .filteredOn(fact -> buyer.id().equals(fact.customerId()))
+                .singleElement()
+                .satisfies(fact -> {
+                    assertThat(fact.productId()).isEqualTo(product);
+                    assertThat(fact.productName()).isEqualTo("God of War");
+                    assertThat(fact.quantity()).isEqualTo(2);
+                    assertThat(fact.categoryName()).isEqualTo("Đĩa game");
+                    assertThat(fact.genre()).isEqualTo("Hành động");
+                });
     }
 
     @Test

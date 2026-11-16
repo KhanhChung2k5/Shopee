@@ -15,15 +15,19 @@ import java.util.List;
  *   LTV = giá trị đơn trung bình × số đơn mỗi năm × vòng đời kỳ vọng
  *   giá trị đơn trung bình = tổng đã chi / số đơn
  *   số đơn mỗi năm        = số đơn / số năm đã gắn bó (từ đơn đầu tiên đến hôm nay, tối thiểu 1 năm)
- *   vòng đời kỳ vọng      = max(3 năm, số năm đã gắn bó)
+ *   vòng đời kỳ vọng      = max(2 năm, số năm đã gắn bó)
  * </pre>
  * Nhờ vòng đời không ngắn hơn thời gian đã gắn bó, LTV dự báo không bao giờ nhỏ hơn số tiền khách đã chi,
- * và không về 0 khi sang năm mới. Tổng đã chi ({@code historicalSpend}) được giữ riêng để hiển thị và chấm RFM.
+ * và không về 0 khi sang năm mới. Tổng đã chi ({@code historicalSpend}) và số đơn cả đời dùng cho LTV
+ * và để hiển thị. Điểm F và M chỉ lấy đơn trong {@link #RFM_WINDOW_DAYS} ngày gần nhất.
  */
 public final class LifetimeValue {
 
     /** Một khách trung bình gắn bó với cửa hàng bao lâu (giả định nghiệp vụ). */
-    public static final BigDecimal EXPECTED_LIFESPAN_YEARS = new BigDecimal("3");
+    public static final BigDecimal EXPECTED_LIFESPAN_YEARS = new BigDecimal("2");
+
+    /** Cửa sổ chấm F và M. Cùng cách đếm một năm của LTV: 365 ngày, tính cả đơn đúng mốc. */
+    public static final int RFM_WINDOW_DAYS = 365;
 
     private static final int SCALE = 2;
     private static final BigDecimal DAYS_PER_YEAR = new BigDecimal("365");
@@ -37,7 +41,11 @@ public final class LifetimeValue {
 
     public static Snapshot snapshot(List<DeliveredOrderView> delivered, Clock clock) {
         List<DeliveredOrderView> orders = delivered == null ? List.of() : delivered;
+        Instant now = Instant.now(clock);
+        Instant windowStart = now.minus(RFM_WINDOW_DAYS, ChronoUnit.DAYS);
         BigDecimal historicalSpend = BigDecimal.ZERO;
+        BigDecimal windowSpend = BigDecimal.ZERO;
+        int windowOrderCount = 0;
         Instant firstPurchaseAt = null;
         Instant lastPurchaseAt = null;
         for (DeliveredOrderView order : orders) {
@@ -54,11 +62,19 @@ public final class LifetimeValue {
             if (lastPurchaseAt == null || deliveredAt.isAfter(lastPurchaseAt)) {
                 lastPurchaseAt = deliveredAt;
             }
+            if (!deliveredAt.isBefore(windowStart)) {
+                windowOrderCount++;
+                if (order.totalAmount() != null) {
+                    windowSpend = windowSpend.add(order.totalAmount());
+                }
+            }
         }
         return new Snapshot(
-                ltv(historicalSpend, orders.size(), firstPurchaseAt, Instant.now(clock)),
+                ltv(historicalSpend, orders.size(), firstPurchaseAt, now),
                 historicalSpend.setScale(SCALE, RoundingMode.HALF_UP),
-                lastPurchaseAt);
+                lastPurchaseAt,
+                windowOrderCount,
+                windowSpend.setScale(SCALE, RoundingMode.HALF_UP));
     }
 
     private static BigDecimal ltv(BigDecimal spend, int orderCount, Instant firstPurchaseAt, Instant now) {
@@ -84,7 +100,16 @@ public final class LifetimeValue {
         return years.max(BigDecimal.ONE);
     }
 
-    /** {@code ltv}: LTV dự báo; {@code historicalSpend}: tổng đã chi (dùng chấm RFM Monetary). */
-    public record Snapshot(BigDecimal ltv, BigDecimal historicalSpend, Instant lastPurchaseAt) {
+    /**
+     * {@code ltv} và {@code historicalSpend} tính cả đời.
+     * {@code windowOrderCount} và {@code windowSpend} là đơn trong {@link #RFM_WINDOW_DAYS} ngày, dùng chấm F và M.
+     */
+    public record Snapshot(
+            BigDecimal ltv,
+            BigDecimal historicalSpend,
+            Instant lastPurchaseAt,
+            int windowOrderCount,
+            BigDecimal windowSpend
+    ) {
     }
 }

@@ -102,28 +102,16 @@ public class CustomerReportService {
                     delivered.size(),
                     RfmClassifier.segment(
                             daysSince(value.lastPurchaseAt()),
-                            delivered.size(),
-                            value.historicalSpend()),
+                            value.windowOrderCount(),
+                            value.windowSpend()),
                     value.historicalSpend()));
             if (customerLines.isEmpty()) {
-                facts.add(new ReportFact(
-                        customer.id(), age.code(), age.label(), gender.code(), gender.label(),
-                        null, null, null));
+                facts.add(fact(customer.id(), age, gender, null));
                 continue;
             }
             for (DeliveredOrderLine line : customerLines) {
                 lines.add(line);
-                boolean hasCategory = line.categoryId() != null
-                        || (line.categoryName() != null && !line.categoryName().isBlank());
-                facts.add(new ReportFact(
-                        customer.id(),
-                        age.code(),
-                        age.label(),
-                        gender.code(),
-                        gender.label(),
-                        hasCategory ? line.categoryId() : null,
-                        hasCategory ? displayName(line) : null,
-                        normalizeGenre(line.genre())));
+                facts.add(fact(customer.id(), age, gender, line));
             }
         }
         rows.sort(Comparator
@@ -239,6 +227,38 @@ public class CustomerReportService {
                         entry.getValue(),
                         percent(entry.getValue(), finalTotal)))
                 .toList();
+    }
+
+    /** Một fact cho dashboard. Khách chưa mua thì không có sản phẩm. */
+    private static ReportFact fact(UUID customerId, AgeBucket age, GenderBucket gender, DeliveredOrderLine line) {
+        if (line == null) {
+            return new ReportFact(
+                    customerId, age.code(), age.label(), gender.code(), gender.label(),
+                    null, null, null, null, null, 0);
+        }
+        boolean hasCategory = line.categoryId() != null
+                || (line.categoryName() != null && !line.categoryName().isBlank());
+        int quantity = line.quantity() < 1 ? 1 : line.quantity();
+        return new ReportFact(
+                customerId,
+                age.code(),
+                age.label(),
+                gender.code(),
+                gender.label(),
+                hasCategory ? line.categoryId() : null,
+                hasCategory ? displayName(line) : null,
+                normalizeGenre(line.genre()),
+                line.productId(),
+                blankToNull(line.productName()),
+                quantity);
+    }
+
+    /** Chuỗi trống thành null. */
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     /** Chuẩn hóa thể loại; trống → không đếm. */

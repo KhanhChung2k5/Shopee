@@ -48,7 +48,8 @@ class CustomerControllerTest {
               "email": "a@example.com",
               "phone": "0901111111",
               "gender": "male",
-              "dob": "1998-05-01"
+              "dob": "1998-05-01",
+              "password": "matkhau123"
             }
             """;
 

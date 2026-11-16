@@ -15,6 +15,7 @@ import com.chotomua.backend.modules.crm.port.dto.UpsertAddressCommand;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.sql.Date;
@@ -31,8 +32,6 @@ import java.util.UUID;
 @Profile("!crm-fake")
 public class JdbcIdentityPort implements IdentityPort {
 
-    private static final String PASSWORD_PLACEHOLDER = "seed-not-for-login";
-
     private static final String CUSTOMER_COLUMNS = """
             SELECT u.id, u.full_name, u.email, u.phone, u.gender, u.dob, u.status
             FROM users u
@@ -41,15 +40,19 @@ public class JdbcIdentityPort implements IdentityPort {
 
     private final JdbcTemplate jdbc;
     private final boolean roleById;
+    // Same BCrypt encoder as login, so a customer created by CS signs in with the password CS set.
+    private final PasswordEncoder passwordEncoder;
 
-    public JdbcIdentityPort(JdbcTemplate jdbc) {
+    public JdbcIdentityPort(JdbcTemplate jdbc, PasswordEncoder passwordEncoder) {
         this.jdbc = jdbc;
+        this.passwordEncoder = passwordEncoder;
         this.roleById = columnExists("users", "role_id");
     }
 
     @Override
-    public CustomerView createCustomer(CreateCustomerCommand command) {
+    public CustomerView createCustomer(CreateCustomerCommand command, String password) {
         UUID id = UUID.randomUUID();
+        String passwordHash = passwordEncoder.encode(password);
         try {
             if (roleById) {
                 jdbc.update("""
@@ -59,7 +62,7 @@ public class JdbcIdentityPort implements IdentityPort {
                         id,
                         blankToNull(command.phone()),
                         blankToNull(command.email()),
-                        PASSWORD_PLACEHOLDER,
+                        passwordHash,
                         CustomerStatus.ACTIVE,
                         command.fullName(),
                         blankToNull(command.gender()),
@@ -73,7 +76,7 @@ public class JdbcIdentityPort implements IdentityPort {
                         customerRoleName(),
                         blankToNull(command.phone()),
                         blankToNull(command.email()),
-                        PASSWORD_PLACEHOLDER,
+                        passwordHash,
                         CustomerStatus.ACTIVE,
                         command.fullName(),
                         blankToNull(command.gender()),
@@ -117,7 +120,7 @@ public class JdbcIdentityPort implements IdentityPort {
     public void restoreCustomer(UUID customerId) {
         CustomerView current = getCustomer(customerId);
         if (!CustomerStatus.DELETED.equals(current.status())) {
-            throw new InvalidCustomerStatusException("Chỉ khôi phục được khách hàng đã bị xoá.");
+            throw new InvalidCustomerStatusException("Chỉ khôi phục được khách hàng đã xóa.");
         }
         setStatus(customerId, CustomerStatus.ACTIVE);
     }
@@ -138,7 +141,7 @@ public class JdbcIdentityPort implements IdentityPort {
     @Override
     public void unlock(UUID customerId) {
         CustomerView current = getCustomer(customerId);
-        assertNotDeleted(current, "Không thể mở khóa khách hàng đã xóa. Dùng khôi phục (chỉ quản trị viên).");
+        assertNotDeleted(current, "Không thể mở khóa khách hàng đã xóa. Dùng chức năng Khôi phục (CSKH).");
         if (!CustomerStatus.LOCKED.equals(current.status())) {
             throw new InvalidCustomerStatusException("Chỉ mở khóa được tài khoản đang bị khóa.");
         }
@@ -292,9 +295,11 @@ public class JdbcIdentityPort implements IdentityPort {
     @Override
     public void requireMarketingStaff(UUID actorId) {
         String department = requireKnownStaff(actorId);
-        if (!StaffDepartment.SALES.equals(department)) {
+        boolean allowed = StaffDepartment.SALES.equals(department)
+                || StaffDepartment.CS.equals(department);
+        if (!allowed) {
             throw new CrmForbiddenException(
-                    "Chỉ nhân viên kinh doanh được quản lý phân khúc và chiến dịch.");
+                    "Chỉ nhân viên kinh doanh hoặc CSKH được quản lý phân khúc và chiến dịch.");
         }
     }
 

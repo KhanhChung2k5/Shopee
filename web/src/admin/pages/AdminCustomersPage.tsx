@@ -4,12 +4,14 @@ import { formatVnd } from '../../lib/catalog'
 import { useAuth } from '../../state/AuthContext'
 import { apiFetch, ApiError } from '../../lib/api'
 import { a, statusPillClass } from '../adminUi'
-import { buttonClass } from '../../components/ui'
+import { buttonClass, cx } from '../../components/ui'
 import { useDialog } from '../../state/DialogContext'
+import CustomerCreateDialog from '../components/CustomerCreateDialog'
 import CustomerDetailPanel from '../components/CustomerDetailPanel'
 import CustomerEditDialog from '../components/CustomerEditDialog'
 import { RecentViews, SearchBox, StatusFilter } from '../components/ListSearch'
-import { matches, useRecentViews } from '../components/listSearchState'
+import { matches, useRecentViews, useViewMode } from '../components/listSearchState'
+import { ViewModeToggle } from '../components/ViewModeToggle'
 
 const STATUS_LABEL: Record<CustomerStatus, string> = {
   active: 'Hoạt động',
@@ -49,9 +51,11 @@ export default function AdminCustomersPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Customer | null>(null)
   const [detailVersion, setDetailVersion] = useState(0)
   const viewed = useRecentViews('customers')
+  const [layout, setLayout] = useViewMode('customers')
   const openDetail = (c: Customer) => { setDetailId(c.id); viewed.push(c.id, c.fullName ?? c.email ?? 'Khách hàng') }
   const toast = useToast()
 
@@ -124,6 +128,34 @@ export default function AdminCustomersPage() {
     toast.show(`Đã xoá "${c.fullName}"`)
   }
 
+  const showTemporaryPassword = async (name: string, password: string) => {
+    const copy = await confirm({
+      title: 'Mật khẩu tạm',
+      message: <>Mật khẩu của <strong>{name}</strong>: <code className="font-mono font-bold select-all">{password}</code>. Mật khẩu chỉ hiện một lần. Khách đăng nhập bằng email rồi đổi mật khẩu ở trang hồ sơ.</>,
+      confirmLabel: 'Sao chép và đóng',
+      cancelLabel: 'Đóng',
+    })
+    if (copy) await navigator.clipboard.writeText(password).catch(() => toast.show('Không sao chép được mật khẩu'))
+  }
+
+  const issueTemporaryPassword = async (c: Customer) => {
+    const name = c.fullName ?? c.email ?? 'khách hàng'
+    if (!(await confirm({ title: 'Cấp mật khẩu tạm', message: <>Cấp mật khẩu tạm cho <strong>{name}</strong>? Mật khẩu hiện tại sẽ không dùng được nữa.</>, confirmLabel: 'Cấp mật khẩu', tone: 'danger' }))) return
+    try {
+      const { temporaryPassword } = await apiFetch<{ temporaryPassword: string }>(`/customers/${c.id}/temporary-password`, { method: 'POST' }, token)
+      await showTemporaryPassword(name, temporaryPassword)
+    } catch (err) {
+      toast.show(err instanceof ApiError ? err.message : 'Không cấp được mật khẩu tạm')
+    }
+  }
+
+  // CS set the password in the create form, so the customer can sign in straight away.
+  const onCustomerCreated = (created: { id: string; fullName: string }) => {
+    setCreating(false)
+    refresh()
+    toast.show(`Đã thêm "${created.fullName}". Khách đăng nhập được ngay bằng mật khẩu vừa đặt.`)
+  }
+
   const restore = async (id: string) => {
     const c = customers.find((x) => x.id === id)
     if (!c) return
@@ -185,10 +217,46 @@ export default function AdminCustomersPage() {
 
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '')
 
+  const customerActions = (c: Customer) => (
+    <div className="flex flex-wrap gap-1.5">
+      <button className={buttonClass('primary', 'sm')} type="button" onClick={() => openDetail(c)}>Chi tiết</button>
+      {c.status !== 'deleted' && (
+        <button className={buttonClass('outline', 'sm')} type="button" onClick={() => setEditing(c)}>Sửa</button>
+      )}
+      {c.status === 'active' && (
+        <button className={buttonClass('outline', 'sm')} type="button" onClick={() => void issueTemporaryPassword(c)}>Mật khẩu tạm</button>
+      )}
+      {c.status === 'deleted' ? (
+        canRestore ? (
+          <button className={buttonClass('outline', 'sm')} type="button" onClick={() => restore(c.id)}>Khôi phục</button>
+        ) : (
+          <span className="font-label-md text-label-md text-on-surface-variant">Chỉ CSKH được khôi phục</span>
+        )
+      ) : (
+        <>
+          <button className={buttonClass('outline', 'sm')} type="button" onClick={() => void toggleLock(c.id)}>
+            {c.status === 'locked' ? 'Mở khoá' : 'Khoá'}
+          </button>
+          <button className={buttonClass('outline', 'sm')} type="button" onClick={() => softDelete(c.id)}>Xoá</button>
+        </>
+      )}
+    </div>
+  )
+
+  const emptyCustomers = (
+    <div className={a.empty}>
+      <p>{customers.length === 0 ? 'Chưa có khách hàng nào đăng ký.' : 'Không có khách hàng nào khớp bộ lọc hiện tại.'}</p>
+      {customers.length > 0 && (
+        <button className={buttonClass('outline', 'sm')} type="button" onClick={clearFilters}>Xoá bộ lọc</button>
+      )}
+    </div>
+  )
+
   return (
     <div>
       <div className={a.toolbar}>
         <h1 className="!mb-0">Khách hàng ({filtered.length}/{customers.length})</h1>
+        <button type="button" className={buttonClass('primary')} onClick={() => setCreating(true)}>+ Thêm khách hàng</button>
       </div>
 
       {loadError && <p className="font-body-md text-body-md text-error mb-space-md">{loadError}</p>}
@@ -209,49 +277,55 @@ export default function AdminCustomersPage() {
         </div>
       )}
 
-      <div className={a.tableWrap}>
-        <table className={a.table}>
-          <thead>
-            <tr>
-              <th className="w-8">
-                <input
-                  type="checkbox"
-                  aria-label="Chọn tất cả"
-                  checked={filtered.length > 0 && selected.size === filtered.length}
-                  onChange={toggleSelectAll}
-                />
-              </th>
-              <th className={a.sortable} onClick={() => toggleSort('fullName')}>Họ tên{sortArrow('fullName')}</th>
-              <th>Email / SĐT</th>
-              <th className={a.sortable} onClick={() => toggleSort('age')}>Tuổi{sortArrow('age')}</th>
-              <th className={a.sortable} onClick={() => toggleSort('totalOrders')}>Đơn hàng{sortArrow('totalOrders')}</th>
-              <th className={a.sortable} onClick={() => toggleSort('ltv')}>LTV dự báo{sortArrow('ltv')}</th>
-              <th>Trạng thái</th>
-              <th>Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
+      <div className="mb-space-md flex flex-wrap items-center justify-end gap-space-sm">
+        {layout === 'grid' && (
+          <select
+            aria-label="Sắp xếp"
+            className="rounded-lg border border-line bg-surface-container-lowest px-space-sm py-1.5 font-label-md text-label-md text-on-surface"
+            value={`${sortKey}:${sortDir}`}
+            onChange={(event) => {
+              const [key, dir] = event.target.value.split(':') as [SortKey, 'asc' | 'desc']
+              setSortKey(key)
+              setSortDir(dir)
+            }}
+          >
+            <option value="fullName:asc">Tên A–Z</option>
+            <option value="fullName:desc">Tên Z–A</option>
+            <option value="age:desc">Tuổi cao nhất</option>
+            <option value="age:asc">Tuổi thấp nhất</option>
+            <option value="totalOrders:desc">Nhiều đơn nhất</option>
+            <option value="totalOrders:asc">Ít đơn nhất</option>
+            <option value="ltv:desc">LTV cao nhất</option>
+            <option value="ltv:asc">LTV thấp nhất</option>
+          </select>
+        )}
+        <ViewModeToggle value={layout} onChange={setLayout} />
+      </div>
+
+      {layout === 'list' ? (
+        <div className={a.tableWrap}>
+          <table className={a.table}>
+            <thead>
               <tr>
-                <td colSpan={8}>
-                  <div className={a.empty}>
-                    <p>{customers.length === 0 ? 'Chưa có khách hàng nào đăng ký.' : 'Không có khách hàng nào khớp bộ lọc hiện tại.'}</p>
-                    {customers.length > 0 && (
-                      <button className={buttonClass('outline', 'sm')} type="button" onClick={clearFilters}>Xoá bộ lọc</button>
-                    )}
-                  </div>
-                </td>
+                <th className="w-8">
+                  <input type="checkbox" aria-label="Chọn tất cả" checked={filtered.length > 0 && selected.size === filtered.length} onChange={toggleSelectAll} />
+                </th>
+                <th className={a.sortable} onClick={() => toggleSort('fullName')}>Họ tên{sortArrow('fullName')}</th>
+                <th>Email / SĐT</th>
+                <th className={a.sortable} onClick={() => toggleSort('age')}>Tuổi{sortArrow('age')}</th>
+                <th className={a.sortable} onClick={() => toggleSort('totalOrders')}>Đơn hàng{sortArrow('totalOrders')}</th>
+                <th className={a.sortable} onClick={() => toggleSort('ltv')}>LTV dự báo{sortArrow('ltv')}</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
               </tr>
-            ) : (
-              filtered.map((c) => (
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr><td colSpan={8}>{emptyCustomers}</td></tr>
+              ) : filtered.map((c) => (
                 <tr key={c.id} className={selected.has(c.id) ? 'is-selected' : ''}>
                   <td>
-                    <input
-                      type="checkbox"
-                      aria-label={`Chọn ${c.fullName}`}
-                      checked={selected.has(c.id)}
-                      onChange={() => toggleSelectOne(c.id)}
-                    />
+                    <input type="checkbox" aria-label={`Chọn ${c.fullName}`} checked={selected.has(c.id)} onChange={() => toggleSelectOne(c.id)} />
                   </td>
                   <td>{c.fullName ?? '—'}</td>
                   <td>
@@ -262,61 +336,63 @@ export default function AdminCustomersPage() {
                   <td>{age(c.dob) ?? '—'}</td>
                   <td>{c.totalOrders}</td>
                   <td>{formatVnd(c.ltv)}</td>
-                  <td>
-                    <span className={statusPillClass(c.status)}>{STATUS_LABEL[c.status]}</span>
-                  </td>
-                  <td className="whitespace-nowrap">
-                    <button className={buttonClass('primary', 'sm', 'mr-1.5')} type="button" onClick={() => openDetail(c)}>
-                      Chi tiết
-                    </button>
-                    {c.status !== 'deleted' && (
-                      <button className={buttonClass('outline', 'sm', 'mr-1.5')} type="button" onClick={() => setEditing(c)}>
-                        Sửa
-                      </button>
-                    )}
-                    {c.status === 'deleted' ? (
-                      canRestore ? (
-                        <button className={buttonClass('outline', 'sm')} type="button" onClick={() => restore(c.id)}>
-                          Khôi phục
-                        </button>
-                      ) : (
-                        <span className="text-on-surface-variant">Chỉ CSKH được khôi phục</span>
-                      )
-                    ) : (
-                      <>
-                        <button
-                          className={buttonClass('outline', 'sm', 'mr-1.5')}
-                          type="button"
-                          onClick={() => void toggleLock(c.id)}
-                        >
-                          {c.status === 'locked' ? 'Mở khoá' : 'Khoá'}
-                        </button>
-                        <button
-                          className={buttonClass('outline', 'sm')}
-                          type="button"
-                          onClick={() => softDelete(c.id)}
-                        >
-                          Xoá
-                        </button>
-                      </>
-                    )}
-                  </td>
+                  <td><span className={statusPillClass(c.status)}>{STATUS_LABEL[c.status]}</span></td>
+                  <td>{customerActions(c)}</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div>
+          {filtered.length > 0 && (
+            <label className="mb-space-sm inline-flex items-center gap-space-xs font-body-md text-body-md text-on-surface cursor-pointer">
+              <input type="checkbox" aria-label="Chọn tất cả" checked={selected.size === filtered.length} onChange={toggleSelectAll} />
+              Chọn tất cả
+            </label>
+          )}
+          {filtered.length === 0 ? (
+            <div className={a.card}>{emptyCustomers}</div>
+          ) : (
+            <div className="grid grid-cols-3 gap-space-md">
+              {filtered.map((c) => (
+                <article key={c.id} className={cx(a.card, 'flex flex-col gap-space-sm', selected.has(c.id) && 'ring-2 ring-primary')}>
+                  <div className="flex items-start justify-between gap-space-sm">
+                    <div className="flex min-w-0 items-start gap-space-xs">
+                      <input type="checkbox" className="mt-1" aria-label={`Chọn ${c.fullName}`} checked={selected.has(c.id)} onChange={() => toggleSelectOne(c.id)} />
+                      <div className="min-w-0">
+                        <button type="button" className={`${a.linkButton} text-left`} onClick={() => openDetail(c)}>{c.fullName ?? '—'}</button>
+                        <div className="truncate font-body-md text-body-md text-on-surface-variant">{c.email ?? '—'}</div>
+                        <div className="font-label-md text-label-md text-on-surface-variant">{c.phone ?? '—'}</div>
+                      </div>
+                    </div>
+                    <span className={statusPillClass(c.status)}>{STATUS_LABEL[c.status]}</span>
+                  </div>
+                  <dl className="grid grid-cols-2 gap-space-sm">
+                    <div><dt className={a.statLabel}>Tuổi</dt><dd className="font-title-md text-title-md text-on-surface">{age(c.dob) ?? '—'}</dd></div>
+                    <div><dt className={a.statLabel}>Đơn hàng</dt><dd className="font-title-md text-title-md text-on-surface">{c.totalOrders}</dd></div>
+                    <div className="col-span-2"><dt className={a.statLabel}>LTV dự báo</dt><dd className="whitespace-nowrap font-title-md text-title-md text-on-surface">{formatVnd(c.ltv)}</dd></div>
+                  </dl>
+                  {customerActions(c)}
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <p className="mt-space-md font-body-md text-body-md text-on-surface-variant">
         "Đơn hàng" là số đơn đã giao; "LTV dự báo" do CRM tính lại khi đơn được giao hoặc hoàn tiền (xem trang Hồ sơ & RFM).
         Không khóa hoặc xóa được khách còn đơn chưa hoàn tất hay yêu cầu hoàn tiền chưa xử lý xong.
-        Khách hàng tự đăng ký qua app — admin không tạo tài khoản khách hàng trực tiếp.
+        CSKH thêm khách thủ công tại đây; tài khoản mới nhận mật khẩu tạm để đăng nhập, rồi khách tự đổi ở trang hồ sơ.
       </p>
 
       {detailId && (
         <CustomerDetailPanel key={`${detailId}-${detailVersion}`} customerId={detailId} onClose={() => setDetailId(null)}
           onEdit={(c) => setEditing(c)} />
+      )}
+      {creating && (
+        <CustomerCreateDialog onClose={() => setCreating(false)} onCreated={onCustomerCreated} />
       )}
       {editing && (
         <CustomerEditDialog customer={editing} onClose={() => setEditing(null)}

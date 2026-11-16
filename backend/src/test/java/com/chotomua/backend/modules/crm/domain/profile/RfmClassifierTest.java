@@ -51,6 +51,12 @@ class RfmClassifierTest {
     }
 
     @Test
+    void aQuietYearIsLostNotNew() {
+        assertThat(RfmClassifier.segment(400, 0, BigDecimal.ZERO))
+                .isEqualTo(RfmClassifier.LOST);
+    }
+
+    @Test
     void unmatchedScoresStayOther() {
         assertThat(RfmClassifier.segment(10, 8, new BigDecimal("100000")))
                 .isEqualTo(RfmClassifier.OTHER);

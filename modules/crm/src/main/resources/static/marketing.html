@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="/theme.js?v=2"></script>
+  <script src="/auth.js?v=3"></script>
+  <title>Chợ Tốt Mua — Marketing tự động</title>
+  <meta name="application-name" content="crm-marketing-demo">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Fira+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/demo.css?v=88">
+</head>
+<body>
+  <div class="app mk-page">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="/home.html">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/>
+          </svg>
+        </span>
+        <span class="brand-copy">
+          <strong>Chợ Tốt Mua</strong>
+          <small>CRM Demo</small>
+        </span>
+      </a>
+
+      <p class="nav-label">Chung</p>
+      <nav class="nav" aria-label="Điều hướng chính">
+        <a class="nav-item" href="/home.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20H4z"/></svg>
+          Trang chủ
+        </a>
+        <a class="nav-item" href="/index.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Khách hàng
+        </a>
+        <a class="nav-item" href="/conversations.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Hội thoại
+        </a>
+        <a class="nav-item" href="/profiles.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4z"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
+          Hồ sơ CRM
+        </a>
+        <a class="nav-item" href="/campaigns.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H5.17L4 17.17V4z"/><path d="M8 10h8M8 14h5"/></svg>
+          Chiến dịch
+        </a>
+        <a class="nav-item" href="/surveys.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+          Khảo sát
+        </a>
+        <a class="nav-item" href="/inbox.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H5.17L4 17.17V4z"/><path d="M4 4l8 6 8-6"/></svg>
+          Hộp thư khách
+        </a>
+        <a class="nav-item" href="/segments.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></svg>
+          Phân khúc
+        </a>
+        <a class="nav-item" href="/reports.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16M8 17V9m4 8V7m4 10v-6"/></svg>
+          Báo cáo
+        </a>
+      </nav>
+
+      <p class="nav-label">Hệ thống</p>
+      <nav class="nav nav-sub" aria-label="Hệ thống">
+        <a class="nav-item" href="/settings.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Cài đặt
+        </a>
+        <span class="nav-item is-disabled">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Vai trò &amp; quyền
+        </span>
+      </nav>
+
+      <section class="sidebar-panel">
+        <h2>Đăng nhập giả lập</h2>
+        <p class="hint">Admin, CRM Manager và CSKH xem và đẩy gợi ý được. NV Kinh doanh nhận 403.</p>
+        <div class="roles" id="roles"></div>
+        <details class="checklist" open>
+          <summary>Checklist EX6–EX7</summary>
+          <ol>
+            <li>Khách chưa mua → bán chạy quý</li>
+            <li>Có máy, thiếu tay cầm → tay cầm</li>
+            <li>Máy + tay cầm, thiếu đĩa → đĩa game</li>
+            <li>Có đĩa → cùng thể loại</li>
+            <li>Đẩy hộp thư: khóa / xóa không nhận</li>
+          </ol>
+        </details>
+      </section>
+    </aside>
+
+    <div class="shell">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" type="button" id="menu-toggle" aria-label="Mở menu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <p class="page-kicker">Gợi ý theo hành vi mua — gửi qua hộp thư in-app, không SMTP, không voucher</p>
+        <p id="banner" class="attention" hidden role="status" aria-live="polite"></p>
+        <button class="icon-btn" type="button" id="reload" aria-label="Tải lại gợi ý">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        </button>
+        <div class="who-chip">
+          <span class="who-avatar" aria-hidden="true">?</span>
+          <p id="who">Chưa chọn tài khoản</p>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <div class="page-head">
+          <h1>Marketing tự động</h1>
+        </div>
+        <p id="meta" class="meta">Chọn tài khoản để xem gợi ý sản phẩm cho từng khách.</p>
+
+        <section class="mk-rules" id="mk-rules" aria-label="Năm quy tắc gợi ý. Chọn một quy tắc để lọc khách.">
+          <button type="button" class="mk-rule" data-rule="NEW_CUSTOMER_BEST_SELLER" aria-pressed="false">
+            <span class="mk-rule-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>
+            </span>
+            <span class="mk-rule-copy">
+              <span class="mk-rule-title">Khách mới</span>
+              <span class="mk-rule-desc">Chưa mua → bán chạy 90 ngày</span>
+            </span>
+            <strong class="mk-rule-count" id="mk-count-NEW_CUSTOMER_BEST_SELLER">0</strong>
+          </button>
+          <button type="button" class="mk-rule" data-rule="ACCESSORY_NEEDS_CONTROLLER" aria-pressed="false">
+            <span class="mk-rule-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="9" rx="4.5"/><path d="M8 12.5h3M9.5 11v3M15.5 12h.01M17.5 13.5h.01"/></svg>
+            </span>
+            <span class="mk-rule-copy">
+              <span class="mk-rule-title">Thiếu tay cầm</span>
+              <span class="mk-rule-desc">Có máy → gợi ý tay cầm</span>
+            </span>
+            <strong class="mk-rule-count" id="mk-count-ACCESSORY_NEEDS_CONTROLLER">0</strong>
+          </button>
+          <button type="button" class="mk-rule" data-rule="CONSOLE_NEEDS_GAME_DISC" aria-pressed="false">
+            <span class="mk-rule-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3v3M21 12h-3"/></svg>
+            </span>
+            <span class="mk-rule-copy">
+              <span class="mk-rule-title">Thiếu đĩa game</span>
+              <span class="mk-rule-desc">Máy + tay cầm → đĩa bán chạy</span>
+            </span>
+            <strong class="mk-rule-count" id="mk-count-CONSOLE_NEEDS_GAME_DISC">0</strong>
+          </button>
+          <button type="button" class="mk-rule" data-rule="SAME_GENRE_GAME_DISC" aria-pressed="false">
+            <span class="mk-rule-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h6"/><path d="M17 15l2 2 3-4"/></svg>
+            </span>
+            <span class="mk-rule-copy">
+              <span class="mk-rule-title">Cùng thể loại</span>
+              <span class="mk-rule-desc">Có đĩa → đĩa cùng genre</span>
+            </span>
+            <strong class="mk-rule-count" id="mk-count-SAME_GENRE_GAME_DISC">0</strong>
+          </button>
+          <button type="button" class="mk-rule" data-rule="CO_PURCHASE" aria-pressed="false">
+            <span class="mk-rule-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2.5l2.3 11h10.4l2-8H7"/></svg>
+            </span>
+            <span class="mk-rule-copy">
+              <span class="mk-rule-title">Mua chung</span>
+              <span class="mk-rule-desc">Hay mua cùng sản phẩm đã có</span>
+            </span>
+            <strong class="mk-rule-count" id="mk-count-CO_PURCHASE">0</strong>
+          </button>
+        </section>
+
+        <div class="mk-layout">
+          <section class="mk-board" aria-labelledby="mk-board-title">
+            <div class="mk-toolbar">
+              <h2 id="mk-board-title">Khách hàng</h2>
+              <button type="button" class="btn-ghost" id="mk-clear-rule" hidden>Bỏ lọc quy tắc</button>
+            </div>
+            <div id="entity-switch" class="survey-switch mk-switch"></div>
+            <div class="mk-filters" id="mk-filters">
+              <div class="log-filter-grid mk-filter-grid">
+                <label class="log-filter-field">
+                  <span>Tìm khách</span>
+                  <div class="mk-search">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                    <input id="mk-search" type="search" placeholder="Tên, email hoặc SĐT…" autocomplete="off" aria-label="Tìm tên, email hoặc số điện thoại">
+                  </div>
+                </label>
+                <div class="log-filter-field">
+                  <span id="mk-segment-label">Phân khúc đã tạo</span>
+                  <div class="multi-select" id="mk-filter-segment" data-empty="Tất cả phân khúc">
+                    <button type="button" class="multi-select-toggle" aria-expanded="false" aria-labelledby="mk-segment-label" aria-haspopup="listbox">Tất cả phân khúc</button>
+                    <div class="multi-select-panel" hidden>
+                      <label><input type="checkbox" data-select-all><span>Chọn tất cả</span></label>
+                      <div id="mk-segment-options"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="log-filter-field">
+                  <span id="mk-rfm-label">Nhãn RFM</span>
+                  <div class="multi-select" id="mk-filter-rfm" data-empty="Tất cả nhãn">
+                    <button type="button" class="multi-select-toggle" aria-expanded="false" aria-labelledby="mk-rfm-label" aria-haspopup="listbox">Tất cả nhãn</button>
+                    <div class="multi-select-panel" hidden>
+                      <label><input type="checkbox" data-select-all><span>Chọn tất cả</span></label>
+                      <label><input type="checkbox" data-option value="champions"><span>Champions</span></label>
+                      <label><input type="checkbox" data-option value="loyal"><span>Loyal</span></label>
+                      <label><input type="checkbox" data-option value="potential"><span>Potential</span></label>
+                      <label><input type="checkbox" data-option value="at_risk"><span>At Risk</span></label>
+                      <label><input type="checkbox" data-option value="lost"><span>Lost</span></label>
+                      <label><input type="checkbox" data-option value="other"><span>Other</span></label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="log-filter-actions">
+                <button type="button" class="btn-ghost" id="mk-filter-reset">Xóa bộ lọc</button>
+              </div>
+            </div>
+            <div class="mk-scroller" id="mk-scroller" tabindex="0" aria-label="Danh sách khách. Lăn chuột hoặc phím mũi tên để cuộn.">
+              <div id="mk-list" class="mk-list" aria-live="polite"></div>
+            </div>
+          </section>
+
+          <aside class="mk-side" aria-label="Chi tiết gợi ý và đẩy hộp thư">
+            <section class="report-card mk-detail" id="mk-detail" aria-live="polite">
+              <div class="empty"><strong>Chưa chọn khách.</strong>Chọn một khách ở danh sách để xem gợi ý.</div>
+            </section>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="/entity-switch.js?v=5"></script>
+  <script src="/marketing.js?v=6"></script>
+  <script src="/shell-nav.js?v=6"></script>
+</body>
+</html>

@@ -130,12 +130,12 @@ class SegmentControllerTest {
 
     @Test
     @WithMockUser(username = CS_ID, authorities = "DEPT_CS")
-    void customerServiceStaffCannotCreateASegment() throws Exception {
+    void customerServiceStaffCanCreateASegment() throws Exception {
         mockMvc.perform(post("/api/segments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(AGE_BODY))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.message", containsString("quyền")));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.memberCount").value(1));
     }
 
     @Test
