@@ -52,6 +52,19 @@ public class ProductVariantLookup {
                 .getResultList();
     }
 
+    /** products.id of each variant, so a voucher limited to specific products knows which cart lines it covers. */
+    public java.util.Map<UUID, UUID> productIdsByVariant(java.util.Collection<UUID> variantIds) {
+        java.util.Map<UUID, UUID> byVariant = new java.util.HashMap<>();
+        if (variantIds == null || variantIds.isEmpty()) return byVariant;
+        for (Object result : entityManager.createNativeQuery("SELECT id, product_id FROM product_variants WHERE id IN (:ids)")
+                .setParameter("ids", java.util.Set.copyOf(variantIds))
+                .getResultList()) {
+            Object[] row = (Object[]) result;
+            byVariant.put((UUID) row[0], (UUID) row[1]);
+        }
+        return byVariant;
+    }
+
     public boolean existsActiveById(UUID variantId) {
         return findActiveById(variantId).isPresent();
     }

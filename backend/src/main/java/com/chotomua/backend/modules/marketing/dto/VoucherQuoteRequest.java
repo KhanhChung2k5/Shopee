@@ -9,8 +9,8 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * {@code items} are the cart lines (product type + line total). They are required for a voucher limited to
- * certain product types, because only those lines' money can be discounted.
+ * {@code items} are the cart lines (product type, product id + line total). They are required for a voucher limited to
+ * certain product types or products, because only those lines' money can be discounted.
  */
 public record VoucherQuoteRequest(
         @NotBlank String code,
@@ -21,6 +21,9 @@ public record VoucherQuoteRequest(
         this(code, subtotal, null);
     }
 
-    public record Item(String productType, @NotNull @DecimalMin("0.00") BigDecimal amount) {
+    public record Item(String productType, @NotNull @DecimalMin("0.00") BigDecimal amount, java.util.UUID productId) {
+        public Item(String productType, BigDecimal amount) {
+            this(productType, amount, null);
+        }
     }
 }

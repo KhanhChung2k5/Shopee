@@ -23,6 +23,10 @@ export interface Voucher {
   minOrderAmount: number | null
   /** Cap for a percentage voucher; null = no cap. */
   maxDiscountAmount: number | null
+  /** Specific products (ids) it also discounts: a line is covered if its type OR its product is listed. */
+  targetProductIds: string[]
+  /** Orders one buyer may use it on; null = unlimited per buyer. */
+  perCustomerLimit: number | null
   /** Orders that may use the code in total; null = unlimited. */
   usageLimit: number | null
   newCustomersOnly: boolean

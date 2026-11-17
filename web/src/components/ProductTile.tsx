@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import ProductThumb from './ProductThumb'
+import FavoriteButton from './FavoriteButton'
 import { formatPrice } from './ui'
 import { formatSoldCount, type CatalogProductSummary } from '../lib/catalog'
 import { useQuickAdd } from '../state/useQuickAdd'
@@ -15,8 +16,9 @@ export default function ProductTile({ product, index = 0 }: { product: CatalogPr
   return (
     <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex flex-col justify-between group relative">
       <div>
+        <div className="relative mb-space-sm">
         <Link to={`/san-pham/${product.id}`} className="block">
-          <div className="relative w-full aspect-square bg-surface-container-low rounded-lg overflow-hidden mb-space-sm">
+          <div className="relative w-full aspect-square bg-surface-container-low rounded-lg overflow-hidden">
             <div className="w-full h-full group-hover:scale-105 transition-transform duration-300">
               <ProductThumb seed={index} productType={product.productType} imageUrl={product.imageUrls?.[0]} />
             </div>
@@ -32,6 +34,12 @@ export default function ProductTile({ product, index = 0 }: { product: CatalogPr
             )}
           </div>
         </Link>
+        {/* Outside the link, so tapping the heart doesn't open the product. */}
+        <FavoriteButton floating className="absolute bottom-2 right-2 z-10" product={{
+          id: product.id, name: product.name, price: product.price, comparePrice: product.comparePrice,
+          imageUrl: product.imageUrls?.[0] ?? null, productType: product.productType,
+        }} />
+        </div>
 
         <div className="flex items-center gap-space-xs mb-1">
           <span className="px-1.5 py-0.5 bg-secondary-container text-on-secondary-container font-label-sm text-label-sm rounded font-semibold">
@@ -83,11 +91,13 @@ export default function ProductTile({ product, index = 0 }: { product: CatalogPr
               })
             }}
             disabled={disabled}
-            className="py-2 px-space-xs bg-primary-fixed hover:bg-primary-fixed-dim text-on-primary-fixed font-title-md text-title-md rounded transition-colors flex items-center justify-center gap-1 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            // Icon only: the word "Giỏ hàng" read like "go to the cart", but this button adds the product to it.
+            aria-label="Thêm vào giỏ hàng"
+            title="Thêm vào giỏ hàng"
+            className="py-2 px-space-xs bg-primary-fixed hover:bg-primary-fixed-dim text-on-primary-fixed font-title-md text-title-md rounded transition-colors flex items-center justify-center cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             type="button"
           >
-            <span className="material-symbols-outlined text-base">add_shopping_cart</span>
-            <span className="text-xs">Giỏ Hàng</span>
+            <span className="material-symbols-outlined text-xl" aria-hidden="true">add_shopping_cart</span>
           </button>
           <button
             onClick={() => quickAdd(product.id, { goToCart: true, productName: product.name })}

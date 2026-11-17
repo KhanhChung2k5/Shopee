@@ -29,6 +29,14 @@ public class VoucherDiscoveryService {
         this.usages = usages;
     }
 
+    /** Optional (slim test contexts): names of the products a voucher targets, for the wallet. */
+    private com.chotomua.backend.modules.catalog.ProductRepository products;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setProducts(com.chotomua.backend.modules.catalog.ProductRepository products) {
+        this.products = products;
+    }
+
     @Transactional(readOnly = true)
     public List<AvailableVoucherResponse> availableFor(UUID userId) {
         User user = users.findById(userId)
@@ -38,6 +46,7 @@ public class VoucherDiscoveryService {
         OffsetDateTime now = OffsetDateTime.now();
         Map<UUID, Long> used = usages.activeUsesByVoucher();
         boolean returning = usages.hasPlacedOrder(userId);
+        Map<UUID, Long> usedByBuyer = usages.activeUsesOfUser(userId);
 
         return vouchers.findAllByOrderByCodeAsc().stream()
                 .filter(voucher -> {
@@ -47,10 +56,18 @@ public class VoucherDiscoveryService {
                             && !(voucher.isNewCustomersOnly() && returning)
                             && (voucher.getUsageLimit() == null
                                 || used.getOrDefault(voucher.getId(), 0L) < voucher.getUsageLimit())
-                            && !usages.hasActiveUse(voucher.getId(), userId);
+                            && VoucherEligibility.buyerHasUsesLeft(voucher, usedByBuyer.getOrDefault(voucher.getId(), 0L));
                 })
                 .map(voucher -> AvailableVoucherResponse.from(voucher, programsById.get(voucher.getPromotionProgramId()),
-                        used.getOrDefault(voucher.getId(), 0L)))
+                        used.getOrDefault(voucher.getId(), 0L), usedByBuyer.getOrDefault(voucher.getId(), 0L),
+                        productNames(voucher.getTargetProductIds())))
+                .toList();
+    }
+
+    private List<String> productNames(List<UUID> ids) {
+        if (ids.isEmpty() || products == null) return List.of();
+        return products.findAllById(ids).stream()
+                .map(com.chotomua.backend.modules.catalog.Product::getName)
                 .toList();
     }
 }

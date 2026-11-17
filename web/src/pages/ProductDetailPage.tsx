@@ -6,6 +6,8 @@ import { Alert, Badge, Button, ButtonLink, Card, CardTitle, EmptyState, Loading,
 import { fetchProduct, formatVnd, resolveCatalogImageUrl, type CatalogProduct, type ProductType } from '../lib/catalog'
 import { useCart } from '../state/CartContext'
 import { useAuth } from '../state/AuthContext'
+import FavoriteButton from '../components/FavoriteButton'
+import { useRecentlyViewed } from '../lib/savedProducts'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -34,6 +36,25 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [isAdding, setIsAdding] = useState(false)
+  const { record: recordView } = useRecentlyViewed()
+
+  // What the favourites / recently-viewed lists keep about this product (cheapest variant's price).
+  const savedSnapshot = useMemo(() => {
+    if (!product) return null
+    const cheapest = [...product.variants].sort((x, y) => x.price - y.price)[0]
+    return {
+      id: product.id,
+      name: product.name,
+      price: cheapest?.price ?? null,
+      comparePrice: cheapest?.comparePrice ?? null,
+      imageUrl: product.imageUrls?.[0] ?? cheapest?.imageUrl ?? null,
+      productType: product.productType,
+    }
+  }, [product])
+
+  useEffect(() => {
+    if (savedSnapshot) recordView(savedSnapshot)
+  }, [savedSnapshot, recordView])
 
   useEffect(() => {
     let active = true
@@ -222,9 +243,12 @@ export default function ProductDetailPage() {
               {available > 0 && <span className="font-label-md text-label-md text-on-surface-variant">Tối đa {available}</span>}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
-              <Button variant="secondary" size="lg" icon="add_shopping_cart" disabled={!canBuy || isAdding} onClick={(e) => void purchase(false, e)}>Thêm vào giỏ hàng</Button>
-              <Button size="lg" icon="shopping_bag" disabled={!canBuy || isAdding} onClick={() => void purchase(true)}>Mua ngay</Button>
+            <div className="flex gap-space-sm">
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
+                <Button variant="secondary" size="lg" icon="add_shopping_cart" disabled={!canBuy || isAdding} onClick={(e) => void purchase(false, e)}>Thêm vào giỏ hàng</Button>
+                <Button size="lg" icon="shopping_bag" disabled={!canBuy || isAdding} onClick={() => void purchase(true)}>Mua ngay</Button>
+              </div>
+              {savedSnapshot && <FavoriteButton product={savedSnapshot} className="!w-[52px] !h-auto !rounded-lg" />}
             </div>
             {cartError && <Alert>{cartError}</Alert>}
             {!canBuy && <Alert tone="info">Sản phẩm/biến thể hiện không đủ tồn kho để mua.</Alert>}

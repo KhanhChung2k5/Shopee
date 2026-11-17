@@ -50,11 +50,10 @@ class VoucherDiscoveryServiceTest {
                 voucher(futureId, "FUTURE", null),
                 voucher(silverId, "MEMBER", null),
                 voucher(openId, "USED", null)));
-        when(usages.hasActiveUse(any(), eq(userId))).thenAnswer(call -> false);
-
         Voucher used = vouchers.findAllByOrderByCodeAsc().get(5);
         ReflectionTestUtils.setField(used, "id", UUID.randomUUID());
-        when(usages.hasActiveUse(used.getId(), userId)).thenReturn(true);
+        // Once per buyer (the default) and this buyer already used it once.
+        when(usages.activeUsesOfUser(userId)).thenReturn(new java.util.HashMap<>(java.util.Map.of(used.getId(), 1L)));
 
         var result = service.availableFor(userId);
 

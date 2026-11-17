@@ -199,14 +199,14 @@ export default function AdminOrdersPage() {
           <table className={`${a.table} ${panelOpen ? '!min-w-0' : ''}`}>
             <thead>
               <tr>
-                <th>Mã đơn</th><th>Khách hàng</th><th className={col(false)}>Sản phẩm</th><th>Tổng tiền</th>
-                <th className={col(false)}>Thanh toán</th><th className={col(false)}>Ngày đặt</th><th>Trạng thái</th>
+                <th>Mã đơn</th><th className={col(false)}>Sản phẩm</th><th>Tổng tiền</th>
+                <th className={col(false)}>Thanh toán</th><th>Ngày đặt</th><th>Trạng thái</th>
               </tr>
             </thead>
             <tbody>
-              {!orders && !error && <tr><td colSpan={7} className="text-center !py-space-xl text-on-surface-variant">Đang tải đơn hàng…</td></tr>}
+              {!orders && !error && <tr><td colSpan={6} className="text-center !py-space-xl text-on-surface-variant">Đang tải đơn hàng…</td></tr>}
               {orders && visible.length === 0 && (
-                <tr><td colSpan={7} className="text-center !py-space-xl text-on-surface-variant">Không tìm thấy đơn hàng nào.</td></tr>
+                <tr><td colSpan={6} className="text-center !py-space-xl text-on-surface-variant">Không tìm thấy đơn hàng nào.</td></tr>
               )}
               {visible.map((o) => {
                 const selected = o.id === selectedId
@@ -216,12 +216,6 @@ export default function AdminOrdersPage() {
                     className={`cursor-pointer hover:bg-surface-container-low ${selected ? 'is-selected' : ''}`}
                     onClick={() => openOrder(o.id)}>
                     <td><button type="button" className={a.linkButton} onClick={(e) => { e.stopPropagation(); openOrder(o.id) }}>{orderCode(o.id)}</button></td>
-                    <td>
-                      <div className="font-semibold">{o.customer?.fullName ?? o.customer?.recipientName ?? '—'}</div>
-                      <div className="font-label-md text-label-md text-on-surface-variant">
-                        {panelOpen ? dateTime.format(new Date(o.createdAt)) : (o.customer?.email ?? o.customer?.recipientPhone ?? '')}
-                      </div>
-                    </td>
                     <td className={col(false)}>{o.itemCount}</td>
                     <td className="whitespace-nowrap">
                       {formatVnd(o.totalAmount)}
@@ -233,7 +227,7 @@ export default function AdminOrdersPage() {
                         ? <span className={statusPillClass('locked')}>CK · Chờ đối chiếu tiền</span>
                         : <span className="font-body-md text-body-md text-on-surface-variant">{paymentShort(o)}</span>}
                     </td>
-                    <td className={`whitespace-nowrap ${col(false)}`}>{dateTime.format(new Date(o.createdAt))}</td>
+                    <td className="whitespace-nowrap">{dateTime.format(new Date(o.createdAt))}</td>
                     <td>
                       <span className={statusPillClass(ORDER_STATUS_TONE[o.status])}>{ORDER_STATUS_LABEL[o.status] ?? o.status}</span>
                       {isStaleOrder(o) && (

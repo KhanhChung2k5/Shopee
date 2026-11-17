@@ -256,9 +256,10 @@ public class RefundService {
         }
         OrderDiscountLookup.Breakdown breakdown = discountLookup.forOrder(order);
         java.util.Map<UUID, String> types = discountLookup.productTypes(order.getId());
+        java.util.Map<UUID, UUID> productIds = discountLookup.productIds(order.getId());
         List<ReturnRefundCalculator.Line> lines = items.findByOrderId(order.getId()).stream()
                 .map(line -> new ReturnRefundCalculator.Line(line.getId(), line.getLineTotal(),
-                        breakdown.covers(types.get(line.getId()))))
+                        breakdown.covers(types.get(line.getId()), productIds.get(line.getId()))))
                 .toList();
         List<UUID> returned = refunds.findByOrderIdOrderByRequestedAtAsc(order.getId()).stream()
                 .filter(r -> RefundReturn.RETURN.equals(r.getKind()) && !"rejected".equals(r.getStatus()))

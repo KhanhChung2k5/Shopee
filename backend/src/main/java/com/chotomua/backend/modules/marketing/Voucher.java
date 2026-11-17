@@ -44,6 +44,15 @@ public class Voucher {
     @Column(name = "target_product_types", columnDefinition = "jsonb", nullable = false)
     private List<String> targetProductTypes = new ArrayList<>();
 
+    /** Specific products (products.id) this voucher discounts, on top of {@link #targetProductTypes}. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "target_product_ids", columnDefinition = "jsonb", nullable = false)
+    private List<UUID> targetProductIds = new ArrayList<>();
+
+    /** Orders (not cancelled) one buyer may use the code on; null = unlimited per buyer. */
+    @Column(name = "per_customer_limit")
+    private Integer perCustomerLimit = 1;
+
     /** The order (its lines the voucher covers) must reach this to qualify; null = no minimum. */
     @Column(name = "min_order_amount", precision = 12, scale = 2)
     private BigDecimal minOrderAmount;
@@ -75,6 +84,9 @@ public class Voucher {
         expiresAt = request.expiresAt();
         targetProductTypes = request.targetProductTypes() == null
                 ? new ArrayList<>() : new ArrayList<>(new LinkedHashSet<>(request.targetProductTypes()));
+        targetProductIds = request.targetProductIds() == null
+                ? new ArrayList<>() : new ArrayList<>(new LinkedHashSet<>(request.targetProductIds()));
+        perCustomerLimit = request.perCustomerLimit();
         minOrderAmount = request.minOrderAmount();
         maxDiscountAmount = request.maxDiscountAmount();
         usageLimit = request.usageLimit();
@@ -92,4 +104,8 @@ public class Voucher {
     public Integer getUsageLimit() { return usageLimit; }
     public boolean isNewCustomersOnly() { return newCustomersOnly; }
     public List<String> getTargetProductTypes() { return targetProductTypes == null ? List.of() : List.copyOf(targetProductTypes); }
+    public List<UUID> getTargetProductIds() { return targetProductIds == null ? List.of() : List.copyOf(targetProductIds); }
+    public Integer getPerCustomerLimit() { return perCustomerLimit; }
+    /** No product type and no product chosen: the voucher discounts every line. */
+    public boolean coversEveryProduct() { return getTargetProductTypes().isEmpty() && getTargetProductIds().isEmpty(); }
 }

@@ -47,6 +47,15 @@ import InvoicePage from './pages/InvoicePage'
 import RequireStaff from './components/RequireStaff'
 import RequireDepartment from './components/RequireDepartment'
 import MobileNav from './components/MobileNav'
+import SavedProductsPage from './pages/SavedProductsPage'
+import { useRestoreScroll, useShoppingTrail } from './lib/shoppingTrail'
+
+/** Remembers where the buyer was shopping, and scrolls back there for "Tiếp tục mua sắm". */
+function ShoppingTrail() {
+  useShoppingTrail()
+  useRestoreScroll()
+  return null
+}
 
 function CustomerShell() {
   return (
@@ -57,6 +66,7 @@ function CustomerShell() {
       >
         Bỏ qua để đến nội dung chính
       </a>
+      <ShoppingTrail />
       <Header />
       <main id="main-content" className="w-full pt-[108px] md:pt-[156px] bg-surface min-h-[calc(100vh-156px)]">
         <Routes>
@@ -74,6 +84,7 @@ function CustomerShell() {
           <Route path="/thong-bao" element={<NotificationsPage />} />
           <Route path="/khao-sat/:id" element={<SurveyPage />} />
           <Route path="/ho-tro" element={<SupportPage />} />
+          <Route path="/yeu-thich" element={<SavedProductsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>

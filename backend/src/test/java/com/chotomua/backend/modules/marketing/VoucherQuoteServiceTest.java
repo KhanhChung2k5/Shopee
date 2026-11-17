@@ -134,11 +134,60 @@ class VoucherQuoteServiceTest {
     @Test
     void quote_rejectsAVoucherTheBuyerAlreadyUsed() {
         when(vouchers.findByCodeIgnoreCase("ONCE")).thenReturn(Optional.of(voucher("fixed_amount", "10", null)));
-        when(usages.hasActiveUse(any(), any())).thenReturn(true);
+        when(usages.countActiveUsesByUser(any(), any())).thenReturn(1L);
 
         assertThatThrownBy(() -> service.quote(userId, new VoucherQuoteRequest("ONCE", BigDecimal.TEN)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("đã sử dụng");
+    }
+
+    @Test
+    void quote_letsABuyerUseAVoucherUpToItsPerBuyerLimit() {
+        Voucher twice = new Voucher(new VoucherRequest(programId, "TWICE", "fixed_amount", BigDecimal.ONE, null, List.of(),
+                null, null, null, false, List.of(), 2), "TWICE");
+        when(vouchers.findByCodeIgnoreCase("TWICE")).thenReturn(Optional.of(twice));
+
+        when(usages.countActiveUsesByUser(any(), any())).thenReturn(1L);
+        assertThat(service.quote(userId, new VoucherQuoteRequest("TWICE", BigDecimal.TEN)).discountAmount())
+                .isEqualByComparingTo("1.00");
+
+        when(usages.countActiveUsesByUser(any(), any())).thenReturn(2L);
+        assertThatThrownBy(() -> service.quote(userId, new VoucherQuoteRequest("TWICE", BigDecimal.TEN)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("hết 2 lượt");
+    }
+
+    @Test
+    void quote_withNoPerBuyerLimitIgnoresHowOftenTheBuyerUsedIt() {
+        Voucher unlimited = new Voucher(new VoucherRequest(programId, "ALWAYS", "fixed_amount", BigDecimal.ONE, null,
+                List.of(), null, null, null, false, List.of(), null), "ALWAYS");
+        when(vouchers.findByCodeIgnoreCase("ALWAYS")).thenReturn(Optional.of(unlimited));
+        when(usages.countActiveUsesByUser(any(), any())).thenReturn(50L);
+
+        assertThat(service.quote(userId, new VoucherQuoteRequest("ALWAYS", BigDecimal.TEN)).discountAmount())
+                .isEqualByComparingTo("1.00");
+    }
+
+    @Test
+    void quote_aVoucherForOneProductDiscountsOnlyThatProductsLine() {
+        UUID astroBot = UUID.randomUUID();
+        Voucher forOne = new Voucher(new VoucherRequest(programId, "ASTRO", "percentage", BigDecimal.TEN, null, List.of(),
+                null, null, null, false, List.of(astroBot), 1), "ASTRO");
+        when(vouchers.findByCodeIgnoreCase("ASTRO")).thenReturn(Optional.of(forOne));
+        List<VoucherQuoteRequest.Item> cart = List.of(
+                new VoucherQuoteRequest.Item("game_disc", new BigDecimal("1500000"), astroBot),
+                new VoucherQuoteRequest.Item("game_disc", new BigDecimal("1800000"), UUID.randomUUID()));
+
+        var quote = service.quote(userId, new VoucherQuoteRequest("ASTRO", new BigDecimal("3300000"), cart));
+
+        // 10% of the Astro Bot line only, not of the whole cart (another game disc is in it too).
+        assertThat(quote.discountAmount()).isEqualByComparingTo("150000");
+
+        List<VoucherQuoteRequest.Item> without = List.of(
+                new VoucherQuoteRequest.Item("game_disc", new BigDecimal("1800000"), UUID.randomUUID()));
+        assertThatThrownBy(() -> service.quote(userId, new VoucherQuoteRequest("ASTRO", new BigDecimal("1800000"), without)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("chưa có sản phẩm phù hợp");
     }
 
     @Test

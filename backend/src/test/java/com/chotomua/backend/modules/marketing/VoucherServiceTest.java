@@ -86,7 +86,7 @@ class VoucherServiceTest {
         assertThatThrownBy(() -> service.update(id, new VoucherRequest(programId, "USED", "percentage", new BigDecimal("20"),
                 null, List.of(), new BigDecimal("300000"), new BigDecimal("50000"), 100, false)))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("chỉ được đổi hạn dùng và tổng lượt dùng");
+                .hasMessageContaining("chỉ được đổi hạn dùng, tổng lượt dùng");
 
         var updated = service.update(id, new VoucherRequest(programId, "used", "percentage", new BigDecimal("10.00"),
                 start.plusHours(5), List.of(), new BigDecimal("300000.00"), new BigDecimal("50000"), 200, false));

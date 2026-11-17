@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
+import ContinueShoppingButton from '../components/ContinueShoppingButton'
 import { useNavigate } from 'react-router-dom'
 import { formatVnd } from '../lib/catalog'
 import ProductThumb from '../components/ProductThumb'
-import { Alert, Button, ButtonLink, Card, EmptyState, Loading, Page, PageHeader, QtyStepper, SummaryRow, cx } from '../components/ui'
+import { Alert, Button, Card, EmptyState, Loading, Page, PageHeader, QtyStepper, SummaryRow, cx } from '../components/ui'
 import { useCart } from '../state/CartContext'
 
 interface QuantityControlProps {
@@ -61,7 +62,7 @@ export default function CartPage() {
             icon="remove_shopping_cart"
             title="Giỏ hàng của bạn đang trống"
             description="Khám phá tay cầm, đĩa game và phụ kiện chính hãng ngay hôm nay."
-            action={<ButtonLink to="/" icon="storefront">Tiếp tục mua sắm</ButtonLink>}
+            action={<ContinueShoppingButton />}
           />
         </Card>
       </Page>

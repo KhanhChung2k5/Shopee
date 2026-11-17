@@ -21,9 +21,18 @@ final class VoucherEligibility {
                 .orElse(false);
     }
 
-    /** Product types a voucher is limited to — empty means every product. */
-    static boolean coversProductType(Voucher voucher, String productType) {
-        return voucher.getTargetProductTypes().isEmpty()
-                || (productType != null && voucher.getTargetProductTypes().contains(productType));
+    /**
+     * Whether a voucher discounts a cart line: it does when nothing is targeted, or when the line's product type OR
+     * the product itself is one the voucher names.
+     */
+    static boolean covers(Voucher voucher, String productType, java.util.UUID productId) {
+        return voucher.coversEveryProduct()
+                || (productType != null && voucher.getTargetProductTypes().contains(productType))
+                || (productId != null && voucher.getTargetProductIds().contains(productId));
+    }
+
+    /** Whether this buyer may still use the code: {@code usedByBuyer} orders already used it (null limit = unlimited). */
+    static boolean buyerHasUsesLeft(Voucher voucher, long usedByBuyer) {
+        return voucher.getPerCustomerLimit() == null || usedByBuyer < voucher.getPerCustomerLimit();
     }
 }

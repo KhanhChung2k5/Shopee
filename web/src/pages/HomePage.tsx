@@ -7,6 +7,7 @@ import FlashSale from '../components/FlashSale'
 import SuggestedProducts from '../components/SuggestedProducts'
 import LeaderboardReviews from '../components/LeaderboardReviews'
 import GamerClubBanner from '../components/GamerClubBanner'
+import RecentlyViewedStrip from '../components/RecentlyViewedStrip'
 
 export default function HomePage() {
   const { hash, search } = useLocation()
@@ -28,12 +29,14 @@ export default function HomePage() {
   }, [hash, search])
 
   return (
-    <div className="max-w-[1280px] mx-auto px-margin-desktop py-space-xl space-y-space-xl">
+    <div className="max-w-[1280px] mx-auto px-margin-desktop pt-space-md pb-space-xl space-y-space-lg">
       <HeroCarousel />
-      <TrustBento />
-      <CategoryGrid />
+      {/* Products first, so shoppers see what's on sale without scrolling past the info blocks. */}
       <FlashSale />
       <SuggestedProducts />
+      <RecentlyViewedStrip />
+      <CategoryGrid />
+      <TrustBento />
       <LeaderboardReviews />
       <GamerClubBanner />
     </div>

@@ -4,6 +4,7 @@ import { useCart } from '../state/CartContext'
 import { useTheme } from '../state/useTheme'
 import { useAuth } from '../state/AuthContext'
 import NotificationBell from './NotificationBell'
+import { useFavorites } from '../lib/savedProducts'
 import { cacheCategories, fetchCategories, fetchTopSellers, getCachedCategories, type CatalogCategory } from '../lib/catalog'
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -23,6 +24,7 @@ function shortProductName(name: string) {
 
 export default function Header() {
   const { totalQuantity } = useCart()
+  const favoriteCount = useFavorites().items.length
   const { isAuthenticated, user, logout } = useAuth()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
@@ -117,18 +119,16 @@ export default function Header() {
       {/* 1. Top Bar */}
       <div className="hidden md:block bg-inverse-surface text-inverse-on-surface text-label-sm font-label-sm">
         <div className="max-w-[1280px] mx-auto px-margin-desktop h-8 flex items-center justify-between">
-          <div className="flex items-center gap-space-lg">
-            <span>Chợ Tốt Mua · Gaming gear &amp; đĩa game chính hãng</span>
+          <div className="flex items-center gap-space-xs">
+            <span className="material-symbols-outlined text-sm" aria-hidden="true">verified</span>
+            <span>Hàng chính hãng</span>
           </div>
           <div className="flex items-center gap-space-lg">
-            <Link className="hover:text-primary-fixed transition-colors" to="/don-hang">
-              Tra cứu đơn hàng
+            <Link className="flex items-center gap-1 hover:text-primary-fixed transition-colors" to="/don-hang">
+              <span className="material-symbols-outlined text-sm" aria-hidden="true">local_shipping</span>Đơn hàng
             </Link>
-            <Link className="hover:text-primary-fixed transition-colors" to="/thong-bao">
-              Thông báo
-            </Link>
-            <Link className="hover:text-primary-fixed transition-colors" to="/ho-tro">
-              Hỗ trợ
+            <Link className="flex items-center gap-1 hover:text-primary-fixed transition-colors" to="/ho-tro">
+              <span className="material-symbols-outlined text-sm" aria-hidden="true">support_agent</span>Hỗ trợ
             </Link>
             <button
               id="theme-toggle"
@@ -140,7 +140,6 @@ export default function Header() {
               <span className="material-symbols-outlined text-sm">
                 {theme === 'dark' ? 'dark_mode' : 'light_mode'}
               </span>
-              <span>{theme === 'dark' ? 'Tối' : 'Sáng'}</span>
             </button>
           </div>
         </div>
@@ -230,15 +229,30 @@ export default function Header() {
             </button>
             <NotificationBell />
 
-            {/* Cart */}
+            {/* Favourites & recently viewed */}
             <Link
-              className="relative flex flex-col items-center text-on-surface hover:text-primary transition-colors p-space-xs"
+              className="relative flex items-center text-on-surface hover:text-primary transition-colors p-space-xs"
+              to="/yeu-thich"
+              title="Yêu thích & đã xem"
+              aria-label={`Sản phẩm yêu thích (${favoriteCount})`}
+            >
+              <span className="material-symbols-outlined text-2xl">favorite</span>
+              {favoriteCount > 0 && (
+                <span className="absolute top-0 -right-1 min-w-4 h-4 px-1 bg-primary text-on-primary font-label-sm text-label-sm rounded-full flex items-center justify-center font-bold">
+                  {favoriteCount}
+                </span>
+              )}
+            </Link>
+
+            {/* Cart: icon only */}
+            <Link
+              className="relative flex items-center text-on-surface hover:text-primary transition-colors p-space-xs"
               to="/gio-hang"
               title="Giỏ hàng"
+              aria-label={`Giỏ hàng (${totalQuantity})`}
             >
               <span className="material-symbols-outlined text-2xl">shopping_cart</span>
-              <span className="hidden md:block font-label-sm text-label-sm mt-0.5">Giỏ hàng</span>
-              <span className="absolute top-0 right-2 w-4 h-4 bg-primary text-on-primary font-label-sm text-label-sm rounded-full flex items-center justify-center font-bold transition-transform duration-200">
+              <span className="absolute top-0 -right-1 w-4 h-4 bg-primary text-on-primary font-label-sm text-label-sm rounded-full flex items-center justify-center font-bold transition-transform duration-200">
                 {totalQuantity}
               </span>
             </Link>
@@ -261,9 +275,6 @@ export default function Header() {
                         {user.fullName || 'Tài khoản'}
                       </span>
                     </div>
-                    <span className="font-label-sm text-label-sm text-on-surface-variant">
-                      Tài khoản &amp; Đơn mua
-                    </span>
                   </div>
                 </Link>
                 <div className="absolute right-0 top-full pt-2 hidden group-hover:block z-50">
@@ -273,6 +284,9 @@ export default function Header() {
                     </Link>
                     <Link to="/don-hang" className="block px-4 py-2 hover:bg-surface-container text-title-md">
                       Đơn hàng của tôi
+                    </Link>
+                    <Link to="/yeu-thich" className="block px-4 py-2 hover:bg-surface-container text-title-md">
+                      Yêu thích &amp; đã xem
                     </Link>
                     <Link to="/kho-voucher" className="block px-4 py-2 hover:bg-surface-container text-title-md">
                       Kho voucher
@@ -309,7 +323,6 @@ export default function Header() {
                 </div>
                 <div className="hidden lg:flex flex-col">
                   <span className="font-title-md text-title-md text-on-surface leading-tight">Đăng nhập</span>
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">Tài khoản &amp; Đơn hàng</span>
                 </div>
               </Link>
             )}
@@ -354,42 +367,42 @@ export default function Header() {
             <button
               type="button"
               onClick={() => scrollToSection('flash-sale')}
-              className="px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
+              className="flex items-center gap-1 px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
             >
-              🔥 Flash Sale Giờ Vàng
+              <span className="material-symbols-outlined text-lg" aria-hidden="true">bolt</span>Flash Sale
             </button>
             <button
               type="button"
               onClick={() => handleNavFilter('controller')}
-              className="px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
+              className="flex items-center gap-1 px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
             >
-              🎮 Tay Cầm Gaming
+              <span className="material-symbols-outlined text-lg" aria-hidden="true">sports_esports</span>Tay cầm
             </button>
             <button
               type="button"
               onClick={() => handleNavFilter('game_disc')}
-              className="px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
+              className="flex items-center gap-1 px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
             >
-              💿 Đĩa Game Bản Quyền
+              <span className="material-symbols-outlined text-lg" aria-hidden="true">album</span>Đĩa game
             </button>
             <button
               type="button"
               onClick={() => handleNavFilter('accessory')}
-              className="px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
+              className="flex items-center gap-1 px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
             >
-              🛡️ Phụ Kiện Console
+              <span className="material-symbols-outlined text-lg" aria-hidden="true">headphones</span>Phụ kiện
             </button>
             <Link
               to="/kho-voucher"
-              className="px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
+              className="flex items-center gap-1 px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg cursor-pointer"
             >
-              🎁 Mã Giảm Giá
+              <span className="material-symbols-outlined text-lg" aria-hidden="true">confirmation_number</span>Voucher
             </Link>
             <Link
               to="/ho-tro"
-              className="px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg"
+              className="flex items-center gap-1 px-space-sm xl:px-space-md py-1.5 whitespace-nowrap text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-title-md text-title-md rounded-lg"
             >
-              💬 Hỗ Trợ
+              <span className="material-symbols-outlined text-lg" aria-hidden="true">support_agent</span>Hỗ trợ
             </Link>
 
           </nav>
