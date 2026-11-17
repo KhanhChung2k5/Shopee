@@ -10,14 +10,16 @@ import java.util.UUID;
 /**
  * A voucher the buyer can use right now, with the conditions to show in the voucher wallet.
  * {@code remainingUses} is null when the code has no total limit; {@code remainingForYou} is null when there is no
- * per-buyer limit. {@code targetProductNames} = the specific products it is limited to (besides the types).
+ * per-buyer limit. {@code usedPercent} = share of the total limit already used (null without a limit), for the
+ * wallet's progress bar. {@code targetProductNames} = the specific products it is limited to (besides the types).
  */
 public record AvailableVoucherResponse(UUID id, String code, String type, BigDecimal value,
                                        String programName, OffsetDateTime endsAt,
                                        String minLoyaltyTier, List<String> targetProductTypes,
                                        BigDecimal minOrderAmount, BigDecimal maxDiscountAmount,
                                        boolean newCustomersOnly, Long remainingUses, List<String> targetProductNames,
-                                       Long remainingForYou) {
+                                       Long remainingForYou, List<UUID> targetProductIds,
+                                       Integer usageLimit, Integer usedPercent, Integer perCustomerLimit) {
     public static AvailableVoucherResponse from(Voucher voucher, PromotionProgram program, long usedCount) {
         return from(voucher, program, usedCount, 0, List.of());
     }
@@ -32,6 +34,10 @@ public record AvailableVoucherResponse(UUID id, String code, String type, BigDec
                 voucher.getMinOrderAmount(), voucher.getMaxDiscountAmount(), voucher.isNewCustomersOnly(),
                 voucher.getUsageLimit() == null ? null : Math.max(0, voucher.getUsageLimit() - usedCount),
                 targetProductNames,
-                voucher.getPerCustomerLimit() == null ? null : Math.max(0, voucher.getPerCustomerLimit() - usedByBuyer));
+                voucher.getPerCustomerLimit() == null ? null : Math.max(0, voucher.getPerCustomerLimit() - usedByBuyer),
+                voucher.getTargetProductIds(), voucher.getUsageLimit(),
+                voucher.getUsageLimit() == null ? null
+                        : (int) Math.min(100, Math.round(usedCount * 100.0 / voucher.getUsageLimit())),
+                voucher.getPerCustomerLimit());
     }
 }

@@ -88,6 +88,18 @@ interface OrderReviews {
   lines: ReviewLine[]
 }
 
+/** Ready-made cancellation reasons; OTHER_REASON opens a free-text box. */
+const CANCEL_REASONS = [
+  'Tôi không còn nhu cầu mua nữa',
+  'Tôi muốn thay đổi sản phẩm, phân loại hoặc số lượng',
+  'Tôi muốn đổi địa chỉ hoặc số điện thoại nhận hàng',
+  'Tôi muốn dùng mã giảm giá khác',
+  'Tôi tìm được nơi bán giá tốt hơn',
+  'Thời gian giao hàng quá lâu',
+  'Tôi muốn đổi phương thức thanh toán',
+]
+const OTHER_REASON = 'Lý do khác'
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 const TIMELINE_DOT: Record<OrderStatus, string> = {
@@ -146,6 +158,7 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
   const [error, setError] = useState<string | null>(null)
   const [retryKey, setRetryKey] = useState(0)
   const [showCancelForm, setShowCancelForm] = useState(false)
+  const [cancelChoice, setCancelChoice] = useState('')
   const [cancelReason, setCancelReason] = useState('')
   const [isCancelling, setIsCancelling] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
@@ -202,9 +215,9 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
   }
 
   const cancelOrder = async () => {
-    const reason = cancelReason.trim()
+    const reason = cancelChoice === OTHER_REASON ? cancelReason.trim() : cancelChoice
     if (!reason) {
-      setCancelError('Vui lòng nhập lý do huỷ đơn')
+      setCancelError(cancelChoice === OTHER_REASON ? 'Vui lòng nhập lý do huỷ đơn' : 'Vui lòng chọn lý do huỷ đơn')
       return
     }
 
@@ -221,6 +234,7 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
         statusHistory: [...current.statusHistory, result.change],
       } : current)
       setShowCancelForm(false)
+      setCancelChoice('')
       setCancelReason('')
     } catch (requestError) {
       setCancelError(requestError instanceof ApiError ? requestError.message : 'Không thể huỷ đơn hàng')
@@ -386,22 +400,40 @@ function OrderDetailContent({ orderId, token }: { orderId: string; token: string
                 </Button>
               ) : (
                 <div className="space-y-space-sm">
-                  <label className="block font-title-md text-title-md text-on-surface" htmlFor="cancel-reason">Lý do huỷ đơn</label>
-                  <textarea
-                    id="cancel-reason"
-                    className={inputClass}
-                    maxLength={500}
-                    rows={4}
-                    value={cancelReason}
-                    onChange={(event) => setCancelReason(event.target.value)}
-                    placeholder="Cho chúng tôi biết lý do bạn muốn huỷ…"
-                    disabled={isCancelling}
-                  />
-                  <span className="block text-right font-label-sm text-label-sm text-on-surface-variant">{cancelReason.length}/500</span>
+                  <fieldset className="space-y-1" disabled={isCancelling}>
+                    <legend className="mb-space-xs font-title-md text-title-md text-on-surface">Lý do huỷ đơn</legend>
+                    {[...CANCEL_REASONS, OTHER_REASON].map((option) => (
+                      <label key={option}
+                        className={`flex items-center gap-space-sm rounded-lg border px-space-sm py-2 cursor-pointer font-body-md text-body-md transition-colors ${
+                          cancelChoice === option ? 'border-primary bg-primary/5 text-on-surface' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container-low'}`}>
+                        <input type="radio" name="cancel-reason-choice" className="accent-primary" value={option}
+                          checked={cancelChoice === option}
+                          onChange={() => { setCancelChoice(option); setCancelError(null) }} />
+                        {option}
+                      </label>
+                    ))}
+                  </fieldset>
+                  {cancelChoice === OTHER_REASON && (
+                    <>
+                      <textarea
+                        id="cancel-reason"
+                        aria-label="Lý do khác"
+                        className={inputClass}
+                        maxLength={500}
+                        rows={3}
+                        autoFocus
+                        value={cancelReason}
+                        onChange={(event) => setCancelReason(event.target.value)}
+                        placeholder="Cho chúng tôi biết lý do bạn muốn huỷ…"
+                        disabled={isCancelling}
+                      />
+                      <span className="block text-right font-label-sm text-label-sm text-on-surface-variant">{cancelReason.length}/500</span>
+                    </>
+                  )}
                   {cancelError && <Alert>{cancelError}</Alert>}
                   <div className="flex justify-end gap-space-sm">
                     <Button variant="outline" size="sm" disabled={isCancelling} onClick={() => { setShowCancelForm(false); setCancelError(null) }}>Giữ đơn</Button>
-                    <Button variant="danger" size="sm" disabled={isCancelling || !cancelReason.trim()} onClick={() => void cancelOrder()}>
+                    <Button variant="danger" size="sm" disabled={isCancelling || !cancelChoice || (cancelChoice === OTHER_REASON && !cancelReason.trim())} onClick={() => void cancelOrder()}>
                       {isCancelling ? 'Đang gửi…' : 'Gửi yêu cầu huỷ'}
                     </Button>
                   </div>

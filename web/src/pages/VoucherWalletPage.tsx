@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Alert, Badge, Card, EmptyState, Loading, Page, PageHeader } from '../components/ui'
-import { formatVnd } from '../lib/catalog'
+import VoucherTicket from '../components/VoucherTicket'
+import { Alert, Badge, ButtonLink, Card, EmptyState, Loading, Page, PageHeader } from '../components/ui'
 import { apiFetch } from '../lib/api'
-import { voucherConditionLabel, voucherScopeLabel, type AvailableVoucher } from '../lib/vouchers'
+import { type AvailableVoucher } from '../lib/vouchers'
 import { useAuth } from '../state/AuthContext'
 
 export default function VoucherWalletPage() {
@@ -11,12 +11,13 @@ export default function VoucherWalletPage() {
   const [vouchers, setVouchers] = useState<AvailableVoucher[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [loadedAt, setLoadedAt] = useState(0)
 
   useEffect(() => {
     if (!token) return
     const controller = new AbortController()
     apiFetch<AvailableVoucher[]>('/vouchers', { signal: controller.signal }, token)
-      .then(setVouchers)
+      .then((items) => { setVouchers(items); setLoadedAt(Date.now()) })
       .catch((reason: unknown) => {
         if (reason instanceof DOMException && reason.name === 'AbortError') return
         setError(reason instanceof Error ? reason.message : 'Không tải được voucher')
@@ -34,7 +35,7 @@ export default function VoucherWalletPage() {
       <PageHeader
         breadcrumb={[{ label: 'Tài khoản', to: '/ho-so' }, { label: 'Kho Voucher' }]}
         title="Kho Voucher"
-        subtitle="Ưu đãi của tôi"
+        subtitle="Ưu đãi của tôi. Bấm “Dùng ngay” để xem các sản phẩm được áp dụng."
         actions={!loading && <Badge tone="primary" className="!text-label-md px-space-sm py-1">{vouchers.length} voucher khả dụng</Badge>}
       />
 
@@ -46,22 +47,12 @@ export default function VoucherWalletPage() {
 
       <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-md">
         {vouchers.map((voucher) => (
-          <li className="flex bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden" key={voucher.id}>
-            <div className="relative w-28 flex-shrink-0 flex flex-col items-center justify-center gap-1 p-space-sm bg-primary text-on-primary text-center">
-              <span className="font-headline-md text-headline-md">{voucher.type === 'percentage' ? `-${voucher.value}%` : `-${formatVnd(voucher.value)}`}</span>
-              <span className="font-label-sm text-label-sm opacity-90 break-all">{voucher.code}</span>
-              {/* ticket notches */}
-              <span className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-surface" aria-hidden="true" />
-            </div>
-            <div className="flex-1 min-w-0 p-space-md space-y-space-xs border-l-2 border-dashed border-line">
-              <p className="font-title-md text-title-md text-on-surface line-clamp-2">{voucher.programName}</p>
-              <p className="font-label-md text-label-md text-on-surface-variant">Hết hạn: {new Date(voucher.endsAt).toLocaleString('vi-VN')}</p>
-              <p className="font-label-md text-label-md text-on-surface-variant">{voucherScopeLabel(voucher)}</p>
-              {voucherConditionLabel(voucher) && (
-                <p className="font-label-md text-label-md text-on-surface-variant">{voucherConditionLabel(voucher)}</p>
-              )}
-              <Badge tone="success">Sẵn sàng sử dụng</Badge>
-            </div>
+          <li key={voucher.id}>
+            <VoucherTicket
+              voucher={voucher}
+              now={loadedAt}
+              action={<ButtonLink size="sm" to={`/kho-voucher/${voucher.id}`}>Dùng ngay</ButtonLink>}
+            />
           </li>
         ))}
       </ul>
