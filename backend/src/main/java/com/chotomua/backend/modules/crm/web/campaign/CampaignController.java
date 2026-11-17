@@ -24,12 +24,12 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 /**
- * Chiến dịch chăm sóc trong ứng dụng. Quản trị, quản lý CRM và CSKH.
+ * Chiến dịch chăm sóc trong ứng dụng. Bán hàng và CSKH cùng tạo, gửi và xem tỷ lệ mở thư.
  * Không có đường voucher hay flash sale.
  */
 @RestController
 @RequestMapping("/api/campaigns")
-@PreAuthorize("hasAuthority('DEPT_SALES')")
+@PreAuthorize("hasAnyAuthority('DEPT_SALES', 'DEPT_CS')")
 public class CampaignController {
 
     private final CampaignService campaigns;

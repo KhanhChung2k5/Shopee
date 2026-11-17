@@ -19,6 +19,32 @@ public interface VoucherUsageRepository extends JpaRepository<VoucherUsage, UUID
             """, nativeQuery = true)
     boolean hasActiveUse(@Param("voucherId") UUID voucherId, @Param("userId") UUID userId);
 
+    /** Orders (not cancelled) on which this buyer used the voucher — checked against its per-buyer limit. */
+    @Query(value = """
+            SELECT COUNT(*) FROM voucher_usages vu
+            JOIN orders o ON o.id = vu.order_id
+            WHERE vu.voucher_id = :voucherId AND vu.user_id = :userId AND o.status <> 'cancelled'
+            """, nativeQuery = true)
+    long countActiveUsesByUser(@Param("voucherId") UUID voucherId, @Param("userId") UUID userId);
+
+    /** [voucher_id, uses] of one buyer, for every voucher they used on an order that is not cancelled. */
+    @Query(value = """
+            SELECT vu.voucher_id, COUNT(*) FROM voucher_usages vu
+            JOIN orders o ON o.id = vu.order_id
+            WHERE vu.user_id = :userId AND o.status <> 'cancelled'
+            GROUP BY vu.voucher_id
+            """, nativeQuery = true)
+    List<Object[]> countActiveUsesOfUserByVoucher(@Param("userId") UUID userId);
+
+    default Map<UUID, Long> activeUsesOfUser(UUID userId) {
+        Map<UUID, Long> used = new HashMap<>();
+        for (Object[] row : countActiveUsesOfUserByVoucher(userId)) {
+            UUID id = row[0] instanceof UUID uuid ? uuid : UUID.fromString(row[0].toString());
+            used.put(id, ((Number) row[1]).longValue());
+        }
+        return used;
+    }
+
     /** Uses counted against the voucher's total limit — a cancelled order gives its use back. */
     @Query(value = """
             SELECT COUNT(*) FROM voucher_usages vu

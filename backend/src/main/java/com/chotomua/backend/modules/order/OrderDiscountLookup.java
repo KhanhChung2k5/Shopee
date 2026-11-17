@@ -24,10 +24,13 @@ class OrderDiscountLookup {
         this.entityManager = entityManager;
     }
 
-    record Breakdown(ReturnRefundCalculator.Discounts discounts, Set<String> voucherProductTypes, boolean hasVoucher) {
-        /** A voucher with no product types covers every line. */
-        boolean covers(String productType) {
-            return hasVoucher && (voucherProductTypes.isEmpty() || voucherProductTypes.contains(productType));
+    record Breakdown(ReturnRefundCalculator.Discounts discounts, Set<String> voucherProductTypes,
+                     Set<UUID> voucherProductIds, boolean hasVoucher) {
+        /** Same rule as checkout: nothing targeted = every line; otherwise its product type OR product is listed. */
+        boolean covers(String productType, UUID productId) {
+            if (!hasVoucher) return false;
+            if (voucherProductTypes.isEmpty() && voucherProductIds.isEmpty()) return true;
+            return voucherProductTypes.contains(productType) || (productId != null && voucherProductIds.contains(productId));
         }
     }
 
@@ -61,6 +64,7 @@ class OrderDiscountLookup {
         boolean hasVoucher = !voucher.isEmpty();
         BigDecimal voucherMin = null;
         Set<String> types = new HashSet<>();
+        Set<UUID> productIds = new HashSet<>();
         if (hasVoucher) {
             Object[] row = (Object[]) voucher.getFirst();
             voucherMin = (BigDecimal) row[1];
@@ -69,6 +73,12 @@ class OrderDiscountLookup {
                     .setParameter("id", row[0])
                     .getResultList()) {
                 types.add(type.toString());
+            }
+            for (Object id : entityManager.createNativeQuery(
+                            "SELECT jsonb_array_elements_text(target_product_ids) FROM vouchers WHERE id = :id")
+                    .setParameter("id", row[0])
+                    .getResultList()) {
+                productIds.add(UUID.fromString(id.toString()));
             }
         }
 
@@ -80,7 +90,24 @@ class OrderDiscountLookup {
             invoiceAmount = orderDiscount;
         }
         return new Breakdown(new ReturnRefundCalculator.Discounts(invoiceAmount, invoiceMin, voucherAmount, voucherMin),
-                Set.copyOf(types), hasVoucher);
+                Set.copyOf(types), Set.copyOf(productIds), hasVoucher);
+    }
+
+    /** products.id of each line of the order, by order item id. */
+    @Transactional(readOnly = true)
+    Map<UUID, UUID> productIds(UUID orderId) {
+        List<?> rows = entityManager.createNativeQuery("""
+                        SELECT oi.id, pv.product_id
+                        FROM order_items oi
+                        JOIN product_variants pv ON pv.id = oi.variant_id
+                        WHERE oi.order_id = :orderId
+                        """)
+                .setParameter("orderId", orderId)
+                .getResultList();
+        return rows.stream().map(r -> (Object[]) r).collect(Collectors.toMap(
+                r -> r[0] instanceof UUID id ? id : UUID.fromString(r[0].toString()),
+                r -> r[1] instanceof UUID id ? id : UUID.fromString(r[1].toString()),
+                (a, b) -> a));
     }
 
     /** product_type of each line of the order, by order item id. */

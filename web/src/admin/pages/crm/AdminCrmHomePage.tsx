@@ -270,7 +270,7 @@ export default function AdminCrmHomePage() {
 
           <div className={`${a.card} rounded-2xl`}>
             <div className="flex items-center justify-between"><span className="font-title-md text-title-md text-on-surface">Mức ưu tiên</span><span className="font-label-md text-label-md text-on-surface-variant">Chưa đóng</span></div>
-            {[['Cao', high, 'bg-rose-500'], ['Bình thường', normal, 'bg-neutral-300'], ['Thấp', low, 'bg-neutral-200']].map(([label, value, color]) => {
+            {[['Cao', high, 'bg-rose-500'], ['Thường', normal, 'bg-neutral-300'], ['Thấp', low, 'bg-neutral-200']].map(([label, value, color]) => {
               const count = Number(value)
               const share = openItems.length === 0 ? 0 : Math.round((count / priorityTotal) * 100)
               return (
@@ -291,20 +291,34 @@ export default function AdminCrmHomePage() {
           </div>
           {attention.length === 0 && <p className="font-body-md text-body-md text-on-surface-variant">{items ? 'Không còn hội thoại mở.' : 'Đang tải…'}</p>}
           <ul className="divide-y divide-line">
-            {attention.map((item) => (
-              <li key={item.id} className="flex items-center justify-between gap-space-sm py-space-sm">
-                <div className="min-w-0">
-                  <div className="truncate font-title-md text-title-md text-on-surface">{item.customerName ?? 'Khách'}</div>
-                  <div className="font-label-md text-label-md text-on-surface-variant">{item.code} · {item.topicLabel}</div>
-                </div>
-                <div className="flex shrink-0 flex-wrap justify-end gap-1">
-                  <Pill tone="info">{item.statusLabel}</Pill>
-                  {item.priority === 'high' && <Pill tone="danger">Cao</Pill>}
-                  {item.priority === 'low' && <Pill tone="info">Thấp</Pill>}
-                  {item.slaState === 'breached' && <Pill tone="danger">Vượt SLA</Pill>}
-                </div>
-              </li>
-            ))}
+            {attention.map((item) => {
+              const row = (
+                <>
+                  <div className="min-w-0">
+                    <div className="truncate font-title-md text-title-md text-on-surface">{item.customerName ?? 'Khách'}</div>
+                    <div className="font-label-md text-label-md text-on-surface-variant">{item.code} · {item.topicLabel}</div>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                    <Pill tone="info">{item.statusLabel}</Pill>
+                    {item.priority === 'high' && <Pill tone="danger">Cao</Pill>}
+                    {item.priority === 'low' && <Pill tone="info">Thấp</Pill>}
+                    {item.slaState === 'due' && <Pill tone="info">Sắp hết hạn</Pill>}
+                    {item.slaState === 'breached' && <Pill tone="danger">Vượt SLA</Pill>}
+                  </div>
+                </>
+              )
+              return (
+                <li key={item.id}>
+                  {canAccessSection('/admin/ho-tro', department) ? (
+                    <Link to={`/admin/ho-tro?id=${encodeURIComponent(item.id)}`} className="-mx-space-lg flex items-center justify-between gap-space-sm px-space-lg py-space-sm transition-colors hover:bg-surface-container-low">
+                      {row}
+                    </Link>
+                  ) : (
+                    <div className="flex items-center justify-between gap-space-sm py-space-sm">{row}</div>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </div>
         </>)}

@@ -89,8 +89,8 @@ public class CustomerProfileService {
                 delivered.size(),
                 RfmClassifier.segment(
                         daysSince(value.lastPurchaseAt()),
-                        delivered.size(),
-                        value.historicalSpend()),
+                        value.windowOrderCount(),
+                        value.windowSpend()),
                 value.lastPurchaseAt(),
                 Instant.now(clock),
                 value.historicalSpend());

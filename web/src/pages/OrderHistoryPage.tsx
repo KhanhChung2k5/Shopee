@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import ContinueShoppingButton from '../components/ContinueShoppingButton'
 import { Link, Navigate } from 'react-router-dom'
 import { Alert, Badge, Button, ButtonLink, Card, Chip, EmptyState, Loading, Page, PageHeader } from '../components/ui'
 import { formatVnd } from '../lib/catalog'
@@ -91,7 +92,7 @@ function OrderHistoryContent({ token }: { token: string }) {
       <PageHeader
         breadcrumb={[{ label: 'Tài khoản', to: '/ho-so' }, { label: 'Đơn mua' }]}
         title="Lịch sử đơn hàng"
-        actions={<ButtonLink variant="outline" size="sm" icon="storefront" to="/">Tiếp tục mua sắm</ButtonLink>}
+        actions={<ContinueShoppingButton variant="outline" size="sm" />}
       />
 
       <div className="flex items-center gap-space-xs overflow-x-auto pb-1" role="group" aria-label="Lọc đơn hàng theo trạng thái">

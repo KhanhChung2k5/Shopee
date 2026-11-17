@@ -10,7 +10,8 @@ import java.util.UUID;
 public record VoucherResponse(UUID id, UUID promotionProgramId, String code, String type,
                               BigDecimal value, OffsetDateTime expiresAt, List<String> targetProductTypes,
                               BigDecimal minOrderAmount, BigDecimal maxDiscountAmount, Integer usageLimit,
-                              boolean newCustomersOnly, long usedCount) {
+                              boolean newCustomersOnly, long usedCount, List<UUID> targetProductIds,
+                              Integer perCustomerLimit) {
     public static VoucherResponse from(Voucher voucher) {
         return from(voucher, 0);
     }
@@ -19,6 +20,6 @@ public record VoucherResponse(UUID id, UUID promotionProgramId, String code, Str
         return new VoucherResponse(voucher.getId(), voucher.getPromotionProgramId(), voucher.getCode(),
                 voucher.getType(), voucher.getValue(), voucher.getExpiresAt(), voucher.getTargetProductTypes(),
                 voucher.getMinOrderAmount(), voucher.getMaxDiscountAmount(), voucher.getUsageLimit(),
-                voucher.isNewCustomersOnly(), usedCount);
+                voucher.isNewCustomersOnly(), usedCount, voucher.getTargetProductIds(), voucher.getPerCustomerLimit());
     }
 }

@@ -666,8 +666,12 @@ public class OrderService {
         VoucherQuoteResponse voucherQuote = null;
         String voucherError = null;
         if (voucherCode != null && !voucherCode.isBlank()) {
+            // Product ids too: a voucher may be limited to specific products, not only product types.
+            Map<UUID, UUID> productIds = productVariantLookup.productIdsByVariant(
+                    lines.stream().map(line -> line.variant().variantId()).toList());
             List<VoucherQuoteRequest.Item> quoteItems = lines.stream()
-                    .map(line -> new VoucherQuoteRequest.Item(line.variant().productType(), line.lineTotal()))
+                    .map(line -> new VoucherQuoteRequest.Item(line.variant().productType(), line.lineTotal(),
+                            productIds == null ? null : productIds.get(line.variant().variantId())))
                     .toList();
             try {
                 VoucherQuoteRequest quoteRequest = new VoucherQuoteRequest(voucherCode, subtotal.subtract(invoiceAmount), quoteItems);

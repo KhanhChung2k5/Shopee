@@ -188,9 +188,6 @@ export default function SuggestedProducts() {
               {filteredProducts.length} sản phẩm
             </span>
           </div>
-          <p className="font-body-md text-body-md text-on-surface-variant">
-            Tất cả tay cầm, đĩa game &amp; phụ kiện đang bán — lọc theo loại, nền tảng và giá
-          </p>
         </div>
 
         {/* Primary Type Tabs */}

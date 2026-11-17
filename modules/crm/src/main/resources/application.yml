@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: crm-demo
+  profiles:
+    active: crm-db
+  flyway:
+    enabled: false
+
+server:
+  port: 8080

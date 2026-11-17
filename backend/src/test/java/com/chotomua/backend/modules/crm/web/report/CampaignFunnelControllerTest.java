@@ -39,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Hợp đồng REST funnel chiến dịch: admin / crm / cs được xem; sales và khách 403.
+ * Hợp đồng REST funnel chiến dịch: bán hàng và CSKH được xem; khách 403.
  * Đơn delivered sau startAt chứa sản phẩm mục tiêu mới vào tầng mua.
  */
 @SpringBootTest(classes = BackendApplication.class)
@@ -160,10 +160,15 @@ class CampaignFunnelControllerTest {
 
     @Test
     @WithMockUser(username = CS_ID, authorities = "DEPT_CS")
-    void customerServiceStaffIsForbiddenOnCampaignFunnel() throws Exception {
-        mockMvc.perform(get("/api/crm/reports/campaigns/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/funnel"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.message").value(containsString("quyền")));
+    void customerServiceStaffCanReadCampaignFunnel() throws Exception {
+        CustomerView buyer = identity.seedCustomer(
+                "Chau", "female", LocalDate.now().minusYears(21), CustomerStatus.ACTIVE);
+        seedDelivered(buyer.id(), Instant.parse("2026-09-01T10:00:00Z"));
+        String campaignId = createProductCampaign("2026-10-01T08:00:00Z");
+
+        mockMvc.perform(get("/api/crm/reports/campaigns/" + campaignId + "/funnel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.targeted").value(1));
     }
 
     @Test

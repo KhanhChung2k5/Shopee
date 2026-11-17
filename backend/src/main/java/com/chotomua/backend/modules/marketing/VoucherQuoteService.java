@@ -82,8 +82,10 @@ public class VoucherQuoteService {
         if (voucher.isNewCustomersOnly() && usages.hasPlacedOrder(userId)) {
             throw new IllegalArgumentException("Voucher chỉ dành cho khách hàng mới (đơn hàng đầu tiên)");
         }
-        if (usages.hasActiveUse(voucher.getId(), userId)) {
-            throw new IllegalArgumentException("Bạn đã sử dụng voucher này");
+        if (!VoucherEligibility.buyerHasUsesLeft(voucher, usages.countActiveUsesByUser(voucher.getId(), userId))) {
+            throw new IllegalArgumentException(voucher.getPerCustomerLimit() == 1
+                    ? "Bạn đã sử dụng voucher này"
+                    : "Bạn đã dùng hết " + voucher.getPerCustomerLimit() + " lượt của voucher này");
         }
         if (voucher.getUsageLimit() != null && usages.countActiveUses(voucher.getId()) >= voucher.getUsageLimit()) {
             throw new IllegalArgumentException("Voucher đã hết lượt sử dụng");
@@ -93,7 +95,7 @@ public class VoucherQuoteService {
         BigDecimal goods = minimumOrderBase(voucher, subtotal, request.items());
         if (voucher.getMinOrderAmount() != null && goods.compareTo(voucher.getMinOrderAmount()) < 0) {
             throw new IllegalArgumentException("Voucher áp dụng cho đơn từ " + vnd(voucher.getMinOrderAmount())
-                    + (voucher.getTargetProductTypes().isEmpty() ? "" : " (tính trên sản phẩm phù hợp)")
+                    + (voucher.coversEveryProduct() ? "" : " (tính trên sản phẩm phù hợp)")
                     + ", còn thiếu " + vnd(voucher.getMinOrderAmount().subtract(goods)));
         }
         BigDecimal discount = "percentage".equals(voucher.getType())
@@ -116,24 +118,25 @@ public class VoucherQuoteService {
             return subtotal;
         }
         return items.stream()
-                .filter(item -> voucher.getTargetProductTypes().isEmpty()
-                        || VoucherEligibility.coversProductType(voucher, item.productType()))
+                .filter(item -> VoucherEligibility.covers(voucher, item.productType(), item.productId()))
                 .map(VoucherQuoteRequest.Item::amount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    /** The part of the order a voucher may discount: everything, or only the lines of its product types. */
+    /** The part of the order a voucher may discount: everything, or only the lines of its product types / products. */
     private static BigDecimal eligibleSubtotal(Voucher voucher, BigDecimal subtotal, List<VoucherQuoteRequest.Item> items) {
-        if (voucher.getTargetProductTypes().isEmpty()) {
+        if (voucher.coversEveryProduct()) {
             return subtotal;
         }
-        String allowed = voucher.getTargetProductTypes().stream().map(VoucherQuoteService::typeLabel)
-                .collect(Collectors.joining(", "));
+        List<String> targets = new java.util.ArrayList<>(
+                voucher.getTargetProductTypes().stream().map(VoucherQuoteService::typeLabel).toList());
+        if (!voucher.getTargetProductIds().isEmpty()) targets.add("một số sản phẩm được chọn");
+        String allowed = String.join(", ", targets);
         if (items == null || items.isEmpty()) {
             throw new IllegalArgumentException("Voucher chỉ áp dụng cho " + allowed + " — cần thông tin sản phẩm trong giỏ");
         }
         BigDecimal eligible = items.stream()
-                .filter(item -> VoucherEligibility.coversProductType(voucher, item.productType()))
+                .filter(item -> VoucherEligibility.covers(voucher, item.productType(), item.productId()))
                 .map(VoucherQuoteRequest.Item::amount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         if (eligible.signum() <= 0) {

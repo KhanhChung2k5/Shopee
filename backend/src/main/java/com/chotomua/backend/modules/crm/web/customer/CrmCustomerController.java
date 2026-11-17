@@ -9,6 +9,7 @@ import com.chotomua.backend.modules.crm.web.ResourceLocation;
 import com.chotomua.backend.modules.crm.web.dto.CreateCustomerRequest;
 import com.chotomua.backend.modules.crm.web.dto.CustomerDetailResponse;
 import com.chotomua.backend.modules.crm.web.dto.CustomerListResponse;
+import com.chotomua.backend.modules.crm.web.dto.NewCustomerRequest;
 import com.chotomua.backend.modules.crm.web.dto.PatchCustomerRequest;
 import com.chotomua.backend.modules.crm.web.dto.UpsertAddressRequest;
 import jakarta.validation.Valid;
@@ -61,8 +62,8 @@ public class CrmCustomerController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('DEPT_CS')")
-    public ResponseEntity<CustomerView> create(@Valid @RequestBody CreateCustomerRequest request) {
-        CustomerView created = customers.create(currentActor.requireUserId(), request.toCommand());
+    public ResponseEntity<CustomerView> create(@Valid @RequestBody NewCustomerRequest request) {
+        CustomerView created = customers.create(currentActor.requireUserId(), request.toCommand(), request.password());
         return ResponseEntity
                 .created(ResourceLocation.of("/api/customers/" + created.id()))
                 .body(created);

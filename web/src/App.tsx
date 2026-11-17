@@ -33,6 +33,9 @@ import AdminAuditLogPage from './admin/pages/crm/AdminAuditLogPage'
 import AdminSurveysPage from './admin/pages/crm/AdminSurveysPage'
 import AdminSegmentsPage from './admin/pages/crm/AdminSegmentsPage'
 import AdminCampaignsPage from './admin/pages/crm/AdminCampaignsPage'
+import SalesOpsPage from './admin/pages/dashboards/SalesOpsPage'
+import MarketingOpsPage from './admin/pages/dashboards/MarketingOpsPage'
+import BehaviorPage from './admin/pages/dashboards/BehaviorPage'
 import NotificationsPage from './pages/NotificationsPage'
 import SurveyPage from './pages/SurveyPage'
 import SupportPage from './pages/SupportPage'
@@ -44,6 +47,15 @@ import InvoicePage from './pages/InvoicePage'
 import RequireStaff from './components/RequireStaff'
 import RequireDepartment from './components/RequireDepartment'
 import MobileNav from './components/MobileNav'
+import SavedProductsPage from './pages/SavedProductsPage'
+import { useRestoreScroll, useShoppingTrail } from './lib/shoppingTrail'
+
+/** Remembers where the buyer was shopping, and scrolls back there for "Tiếp tục mua sắm". */
+function ShoppingTrail() {
+  useShoppingTrail()
+  useRestoreScroll()
+  return null
+}
 
 function CustomerShell() {
   return (
@@ -54,6 +66,7 @@ function CustomerShell() {
       >
         Bỏ qua để đến nội dung chính
       </a>
+      <ShoppingTrail />
       <Header />
       <main id="main-content" className="w-full pt-[108px] md:pt-[156px] bg-surface min-h-[calc(100vh-156px)]">
         <Routes>
@@ -71,6 +84,7 @@ function CustomerShell() {
           <Route path="/thong-bao" element={<NotificationsPage />} />
           <Route path="/khao-sat/:id" element={<SurveyPage />} />
           <Route path="/ho-tro" element={<SupportPage />} />
+          <Route path="/yeu-thich" element={<SavedProductsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
@@ -110,6 +124,9 @@ function App() {
           <Route path="nhan-vien" element={<RequireDepartment><AdminEmployeesPage /></RequireDepartment>} />
           <Route path="nhat-ky" element={<RequireDepartment><AdminAuditLogPage /></RequireDepartment>} />
           <Route path="dieu-hanh" element={<RequireDepartment><AdminCrmHomePage /></RequireDepartment>} />
+          <Route path="doanh-thu-van-hanh" element={<RequireDepartment><SalesOpsPage /></RequireDepartment>} />
+          <Route path="hieu-qua-khuyen-mai" element={<RequireDepartment><MarketingOpsPage /></RequireDepartment>} />
+          <Route path="hanh-vi-mua" element={<RequireDepartment><BehaviorPage /></RequireDepartment>} />
           <Route path="crm" element={<RequireDepartment><AdminCrmProfilesPage /></RequireDepartment>} />
           <Route path="ho-tro" element={<RequireDepartment><AdminSupportPage /></RequireDepartment>} />
           <Route path="danh-gia" element={<RequireDepartment><AdminReviewsPage /></RequireDepartment>} />

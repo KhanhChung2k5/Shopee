@@ -1,3 +1,14 @@
 # Database backups produced by scripts/backup-db.sh — never commit dump
 # files (may contain real customer data once the system has real users).
 /backups/
+
+target/
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+*.log
+.mvn/wrapper/maven-wrapper.jar
+.env
+*.env

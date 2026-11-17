@@ -95,6 +95,7 @@ public final class ConversationText {
             case "potential" -> "Potential";
             case "at_risk" -> "At Risk";
             case "lost" -> "Lost";
+            case "new" -> "New";
             default -> "Other";
         };
     }

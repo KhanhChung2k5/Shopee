@@ -15,8 +15,8 @@ import java.util.UUID;
  */
 public interface IdentityPort {
 
-    /** Tạo khách mới; trạng thái ban đầu là đang hoạt động. */
-    CustomerView createCustomer(CreateCustomerCommand command);
+    /** Tạo khách mới, đăng nhập được ngay bằng {@code password} do CSKH đặt; trạng thái ban đầu là đang hoạt động. */
+    CustomerView createCustomer(CreateCustomerCommand command, String password);
 
     /** Cập nhật hồ sơ; giữ nguyên trạng thái. Không sửa khách đã xóa. */
     CustomerView updateCustomer(UUID customerId, CreateCustomerCommand command);
@@ -60,7 +60,7 @@ public interface IdentityPort {
     /** Hồ sơ, hỗ trợ, khảo sát, gợi ý: chỉ CSKH. */
     void requireCrmStaff(UUID actorId);
 
-    /** Quản lý phân khúc / chiến dịch: chỉ nhân viên kinh doanh. */
+    /** Quản lý phân khúc / chiến dịch: nhân viên kinh doanh hoặc CSKH. */
     void requireMarketingStaff(UUID actorId);
 
     /** Xem phân khúc, danh mục sản phẩm để chọn đối tượng: kinh doanh hoặc CSKH. */

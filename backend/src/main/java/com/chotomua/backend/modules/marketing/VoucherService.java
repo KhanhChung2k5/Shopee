@@ -50,7 +50,7 @@ public class VoucherService {
         if (usages != null && usages.existsByVoucherId(id) && changesTerms(voucher, request, code)) {
             // Orders already priced with these terms; changing them would leave the campaign impossible to audit.
             throw new IllegalArgumentException(
-                    "Voucher đã có đơn sử dụng — chỉ được đổi hạn dùng và tổng lượt dùng; muốn đổi điều kiện hãy tạo voucher mới");
+                    "Voucher đã có đơn sử dụng — chỉ được đổi hạn dùng, tổng lượt dùng và số lượt mỗi khách; muốn đổi điều kiện hãy tạo voucher mới");
         }
         voucher.update(request, code);
         return VoucherResponse.from(voucher, usages == null ? 0 : usages.countActiveUses(id));
@@ -62,6 +62,14 @@ public class VoucherService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     void setUsages(VoucherUsageRepository usages) {
         this.usages = usages;
+    }
+
+    /** Optional for the same reason: checks that the products a voucher targets exist. */
+    private com.chotomua.backend.modules.catalog.ProductRepository products;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setProducts(com.chotomua.backend.modules.catalog.ProductRepository products) {
+        this.products = products;
     }
 
     @Transactional
@@ -96,6 +104,17 @@ public class VoucherService {
         if (request.targetProductTypes() != null && !PRODUCT_TYPES.containsAll(request.targetProductTypes())) {
             throw new IllegalArgumentException("Loại sản phẩm không hợp lệ (game_disc, controller, accessory)");
         }
+        if (request.targetProductIds() != null && !request.targetProductIds().isEmpty()) {
+            if (request.targetProductIds().size() > 200) {
+                throw new IllegalArgumentException("Voucher chỉ áp dụng tối đa 200 sản phẩm");
+            }
+            if (products != null) {
+                java.util.Set<UUID> wanted = new java.util.HashSet<>(request.targetProductIds());
+                if (products.findAllById(wanted).size() != wanted.size()) {
+                    throw new IllegalArgumentException("Có sản phẩm áp dụng không tồn tại");
+                }
+            }
+        }
         validateLimits(request);
     }
 
@@ -108,6 +127,8 @@ public class VoucherService {
                 || !voucher.getType().equals(request.type())
                 || !sameAmount(voucher.getValue(), request.value())
                 || !new java.util.HashSet<>(voucher.getTargetProductTypes()).equals(new java.util.HashSet<>(types))
+                || !new java.util.HashSet<>(voucher.getTargetProductIds()).equals(request.targetProductIds() == null
+                        ? java.util.Set.of() : new java.util.HashSet<>(request.targetProductIds()))
                 || !sameAmount(voucher.getMinOrderAmount(), request.minOrderAmount())
                 || !sameAmount(voucher.getMaxDiscountAmount(), request.maxDiscountAmount())
                 || voucher.isNewCustomersOnly() != Boolean.TRUE.equals(request.newCustomersOnly());
@@ -137,6 +158,13 @@ public class VoucherService {
         }
         if (request.usageLimit() != null && request.usageLimit() <= 0) {
             throw new IllegalArgumentException("Tổng lượt dùng phải lớn hơn 0");
+        }
+        if (request.perCustomerLimit() != null && request.perCustomerLimit() <= 0) {
+            throw new IllegalArgumentException("Số lượt mỗi khách phải lớn hơn 0 (để trống = không giới hạn)");
+        }
+        if (request.perCustomerLimit() != null && request.usageLimit() != null
+                && request.perCustomerLimit() > request.usageLimit()) {
+            throw new IllegalArgumentException("Số lượt mỗi khách không thể lớn hơn tổng lượt dùng");
         }
     }
 

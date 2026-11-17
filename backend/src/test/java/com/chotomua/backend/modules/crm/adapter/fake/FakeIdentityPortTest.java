@@ -137,7 +137,7 @@ class FakeIdentityPortTest {
                 "c@example.com",
                 "0900000000",
                 "male",
-                LocalDate.of(2000, 12, 12)));
+                LocalDate.of(2000, 12, 12)), "matkhau123");
 
         assertThat(created.status()).isEqualTo(CustomerStatus.ACTIVE);
         assertThat(created.dob()).isEqualTo(LocalDate.of(2000, 12, 12));
