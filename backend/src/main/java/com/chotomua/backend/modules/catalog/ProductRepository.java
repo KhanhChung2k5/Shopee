@@ -28,6 +28,18 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
                                         @Param("search") String search,
                                         Pageable pageable);
 
+    /** Published products whose type is in {@code productTypes} OR whose id is in {@code ids} (a voucher's scope). */
+    @EntityGraph(attributePaths = "category")
+    @Query("""
+            select p from Product p
+            where p.status = 'published' and (p.productType in :productTypes or p.id in :ids)
+              and (:search = '' or lower(p.name) like lower(concat('%', :search, '%')))
+            """)
+    Page<Product> findPublishedInScope(@Param("productTypes") Collection<String> productTypes,
+                                       @Param("ids") Collection<UUID> ids,
+                                       @Param("search") String search,
+                                       Pageable pageable);
+
     @EntityGraph(attributePaths = "category")
     @Query("""
             select p from Product p left join p.category c

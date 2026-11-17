@@ -1,4 +1,5 @@
-import { formatVnd, typeLabel, type ProductType } from './catalog'
+import { cachedPublicFetch } from './api'
+import { formatVnd, typeLabel, type CatalogProductSummary, type PageResult, type ProductType } from './catalog'
 import { audienceLabel } from './loyalty'
 
 export interface AvailableVoucher {
@@ -21,6 +22,14 @@ export interface AvailableVoucher {
   targetProductNames: string[]
   /** Uses left for this buyer; null = no per-buyer limit. */
   remainingForYou: number | null
+  /** Specific product ids it is limited to (besides the product types). */
+  targetProductIds: string[]
+  /** Total uses allowed; null = no total limit. */
+  usageLimit: number | null
+  /** Share of {@link usageLimit} already used, 0–100; null without a total limit. */
+  usedPercent: number | null
+  /** Uses each buyer gets; null = unlimited per buyer. */
+  perCustomerLimit: number | null
 }
 
 export interface VoucherQuote {
@@ -58,4 +67,26 @@ export function voucherConditionLabel(
 export function voucherScopeLabel(voucher: Pick<AvailableVoucher, 'minLoyaltyTier' | 'targetProductTypes'>
   & Partial<Pick<AvailableVoucher, 'targetProductNames'>>) {
   return `Áp dụng: ${productScopeLabel(voucher.targetProductTypes, voucher.targetProductNames)} · ${audienceLabel(voucher.minLoyaltyTier)}`
+}
+
+/** "x2" — uses this buyer has left; null means the voucher can be used again and again. */
+export function remainingUsesBadge(voucher: Pick<AvailableVoucher, 'remainingForYou'>) {
+  return voucher.remainingForYou == null ? 'Nhiều lượt' : `x${voucher.remainingForYou}`
+}
+
+/** True when the voucher is not limited to any product type or product. */
+export function coversEveryProduct(voucher: Pick<AvailableVoucher, 'targetProductTypes' | 'targetProductIds'>) {
+  return !(voucher.targetProductTypes?.length) && !(voucher.targetProductIds?.length)
+}
+
+/** Published products the voucher applies to (its product types OR its specific products). */
+export function fetchVoucherProducts(
+  voucher: Pick<AvailableVoucher, 'targetProductTypes' | 'targetProductIds'>,
+  page = 0,
+  size = 20,
+) {
+  const params = new URLSearchParams({ page: String(page), size: String(size) })
+  for (const type of voucher.targetProductTypes ?? []) params.append('types', type)
+  for (const id of voucher.targetProductIds ?? []) params.append('ids', id)
+  return cachedPublicFetch<PageResult<CatalogProductSummary>>(`/api/products/scope?${params}`)
 }

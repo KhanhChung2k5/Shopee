@@ -111,6 +111,47 @@ public class PublicProductController {
                 result.getSize(), result.getTotalElements(), result.getTotalPages());
     }
 
+    /**
+     * Products a voucher applies to: those of any listed type OR with any listed id. Both empty = every
+     * published product. Not cached: the combinations are open-ended.
+     */
+    @GetMapping("/scope")
+    public PageResponse<ProductSummary> inScope(
+            @RequestParam(name = "types", required = false) List<String> types,
+            @RequestParam(name = "ids", required = false) List<UUID> ids,
+            @RequestParam(name = "search", required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        List<String> typeList = types == null ? List.of() : types.stream().filter(t -> t != null && !t.isBlank()).toList();
+        List<UUID> idList = ids == null ? List.of() : ids;
+        if (typeList.isEmpty() && idList.isEmpty()) {
+            return list(null, null, null, search, page, size);
+        }
+        if (page < 0 || size < 1 || size > 100) {
+            throw new IllegalArgumentException("page must be >= 0 and size must be between 1 and 100.");
+        }
+        if (typeList.size() + idList.size() > 300) {
+            throw new IllegalArgumentException("Quá nhiều loại hoặc sản phẩm trong phạm vi.");
+        }
+        // Empty IN lists are avoided with values that never match.
+        Page<Product> result = products.findPublishedInScope(
+                typeList.isEmpty() ? List.of("__no_type__") : typeList,
+                idList.isEmpty() ? List.of(new UUID(0, 0)) : idList,
+                normalize(search), PageRequest.of(page, size));
+        List<UUID> productIds = result.getContent().stream().map(Product::getId).toList();
+        Map<UUID, List<ProductVariant>> variantsByProduct = productIds.isEmpty() ? Map.of()
+                : variants.findByProduct_IdInAndStatus(productIds, "active").stream()
+                    .collect(Collectors.groupingBy(variant -> variant.getProduct().getId()));
+        Map<UUID, SalesStats> statsByProduct = salesStats(productIds);
+        List<ProductSummary> content = result.getContent().stream()
+                .map(product -> ProductSummary.from(product,
+                        variantsByProduct.getOrDefault(product.getId(), List.of()),
+                        statsByProduct.getOrDefault(product.getId(), SalesStats.NONE)))
+                .toList();
+        return new PageResponse<>(content, result.getNumber(),
+                result.getSize(), result.getTotalElements(), result.getTotalPages());
+    }
+
     @GetMapping("/{id}")
     @Cacheable(cacheNames = CacheConfig.PUBLIC_PRODUCT, key = "#id")
     public ProductDetails get(@PathVariable UUID id) {

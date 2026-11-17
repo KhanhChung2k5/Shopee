@@ -74,24 +74,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Future<void> _requestCancel() async {
-    final reasonController = TextEditingController();
     final reason = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Gửi yêu cầu huỷ đơn'),
-        content: TextField(
-          controller: reasonController,
-          maxLines: 3,
-          decoration: const InputDecoration(hintText: 'Lý do huỷ đơn…', border: OutlineInputBorder()),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Giữ đơn')),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(reasonController.text.trim()),
-            child: const Text('Gửi yêu cầu'),
-          ),
-        ],
-      ),
+      builder: (context) => const _CancelReasonDialog(),
     );
     if (reason == null || reason.isEmpty) return;
 
@@ -277,6 +262,87 @@ class _PriceRow extends StatelessWidget {
               )),
         ],
       ),
+    );
+  }
+}
+
+
+/// Ready-made cancellation reasons; [_otherReason] opens a free-text box.
+const _cancelReasons = [
+  'Tôi không còn nhu cầu mua nữa',
+  'Tôi muốn thay đổi sản phẩm, phân loại hoặc số lượng',
+  'Tôi muốn đổi địa chỉ hoặc số điện thoại nhận hàng',
+  'Tôi muốn dùng mã giảm giá khác',
+  'Tôi tìm được nơi bán giá tốt hơn',
+  'Thời gian giao hàng quá lâu',
+  'Tôi muốn đổi phương thức thanh toán',
+];
+const _otherReason = 'Lý do khác';
+
+class _CancelReasonDialog extends StatefulWidget {
+  const _CancelReasonDialog();
+
+  @override
+  State<_CancelReasonDialog> createState() => _CancelReasonDialogState();
+}
+
+class _CancelReasonDialogState extends State<_CancelReasonDialog> {
+  final _otherController = TextEditingController();
+  String? _choice;
+
+  @override
+  void dispose() {
+    _otherController.dispose();
+    super.dispose();
+  }
+
+  String get _reason => _choice == _otherReason ? _otherController.text.trim() : (_choice ?? '');
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Gửi yêu cầu huỷ đơn'),
+      contentPadding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final option in [..._cancelReasons, _otherReason])
+                RadioListTile<String>(
+                  value: option,
+                  groupValue: _choice,
+                  onChanged: (value) => setState(() => _choice = value),
+                  dense: true,
+                  title: Text(option),
+                ),
+              if (_choice == _otherReason)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: TextField(
+                    controller: _otherController,
+                    autofocus: true,
+                    maxLines: 3,
+                    maxLength: 500,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
+                      hintText: 'Cho chúng tôi biết lý do bạn muốn huỷ…',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Giữ đơn')),
+        FilledButton(
+          onPressed: _reason.isEmpty ? null : () => Navigator.of(context).pop(_reason),
+          child: const Text('Gửi yêu cầu'),
+        ),
+      ],
     );
   }
 }

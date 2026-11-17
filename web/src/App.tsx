@@ -8,6 +8,7 @@ import CheckoutPage from './pages/CheckoutPage'
 import OrderHistoryPage from './pages/OrderHistoryPage'
 import OrderDetailPage from './pages/OrderDetailPage'
 import VoucherWalletPage from './pages/VoucherWalletPage'
+import VoucherProductsPage from './pages/VoucherProductsPage'
 import CategoryPage from './pages/CategoryPage'
 import SearchPage from './pages/SearchPage'
 import LoginPage from './pages/LoginPage'
@@ -77,6 +78,7 @@ function CustomerShell() {
           <Route path="/don-hang" element={<OrderHistoryPage />} />
           <Route path="/don-hang/:id" element={<OrderDetailPage />} />
           <Route path="/kho-voucher" element={<VoucherWalletPage />} />
+          <Route path="/kho-voucher/:id" element={<VoucherProductsPage />} />
           <Route path="/danh-muc/:slug" element={<CategoryPage />} />
           <Route path="/tim-kiem" element={<SearchPage />} />
           <Route path="/dang-nhap" element={<LoginPage />} />
