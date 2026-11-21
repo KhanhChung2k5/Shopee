@@ -7,6 +7,7 @@ import BasketTree, { type BasketColumn } from './BasketTree'
 import { RFM_LABEL } from '../../../lib/crm'
 import { DashboardFilters } from './dashboardFilters'
 import { Histogram, Note, Panel, Stats, Status } from './dashboardUi'
+import { ChartTableSplit } from '../../components/AnalyticsWidgets'
 
 interface Drill {
   categoryId?: string
@@ -194,19 +195,55 @@ export default function BehaviorPage() {
           ]} />
 
           <Panel title="Chu kỳ giữa hai lần mua đã giao">
-            <Histogram
-              ariaLabel="Chu kỳ giữa hai lần mua đã giao"
-              rows={data.intervals.map((bucket) => ({
-                key: bucket.key,
-                label: bucket.label,
-                value: bucket.count,
-                segments: (bucket.segments ?? []).map((share) => ({
-                  key: share.segment,
-                  label: RFM_LABEL[share.segment] ?? share.segment,
-                  count: share.count,
-                  percent: share.percent,
-                })),
-              }))}
+            <ChartTableSplit
+              chart={
+                <Histogram
+                  ariaLabel="Chu kỳ giữa hai lần mua đã giao"
+                  rows={data.intervals.map((bucket) => ({
+                    key: bucket.key,
+                    label: bucket.label,
+                    value: bucket.count,
+                    segments: (bucket.segments ?? []).map((share) => ({
+                      key: share.segment,
+                      label: RFM_LABEL[share.segment] ?? share.segment,
+                      count: share.count,
+                      percent: share.percent,
+                    })),
+                  }))}
+                />
+              }
+              table={
+                <div className={a.tableWrap}>
+                  <table className={a.tableCompact}>
+                    <thead>
+                      <tr>
+                        <th>Khoảng ngày</th>
+                        <th className="!text-right">Lần mua lặp</th>
+                        <th className="!text-right">Tỷ trọng</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.intervals.map((bucket) => {
+                        const share = data.repeatPurchases > 0
+                          ? Math.round((bucket.count / data.repeatPurchases) * 1000) / 10
+                          : null
+                        return (
+                          <tr key={bucket.key}>
+                            <td className="font-medium">{bucket.label}</td>
+                            <td className="text-right tabular-nums font-semibold">{bucket.count.toLocaleString('vi-VN')}</td>
+                            <td className="text-right tabular-nums">{pct(share)}</td>
+                          </tr>
+                        )
+                      })}
+                      <tr className="border-t-2 border-line bg-surface-container-low/60 font-bold">
+                        <td>Tổng mua lặp</td>
+                        <td className="text-right tabular-nums">{data.repeatPurchases.toLocaleString('vi-VN')}</td>
+                        <td className="text-right tabular-nums">{data.repeatPurchases > 0 ? '100%' : '—'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              }
             />
           </Panel>
 

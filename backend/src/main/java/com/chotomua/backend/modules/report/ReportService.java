@@ -111,6 +111,21 @@ public class ReportService {
             if (acc != null) acc.cogs = acc.cogs.subtract(rs.getBigDecimal("cost"));
         });
 
+        // Chi nhập hàng (approved goods receipts in period)
+        jdbc.query("""
+                SELECT (COALESCE(g.decided_at, g.received_at) AT TIME ZONE '%s')::date AS day,
+                       COALESCE(SUM(gri.line_total), 0) AS expense
+                FROM goods_receipts g
+                JOIN goods_receipt_items gri ON gri.receipt_id = g.id
+                WHERE g.status = 'approved'
+                  AND COALESCE(g.decided_at, g.received_at) >= :start
+                  AND COALESCE(g.decided_at, g.received_at) < :end
+                GROUP BY 1
+                """.formatted(TZ), params, rs -> {
+            DayAcc acc = days.get(rs.getDate("day").toLocalDate());
+            if (acc != null) acc.importExpense = acc.importExpense.add(rs.getBigDecimal("expense"));
+        });
+
         List<RevenueReport.Day> series = new ArrayList<>();
         DayAcc total = new DayAcc();
         days.forEach((day, acc) -> {
@@ -120,11 +135,90 @@ public class ReportService {
             total.refunds = total.refunds.add(acc.refunds);
             total.cogs = total.cogs.add(acc.cogs);
             total.uncostedUnits += acc.uncostedUnits;
+            total.importExpense = total.importExpense.add(acc.importExpense);
         });
         RevenueReport.Day sum = total.toDay(null);
+        BigDecimal totalExpense = sum.importExpense().add(sum.refunds());
         return new RevenueReport(from, to, sum.orders(), sum.revenue(), sum.refunds(), sum.netRevenue(), sum.cogs(),
-                sum.grossProfit(), margin(sum.grossProfit(), sum.netRevenue()), sum.uncostedUnits(), series,
-                topProducts(params));
+                sum.grossProfit(), margin(sum.grossProfit(), sum.netRevenue()), sum.uncostedUnits(),
+                sum.importExpense(), totalExpense, sum.netCashFlow(), series,
+                topProducts(params), byCategory(params), categoryDays(params));
+    }
+
+    private List<RevenueReport.CategoryRow> byCategory(MapSqlParameterSource params) {
+        return jdbc.query("WITH " + AVG_COST + ", " + DELIVERED + """
+                , lines AS (
+                    SELECT d.id AS order_id, oi.variant_id,
+                           CASE WHEN r.id IS NULL THEN oi.quantity ELSE 0 END AS units,
+                           CASE WHEN d.subtotal_amount > 0 THEN oi.line_total * d.total_amount / d.subtotal_amount
+                                ELSE oi.line_total END - COALESCE(r.refund_amount, 0) AS revenue
+                    FROM delivered d
+                    JOIN order_items oi ON oi.order_id = d.id
+                    LEFT JOIN refund_returns r ON r.order_item_id = oi.id AND r.kind = 'return' AND r.status = 'refunded'
+                )
+                SELECT COALESCE(p.category_id::text, 'uncategorized') AS category_id,
+                       COALESCE(MAX(cat.name), 'Chưa phân loại') AS category_name,
+                       COUNT(DISTINCT l.order_id) AS orders,
+                       SUM(l.units) AS units,
+                       GREATEST(SUM(l.revenue), 0) AS revenue,
+                       SUM(CASE WHEN c.unit_cost IS NOT NULL THEN l.units * c.unit_cost ELSE 0 END) AS cogs,
+                       BOOL_AND(c.unit_cost IS NOT NULL) AS all_costed
+                FROM lines l
+                JOIN product_variants pv ON pv.id = l.variant_id
+                JOIN products p ON p.id = pv.product_id
+                LEFT JOIN categories cat ON cat.id = p.category_id
+                LEFT JOIN avg_cost c ON c.variant_id = l.variant_id
+                GROUP BY COALESCE(p.category_id::text, 'uncategorized')
+                HAVING SUM(l.units) > 0
+                ORDER BY revenue DESC
+                """, params, (rs, i) -> {
+            BigDecimal revenue = rs.getBigDecimal("revenue").setScale(0, RoundingMode.HALF_UP);
+            BigDecimal cogs = rs.getBigDecimal("cogs").setScale(0, RoundingMode.HALF_UP);
+            BigDecimal profit = revenue.subtract(cogs);
+            return new RevenueReport.CategoryRow(
+                    rs.getString("category_id"),
+                    rs.getString("category_name"),
+                    rs.getLong("orders"),
+                    rs.getLong("units"),
+                    revenue,
+                    cogs,
+                    profit,
+                    margin(profit, revenue));
+        });
+    }
+
+    private List<RevenueReport.CategoryDay> categoryDays(MapSqlParameterSource params) {
+        return jdbc.query("WITH " + DELIVERED + """
+                , lines AS (
+                    SELECT (d.delivered_at AT TIME ZONE '%s')::date AS day,
+                           d.id AS order_id, oi.variant_id,
+                           CASE WHEN r.id IS NULL THEN oi.quantity ELSE 0 END AS units,
+                           CASE WHEN d.subtotal_amount > 0 THEN oi.line_total * d.total_amount / d.subtotal_amount
+                                ELSE oi.line_total END - COALESCE(r.refund_amount, 0) AS revenue
+                    FROM delivered d
+                    JOIN order_items oi ON oi.order_id = d.id
+                    LEFT JOIN refund_returns r ON r.order_item_id = oi.id AND r.kind = 'return' AND r.status = 'refunded'
+                )
+                SELECT l.day,
+                       COALESCE(p.category_id::text, 'uncategorized') AS category_id,
+                       COALESCE(MAX(cat.name), 'Chưa phân loại') AS category_name,
+                       COUNT(DISTINCT l.order_id) AS orders,
+                       SUM(l.units) AS units,
+                       GREATEST(SUM(l.revenue), 0) AS revenue
+                FROM lines l
+                JOIN product_variants pv ON pv.id = l.variant_id
+                JOIN products p ON p.id = pv.product_id
+                LEFT JOIN categories cat ON cat.id = p.category_id
+                GROUP BY l.day, COALESCE(p.category_id::text, 'uncategorized')
+                HAVING SUM(l.units) > 0
+                ORDER BY l.day, revenue DESC
+                """.formatted(TZ), params, (rs, i) -> new RevenueReport.CategoryDay(
+                rs.getDate("day").toLocalDate(),
+                rs.getString("category_id"),
+                rs.getString("category_name"),
+                rs.getLong("orders"),
+                rs.getLong("units"),
+                rs.getBigDecimal("revenue").setScale(0, RoundingMode.HALF_UP)));
     }
 
     /**
@@ -259,14 +353,18 @@ public class ReportService {
         BigDecimal revenue = BigDecimal.ZERO;
         BigDecimal refunds = BigDecimal.ZERO;
         BigDecimal cogs = BigDecimal.ZERO;
+        BigDecimal importExpense = BigDecimal.ZERO;
         long uncostedUnits;
 
         RevenueReport.Day toDay(LocalDate day) {
             BigDecimal net = revenue.subtract(refunds);
             BigDecimal cost = cogs.setScale(0, RoundingMode.HALF_UP);
-            return new RevenueReport.Day(day, orders, revenue.setScale(0, RoundingMode.HALF_UP),
-                    refunds.setScale(0, RoundingMode.HALF_UP), net.setScale(0, RoundingMode.HALF_UP), cost,
-                    net.subtract(cost).setScale(0, RoundingMode.HALF_UP), uncostedUnits);
+            BigDecimal imp = importExpense.setScale(0, RoundingMode.HALF_UP);
+            BigDecimal revRounded = revenue.setScale(0, RoundingMode.HALF_UP);
+            BigDecimal refRounded = refunds.setScale(0, RoundingMode.HALF_UP);
+            BigDecimal netCash = revRounded.subtract(imp).subtract(refRounded);
+            return new RevenueReport.Day(day, orders, revRounded, refRounded, net.setScale(0, RoundingMode.HALF_UP),
+                    cost, net.subtract(cost).setScale(0, RoundingMode.HALF_UP), uncostedUnits, imp, netCash);
         }
     }
 }

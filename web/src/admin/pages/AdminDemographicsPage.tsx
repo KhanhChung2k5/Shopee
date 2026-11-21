@@ -287,6 +287,7 @@ function BarChart({
   popupAbove?: boolean
 }) {
   const max = Math.max(1, ...rows.map((row) => row.count))
+  const sum = rows.reduce((acc, row) => acc + row.count, 0)
   const [hover, setHover] = useState<string | null>(null)
   if (rows.length === 0) {
     return <p className="font-body-md text-body-md text-on-surface-variant">Không có dữ liệu trong bộ lọc này.</p>
@@ -296,6 +297,7 @@ function BarChart({
       {rows.map((row) => {
         const pressed = selected === row.key
         const products = hover === row.key && productsFor ? productsFor(row.key) : null
+        const pct = sum > 0 ? Math.round((row.count / sum) * 1000) / 10 : 0
         return (
           <div
             key={row.key}
@@ -315,7 +317,7 @@ function BarChart({
                 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
                 pressed ? 'bg-primary-fixed' : 'hover:bg-surface-container-low',
               )}
-              style={{ gridTemplateColumns: `${labelWidth} 1fr 40px` }}
+              style={{ gridTemplateColumns: `${labelWidth} 1fr 84px` }}
             >
               <span className="truncate" title={row.label}>{row.label}</span>
               <span className="h-3 overflow-hidden rounded-full bg-surface-container-high">
@@ -324,7 +326,10 @@ function BarChart({
                   style={{ width: `${(row.count / max) * 100}%`, opacity: selected && !pressed ? 0.4 : 1 }}
                 />
               </span>
-              <span className="text-right font-bold tabular-nums">{row.count}</span>
+              <span className="text-right tabular-nums">
+                <strong className="font-bold">{row.count}</strong>
+                <span className="ml-1 text-xs text-on-surface-variant">({pct}%)</span>
+              </span>
             </button>
             {products && row.count > 0 && <ProductPopup title={row.label} products={products} above={popupAbove} />}
           </div>
