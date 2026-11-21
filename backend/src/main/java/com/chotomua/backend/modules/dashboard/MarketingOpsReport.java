@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Hiệu quả khuyến mãi và chiến dịch.
+ * Hiệu quả khuyến mãi, voucher và chiến dịch.
  * "Có khuyến mãi" chỉ tính promotion_product_applications và promotion_invoice_applications.
- * Voucher không vào phép so sánh đó, và không tính tỷ lệ phát hành.
+ * Voucher được thống kê riêng đầy đủ: lượt dùng, hạn mức, tỷ lệ dùng, tổng giảm và doanh thu tạo ra.
  */
 public record MarketingOpsReport(
         LocalDate from,
@@ -18,6 +18,9 @@ public record MarketingOpsReport(
         PromoSide withoutPromotion,
         BigDecimal promotionDiscount,
         BigDecimal discountPerPromoOrder,
+        long voucherOrders,
+        BigDecimal voucherRevenue,
+        BigDecimal voucherDiscount,
         List<Mechanism> mechanisms,
         List<FlashSale> flashSales,
         List<TierEffect> tiers,
@@ -44,8 +47,19 @@ public record MarketingOpsReport(
     /** Hiệu quả khuyến mãi theo phân khúc RFM hiện tại của khách đặt đơn. */
     public record TierEffect(String tier, long orders, BigDecimal revenue, BigDecimal discount) {}
 
-    /** Số lần voucher_usages, không có mẫu số "đã phát hành". */
-    public record VoucherUse(String code, long uses, long orders) {}
+    /** Thống kê voucher chi tiết: mã, loại, giá trị, lượt dùng / hạn mức, doanh thu và tiền giảm trên đơn. */
+    public record VoucherUse(
+            String code,
+            String type,
+            BigDecimal value,
+            long uses,
+            long orders,
+            Integer usageLimit,
+            BigDecimal redemptionPct,
+            BigDecimal revenue,
+            BigDecimal discountAmount,
+            Instant expiresAt
+    ) {}
 
     /**
      * Phễu: thành viên segment → thư đã gửi/đã đọc → người mua đơn đã giao trong cửa sổ chiến dịch.

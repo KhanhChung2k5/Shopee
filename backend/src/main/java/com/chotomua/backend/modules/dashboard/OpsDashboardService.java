@@ -118,23 +118,66 @@ public class OpsDashboardService {
                     money(rs.getBigDecimal("net_product")),
                     collected,
                     orders,
-                    orders == 0 ? money(BigDecimal.ZERO) : money(collected.divide(BigDecimal.valueOf(orders), 0, RoundingMode.HALF_UP))));
+                    orders == 0 ? money(BigDecimal.ZERO) : money(collected.divide(BigDecimal.valueOf(orders), 0, RoundingMode.HALF_UP)),
+                    money(BigDecimal.ZERO),
+                    money(BigDecimal.ZERO)));
+        });
+
+        // Chi nhập hàng (approved goods receipts) theo tháng
+        jdbc.query("""
+                SELECT to_char((COALESCE(g.decided_at, g.received_at) AT TIME ZONE '%s'), 'YYYY-MM') AS month,
+                       COALESCE(SUM(gri.line_total), 0) AS expense
+                FROM goods_receipts g
+                JOIN goods_receipt_items gri ON gri.receipt_id = g.id
+                WHERE g.status = 'approved'
+                  AND COALESCE(g.decided_at, g.received_at) >= :start
+                  AND COALESCE(g.decided_at, g.received_at) < :end
+                GROUP BY 1
+                """.formatted(TZ), params, rs -> {
+            String month = rs.getString("month");
+            SalesOpsReport.Month row = months.get(month);
+            if (row == null) return;
+            BigDecimal imp = money(rs.getBigDecimal("expense"));
+            months.put(month, new SalesOpsReport.Month(
+                    row.month(), row.gmv(), row.netProduct(), row.collected(), row.orders(), row.aov(),
+                    imp, row.refunds()));
+        });
+
+        // Hoàn tiền theo tháng
+        jdbc.query("""
+                SELECT to_char((r.refunded_at AT TIME ZONE '%s'), 'YYYY-MM') AS month,
+                       COALESCE(SUM(r.refund_amount), 0) AS refunded
+                FROM refund_returns r
+                JOIN orders o ON o.id = r.order_id
+                WHERE r.status = 'refunded' AND r.refunded_at >= :start AND r.refunded_at < :end%s
+                GROUP BY 1
+                """.formatted(TZ, matchClause(params)), params, rs -> {
+            String month = rs.getString("month");
+            SalesOpsReport.Month row = months.get(month);
+            if (row == null) return;
+            BigDecimal ref = money(rs.getBigDecimal("refunded"));
+            months.put(month, new SalesOpsReport.Month(
+                    row.month(), row.gmv(), row.netProduct(), row.collected(), row.orders(), row.aov(),
+                    row.importExpense(), ref));
         });
 
         BigDecimal gmv = BigDecimal.ZERO;
         BigDecimal net = BigDecimal.ZERO;
         BigDecimal collected = BigDecimal.ZERO;
+        BigDecimal importExpense = BigDecimal.ZERO;
         long orders = 0;
         for (SalesOpsReport.Month month : months.values()) {
             gmv = gmv.add(month.gmv());
             net = net.add(month.netProduct());
             collected = collected.add(month.collected());
+            importExpense = importExpense.add(month.importExpense());
             orders += month.orders();
         }
 
         long[] refundOrders = refundedOrderCounts(params);
         BigDecimal[] refundMoney = refundedMoney(params);
         BigDecimal priorNet = sumNetProduct(from.minusYears(1), to.minusYears(1), params);
+        BigDecimal netCashFlow = collected.subtract(importExpense).subtract(refundMoney[0]);
 
         return new SalesOpsReport(
                 from,
@@ -151,8 +194,12 @@ public class OpsDashboardService {
                 pct(refundOrders[1], refundOrders[0]),
                 priorNet,
                 yoyPct(net, priorNet),
+                importExpense,
+                netCashFlow,
                 List.copyOf(months.values()),
                 productTypes(params),
+                byCategory(params),
+                categoryDays(params),
                 payments(params),
                 refundReasons(params),
                 stages(params));
@@ -167,6 +214,10 @@ public class OpsDashboardService {
     public MarketingOpsReport marketing(LocalDate from, LocalDate to, List<String> segments, List<String> types) {
         MapSqlParameterSource params = filteredPeriod(from, to, segments, types);
         PromoFlags flags = promoFlags(params);
+        List<MarketingOpsReport.VoucherUse> voucherRows = vouchers(params);
+        long[] voucherSum = voucherSummary(params);
+        BigDecimal voucherRev = BigDecimal.valueOf(voucherSum[1]);
+        BigDecimal voucherDisc = BigDecimal.valueOf(voucherSum[2]);
         return new MarketingOpsReport(
                 from,
                 to,
@@ -175,10 +226,13 @@ public class OpsDashboardService {
                 flags.discount(),
                 flags.withPromo().orders() == 0 ? null
                         : money(flags.discount().divide(BigDecimal.valueOf(flags.withPromo().orders()), 0, RoundingMode.HALF_UP)),
+                voucherSum[0],
+                voucherRev,
+                voucherDisc,
                 flags.mechanisms(),
                 flashSales(params),
                 tiers(params),
-                vouchers(params),
+                voucherRows,
                 campaignRows(from, to, params));
     }
 
@@ -538,18 +592,116 @@ public class OpsDashboardService {
         return RFM_ORDER.stream().filter(selected::contains).map(bySegment::get).filter(java.util.Objects::nonNull).toList();
     }
 
+    private List<SalesOpsReport.CategoryRow> byCategory(MapSqlParameterSource params) {
+        record RawCat(String id, String name, BigDecimal revenue, long orders, long units) {}
+        List<RawCat> raw = jdbc.query("""
+                SELECT COALESCE(p.category_id::text, 'uncategorized') AS category_id,
+                       COALESCE(MAX(c.name), 'Chưa phân loại') AS category_name,
+                       COALESCE(SUM(oi.line_total), 0) AS revenue,
+                       COUNT(DISTINCT o.id) AS orders,
+                       COALESCE(SUM(oi.quantity), 0) AS units
+                FROM orders o
+                JOIN order_items oi ON oi.order_id = o.id
+                JOIN product_variants v ON v.id = oi.variant_id
+                JOIN products p ON p.id = v.product_id
+                LEFT JOIN categories c ON c.id = p.category_id
+                WHERE %s
+                GROUP BY COALESCE(p.category_id::text, 'uncategorized')
+                ORDER BY revenue DESC
+                """.formatted(where(params)), params, (rs, n) -> new RawCat(
+                rs.getString("category_id"),
+                rs.getString("category_name"),
+                money(rs.getBigDecimal("revenue")),
+                rs.getLong("orders"),
+                rs.getLong("units")));
+        BigDecimal totalRev = raw.stream().map(RawCat::revenue).reduce(BigDecimal.ZERO, BigDecimal::add);
+        List<SalesOpsReport.CategoryRow> out = new ArrayList<>();
+        for (RawCat r : raw) {
+            BigDecimal aov = r.orders == 0 ? money(BigDecimal.ZERO)
+                    : money(r.revenue.divide(BigDecimal.valueOf(r.orders), 0, RoundingMode.HALF_UP));
+            BigDecimal share = totalRev.signum() <= 0 ? null
+                    : r.revenue.multiply(BigDecimal.valueOf(100)).divide(totalRev, 1, RoundingMode.HALF_UP);
+            out.add(new SalesOpsReport.CategoryRow(r.id, r.name, r.revenue, r.orders, r.units, aov, share));
+        }
+        return out;
+    }
+
+    private List<SalesOpsReport.CategoryDay> categoryDays(MapSqlParameterSource params) {
+        return jdbc.query("""
+                SELECT (o.created_at AT TIME ZONE '%s')::date AS day,
+                       COALESCE(p.category_id::text, 'uncategorized') AS category_id,
+                       COALESCE(MAX(c.name), 'Chưa phân loại') AS category_name,
+                       COALESCE(SUM(oi.line_total), 0) AS revenue,
+                       COUNT(DISTINCT o.id) AS orders,
+                       COALESCE(SUM(oi.quantity), 0) AS units
+                FROM orders o
+                JOIN order_items oi ON oi.order_id = o.id
+                JOIN product_variants v ON v.id = oi.variant_id
+                JOIN products p ON p.id = v.product_id
+                LEFT JOIN categories c ON c.id = p.category_id
+                WHERE %s
+                GROUP BY 1, COALESCE(p.category_id::text, 'uncategorized')
+                ORDER BY 1, revenue DESC
+                """.formatted(TZ, where(params)), params, (rs, n) -> new SalesOpsReport.CategoryDay(
+                rs.getDate("day").toLocalDate(),
+                rs.getString("category_id"),
+                rs.getString("category_name"),
+                money(rs.getBigDecimal("revenue")),
+                rs.getLong("orders"),
+                rs.getLong("units")));
+    }
+
+    private long[] voucherSummary(MapSqlParameterSource params) {
+        long[] row = jdbc.queryForObject("""
+                SELECT COUNT(DISTINCT o.id) AS orders,
+                       COALESCE(SUM(o.total_amount), 0) AS revenue,
+                       COALESCE(SUM(o.discount_amount), 0) AS discount
+                FROM (
+                    SELECT DISTINCT o.id, o.total_amount, o.discount_amount
+                    FROM voucher_usages vu
+                    JOIN orders o ON o.id = vu.order_id
+                    WHERE %s
+                ) o
+                """.formatted(where(params)), params, (rs, n) -> new long[] {
+                rs.getLong("orders"),
+                money(rs.getBigDecimal("revenue")).longValue(),
+                money(rs.getBigDecimal("discount")).longValue()
+        });
+        return row == null ? new long[3] : row;
+    }
+
     private List<MarketingOpsReport.VoucherUse> vouchers(MapSqlParameterSource params) {
         return jdbc.query("""
-                SELECT v.code, COUNT(*) AS uses, COUNT(DISTINCT vu.order_id) AS orders
+                SELECT v.code, v.type, v.value, v.usage_limit, v.expires_at,
+                       COUNT(vu.id) AS uses,
+                       COUNT(DISTINCT vu.order_id) AS orders,
+                       COALESCE(SUM(o.total_amount), 0) AS revenue,
+                       COALESCE(SUM(o.discount_amount), 0) AS discount_amount
                 FROM voucher_usages vu
                 JOIN vouchers v ON v.id = vu.voucher_id
                 JOIN orders o ON o.id = vu.order_id
                 WHERE %s
-                GROUP BY v.code
-                ORDER BY uses DESC, v.code
-                LIMIT 10
-                """.formatted(where(params)), params, (rs, n) -> new MarketingOpsReport.VoucherUse(
-                rs.getString("code"), rs.getLong("uses"), rs.getLong("orders")));
+                GROUP BY v.id, v.code, v.type, v.value, v.usage_limit, v.expires_at
+                ORDER BY uses DESC, revenue DESC, v.code
+                LIMIT 20
+                """.formatted(where(params)), params, (rs, n) -> {
+            long uses = rs.getLong("uses");
+            Integer limit = rs.getObject("usage_limit") == null ? null : rs.getInt("usage_limit");
+            BigDecimal redemption = (limit == null || limit <= 0) ? null
+                    : BigDecimal.valueOf(uses).multiply(BigDecimal.valueOf(100))
+                    .divide(BigDecimal.valueOf(limit), 1, RoundingMode.HALF_UP);
+            return new MarketingOpsReport.VoucherUse(
+                    rs.getString("code"),
+                    rs.getString("type"),
+                    money(rs.getBigDecimal("value")),
+                    uses,
+                    rs.getLong("orders"),
+                    limit,
+                    redemption,
+                    money(rs.getBigDecimal("revenue")),
+                    money(rs.getBigDecimal("discount_amount")),
+                    timestamp(rs, "expires_at"));
+        });
     }
 
     private List<MarketingOpsReport.CampaignRow> campaignRows(LocalDate from, LocalDate to, MapSqlParameterSource filters) {
@@ -928,7 +1080,15 @@ public class OpsDashboardService {
         YearMonth end = YearMonth.from(to);
         while (!cursor.isAfter(end)) {
             String key = cursor.toString();
-            months.put(key, new SalesOpsReport.Month(key, money(BigDecimal.ZERO), money(BigDecimal.ZERO), money(BigDecimal.ZERO), 0, money(BigDecimal.ZERO)));
+            months.put(key, new SalesOpsReport.Month(
+                    key,
+                    money(BigDecimal.ZERO),
+                    money(BigDecimal.ZERO),
+                    money(BigDecimal.ZERO),
+                    0,
+                    money(BigDecimal.ZERO),
+                    money(BigDecimal.ZERO),
+                    money(BigDecimal.ZERO)));
             cursor = cursor.plusMonths(1);
         }
         return months;

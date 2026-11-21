@@ -10,6 +10,27 @@ export interface SalesMonth {
   collected: number
   orders: number
   aov: number
+  importExpense: number
+  refunds: number
+}
+
+export interface SalesCategoryRow {
+  categoryId: string
+  categoryName: string
+  revenue: number
+  orders: number
+  units: number
+  aov: number
+  sharePct: number | null
+}
+
+export interface SalesCategoryDay {
+  day: string
+  categoryId: string
+  categoryName: string
+  revenue: number
+  orders: number
+  units: number
 }
 
 export interface SalesReport {
@@ -27,11 +48,28 @@ export interface SalesReport {
   refundRatePct: number | null
   priorNetProduct: number
   yoyPct: number | null
+  importExpense: number
+  netCashFlow: number
   months: SalesMonth[]
   byProductType: { productType: string; merchandise: number; orders: number; aov: number }[]
+  byCategory: SalesCategoryRow[]
+  categoryDays: SalesCategoryDay[]
   payments: { method: string; status: string; count: number; amount: number }[]
   refundReasons: { kind: string; reason: string; count: number; amount: number }[]
   stages: { fromStatus: string; toStatus: string; avgHours: number | null; orders: number }[]
+}
+
+export interface VoucherStat {
+  code: string
+  type: string
+  value: number
+  uses: number
+  orders: number
+  usageLimit: number | null
+  redemptionPct: number | null
+  revenue: number
+  discountAmount: number
+  expiresAt: string | null
 }
 
 export interface MarketingReport {
@@ -41,10 +79,13 @@ export interface MarketingReport {
   withoutPromotion: { orders: number; revenue: number }
   promotionDiscount: number
   discountPerPromoOrder: number | null
+  voucherOrders: number
+  voucherRevenue: number
+  voucherDiscount: number
   mechanisms: { key: string; label: string; orders: number; revenue: number; discount: number }[]
   flashSales: { programName: string; productName: string; sku: string; soldQty: number; limitQty: number | null; soldPct: number | null; flashPrice: number }[]
   tiers: { tier: string; orders: number; revenue: number; discount: number }[]
-  vouchers: { code: string; uses: number; orders: number }[]
+  vouchers: VoucherStat[]
   campaigns: {
     id: string
     name: string

@@ -9,6 +9,8 @@ export interface RevenueDay {
   cogs: number
   grossProfit: number
   uncostedUnits: number
+  importExpense: number
+  netCashFlow: number
 }
 
 export interface RevenueProduct {
@@ -23,6 +25,26 @@ export interface RevenueProduct {
   marginPct: number | null
 }
 
+export interface RevenueCategoryRow {
+  categoryId: string
+  categoryName: string
+  orders: number
+  units: number
+  revenue: number
+  cogs: number
+  grossProfit: number
+  marginPct: number | null
+}
+
+export interface RevenueCategoryDay {
+  day: string
+  categoryId: string
+  categoryName: string
+  orders: number
+  units: number
+  revenue: number
+}
+
 export interface RevenueReport {
   from: string
   to: string
@@ -34,8 +56,13 @@ export interface RevenueReport {
   grossProfit: number
   marginPct: number | null
   uncostedUnits: number
+  importExpense: number
+  totalExpense: number
+  netCashFlow: number
   days: RevenueDay[]
   topProducts: RevenueProduct[]
+  byCategory: RevenueCategoryRow[]
+  categoryDays: RevenueCategoryDay[]
 }
 
 export interface InventoryLine {
