@@ -82,6 +82,7 @@ export default function CartPage() {
       <PageHeader
         breadcrumb={[{ label: 'Trang chủ', to: '/' }, { label: 'Giỏ hàng' }]}
         title={`Giỏ hàng (${lines.length})`}
+        actions={<ContinueShoppingButton variant="outline" size="sm" />}
       />
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop items-start">
         <div className="lg:col-span-8 space-y-space-sm">
