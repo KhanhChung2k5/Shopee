@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import ProductThumb from '../components/ProductThumb'
+import ContinueShoppingButton from '../components/ContinueShoppingButton'
 import {
   Alert,
   Badge,
@@ -290,6 +291,7 @@ function CheckoutContent({ token }: { token: string }) {
             <ButtonLink variant="outline" to="/gio-hang">
               Về giỏ hàng
             </ButtonLink>
+            <ContinueShoppingButton variant="outline" />
             <ButtonLink to={`/don-hang/${createdOrder.id}`} icon="receipt_long">
               Xem đơn hàng
             </ButtonLink>
@@ -870,9 +872,7 @@ function BankTransferQRView({ order }: { order: CreatedOrder }) {
           </p>
 
           <div className="flex flex-wrap justify-center gap-space-sm pt-space-xs">
-            <ButtonLink variant="outline" to="/">
-              Về trang chủ
-            </ButtonLink>
+            <ContinueShoppingButton variant="outline" />
             <ButtonLink to={`/don-hang/${order.id}`} icon="receipt_long">
               Xem chi tiết đơn hàng
             </ButtonLink>

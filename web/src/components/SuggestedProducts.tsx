@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import ProductTile from './ProductTile'
 import { fetchProducts, type CatalogProductSummary, type ProductType } from '../lib/catalog'
@@ -36,6 +36,24 @@ type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'name'
 
 const INITIAL_DISPLAY_COUNT = 12
 
+/**
+ * What the shopper had open in this list: the loaded products (kept in memory, so coming back shows them instantly
+ * instead of a spinner) and how far "Xem thêm" was expanded plus the price/sort choice (kept for the browser tab), so
+ * "Tiếp tục mua sắm" can scroll straight back to the product they left from.
+ */
+const VIEW_KEY = 'ctm:home-suggested'
+let cachedProducts: CatalogProductSummary[] | null = null
+
+interface SavedView { visibleCount: number; price: string; sort: SortOption }
+
+function readView(): SavedView {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(VIEW_KEY) ?? 'null')
+    if (parsed && typeof parsed.visibleCount === 'number') return parsed
+  } catch { /* storage blocked */ }
+  return { visibleCount: INITIAL_DISPLAY_COUNT, price: 'all', sort: 'featured' }
+}
+
 export default function SuggestedProducts() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabFromUrl = searchParams.get('tab') as Tab | null
@@ -45,12 +63,19 @@ export default function SuggestedProducts() {
     ? tabFromUrl
     : 'all'
 
-  const [allProducts, setAllProducts] = useState<CatalogProductSummary[]>([])
-  const [loading, setLoading] = useState(true)
+  const [savedView] = useState(readView)
+  const [allProducts, setAllProducts] = useState<CatalogProductSummary[]>(() => cachedProducts ?? [])
+  const [loading, setLoading] = useState(cachedProducts == null)
   const [selectedPlatform, setSelectedPlatform] = useState<string>(platformFromUrl || 'all')
-  const [selectedPrice, setSelectedPrice] = useState<string>('all')
-  const [sortBy, setSortBy] = useState<SortOption>('featured')
-  const [visibleCount, setVisibleCount] = useState(INITIAL_DISPLAY_COUNT)
+  const [selectedPrice, setSelectedPrice] = useState<string>(savedView.price)
+  const [sortBy, setSortBy] = useState<SortOption>(savedView.sort)
+  const [visibleCount, setVisibleCount] = useState(savedView.visibleCount)
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(VIEW_KEY, JSON.stringify({ visibleCount, price: selectedPrice, sort: sortBy }))
+    } catch { /* storage blocked */ }
+  }, [visibleCount, selectedPrice, sortBy])
 
   // Sync platform when URL changes
   useEffect(() => {
@@ -61,21 +86,29 @@ export default function SuggestedProducts() {
     }
   }, [platformFromUrl])
 
-  // Reset visible count when filters change
+  // Reset visible count when filters change — but not on mount, which would throw away the restored "Xem thêm" count.
+  const filterKey = `${activeTab}|${selectedPlatform}|${selectedPrice}|${sortBy}`
+  const lastFilterKey = useRef(filterKey)
   useEffect(() => {
+    if (lastFilterKey.current === filterKey) return
+    lastFilterKey.current = filterKey
     setVisibleCount(INITIAL_DISPLAY_COUNT)
-  }, [activeTab, selectedPlatform, selectedPrice, sortBy])
+  }, [filterKey])
 
   // Fetch all published products once; filtering below is client-side. Only real catalogue data — no sample fallback.
   const [loadError, setLoadError] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   useEffect(() => {
     let active = true
-    setLoading(true)
+    // With products already in memory, refresh quietly in the background instead of showing the spinner again.
+    if (cachedProducts == null) setLoading(true)
     setLoadError(false)
     fetchProducts(new URLSearchParams({ page: '0', size: '100' }))
-      .then((res) => { if (active) setAllProducts(res.content ?? []) })
-      .catch(() => { if (active) setLoadError(true) })
+      .then((res) => {
+        cachedProducts = res.content ?? []
+        if (active) setAllProducts(cachedProducts)
+      })
+      .catch(() => { if (active && cachedProducts == null) setLoadError(true) })
       .finally(() => { if (active) setLoading(false) })
     return () => {
       active = false

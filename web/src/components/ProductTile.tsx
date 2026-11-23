@@ -14,7 +14,8 @@ export default function ProductTile({ product, index = 0 }: { product: CatalogPr
   const disabled = busyId === product.id || product.price == null
 
   return (
-    <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex flex-col justify-between group relative">
+    // data-product-anchor: "Tiếp tục mua sắm" scrolls back to this card (see lib/shoppingTrail).
+    <div data-product-anchor={product.id} className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex flex-col justify-between group relative">
       <div>
         <div className="relative mb-space-sm">
         <Link to={`/san-pham/${product.id}`} className="block">
